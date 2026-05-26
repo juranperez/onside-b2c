@@ -13,12 +13,12 @@ import {
 } from "lucide-react";
 
 const NAV_ITEMS = [
+  { href: "/discover", label: "Discover" },
   { href: "/players", label: "Players" },
-  { href: "/clubs", label: "Clubs" },
-  { href: "/leagues", label: "Leagues" },
-  { href: "/transfers", label: "Transfers" },
-  { href: "/worldcup", label: "World Cup" },
+  { href: "/compare", label: "Compare" },
   { href: "/community", label: "Community" },
+  { href: "/coach", label: "AI Coach" },
+  { href: "/watchlist", label: "Watchlist" },
 ];
 
 function Logo() {
@@ -40,7 +40,7 @@ function Logo() {
         />
       </svg>
       <span className="text-[15px] font-bold tracking-[-0.03em] group-hover:text-acc transition">
-        ONSIDE
+        ON<span className="text-mute">/</span>SIDE
       </span>
     </Link>
   );
@@ -77,12 +77,13 @@ export function TopNav() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Link
               href="/search"
-              className="p-2 rounded-lg text-mute hover:text-white hover:bg-white/5 transition"
+              className="hidden md:flex items-center gap-2 h-8 px-3 rounded-lg bg-white/5 border border-line text-[12px] text-mute-soft hover:text-mute hover:bg-white/8 transition min-w-[180px]"
             >
-              <Search size={16} />
+              <Search size={13} />
+              <span>Search players, leagues...</span>
             </Link>
             <Link
               href="/notifications"
@@ -93,10 +94,9 @@ export function TopNav() {
             </Link>
             <Link
               href="/watchlist"
-              className="hidden md:flex items-center gap-2 h-8 px-3 rounded-lg bg-white/5 hover:bg-white/10 border border-line text-[13px] font-medium text-mute hover:text-white transition"
+              className="hidden md:flex w-8 h-8 rounded-full bg-acc/20 text-acc items-center justify-center text-[11px] font-bold"
             >
-              <User size={14} />
-              <span>Sign in</span>
+              M
             </Link>
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
