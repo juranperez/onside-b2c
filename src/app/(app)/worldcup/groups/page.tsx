@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Card, Chip } from "@/components/ui";
 import { getNationalTeams, type NationalTeamSummary } from "@/lib/queries";
-import { nationCode, nationStyle } from "@/components/worldcup/nation-code";
+import { nationCode, nationStyle, nationFlagSrc } from "@/components/worldcup/nation-code";
 import { cn } from "@/lib/utils";
 
 export const revalidate = 3600;
@@ -20,10 +20,15 @@ function money(m: number): string {
 }
 
 function CodeTile({ slug, name }: { slug: string; name: string }) {
+  const flag = nationFlagSrc(slug);
+  if (flag) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={flag} alt={name} width={28} height={28} className="w-7 h-7 rounded-full shrink-0 ring-1 ring-line/60 object-cover" />;
+  }
   const style = nationStyle(slug);
   return (
     <div
-      className="w-7 h-7 rounded-md grid place-items-center text-[9px] font-bold num shrink-0 tracking-tight"
+      className="w-7 h-7 rounded-full grid place-items-center text-[9px] font-bold num shrink-0 tracking-tight"
       style={{ background: style.bg, color: style.color }}
     >
       {nationCode(slug, name)}

@@ -52,3 +52,26 @@ export function nationCode(slug: string, name: string): string {
 export function nationStyle(slug: string): { bg: string; color: string } {
   return clubStyle(slug || "nation");
 }
+
+/**
+ * ISO codes for the bundled circular flag SVGs in /public/flags (MIT "circle-flags").
+ * National flags are public symbols (not trademarked like club crests), so they are
+ * safe to use. Keyed by nation slug.
+ */
+export const NATION_ISO2: Record<string, string> = {
+  mexico: "mx", "south-africa": "za", "south-korea": "kr", "czech-republic": "cz", canada: "ca",
+  "bosnia-herzegovina": "ba", qatar: "qa", switzerland: "ch", brazil: "br", morocco: "ma",
+  haiti: "ht", scotland: "gb-sct", "united-states": "us", paraguay: "py", australia: "au",
+  turkey: "tr", germany: "de", curacao: "cw", "ivory-coast": "ci", ecuador: "ec",
+  netherlands: "nl", japan: "jp", sweden: "se", tunisia: "tn", belgium: "be", egypt: "eg",
+  iran: "ir", "new-zealand": "nz", spain: "es", "cape-verde": "cv", "saudi-arabia": "sa",
+  uruguay: "uy", france: "fr", senegal: "sn", iraq: "iq", norway: "no", argentina: "ar",
+  algeria: "dz", austria: "at", jordan: "jo", portugal: "pt", "dr-congo": "cd", uzbekistan: "uz",
+  colombia: "co", england: "gb-eng", croatia: "hr", ghana: "gh", panama: "pa",
+};
+
+/** Path to a nation's circular flag SVG, or null to fall back to the code tile. */
+export function nationFlagSrc(slug: string): string | null {
+  const iso = NATION_ISO2[slug?.toLowerCase()?.trim()];
+  return iso ? `/flags/${iso}.svg` : null;
+}

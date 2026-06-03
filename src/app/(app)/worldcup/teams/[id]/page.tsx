@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Card, SectionHead, Avatar, Delta, Chip, Button } from "@/components/ui";
 import { getNationalTeamBySlug, type NationalTeamProfile } from "@/lib/queries";
-import { nationCode, nationStyle } from "@/components/worldcup/nation-code";
+import { nationCode, nationStyle, nationFlagSrc } from "@/components/worldcup/nation-code";
 
 export const revalidate = 3600;
 
@@ -64,12 +64,23 @@ export default async function NationalTeamPage({ params }: { params: Promise<{ i
 
           <div className="flex items-start justify-between gap-8 flex-wrap">
             <div className="flex items-start gap-6">
-              <div
-                className="w-20 h-20 rounded-2xl grid place-items-center text-[24px] font-bold num shrink-0 tracking-tight"
-                style={{ background: style.bg, color: style.color }}
-              >
-                {nationCode(team.slug, team.name)}
-              </div>
+              {nationFlagSrc(team.slug) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={nationFlagSrc(team.slug)!}
+                  alt={team.name}
+                  width={80}
+                  height={80}
+                  className="w-20 h-20 rounded-full shrink-0 ring-1 ring-line/60 object-cover"
+                />
+              ) : (
+                <div
+                  className="w-20 h-20 rounded-full grid place-items-center text-[24px] font-bold num shrink-0 tracking-tight"
+                  style={{ background: style.bg, color: style.color }}
+                >
+                  {nationCode(team.slug, team.name)}
+                </div>
+              )}
               <div>
                 <h1 className="display text-[clamp(28px,4vw,48px)] tracking-tight leading-[1.05]">{team.name}</h1>
                 <div className="flex items-center gap-3 mt-2 text-[13px] text-mute flex-wrap">
