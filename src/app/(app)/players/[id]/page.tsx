@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { fmtVal, fmtDelta } from "@/lib/format";
 import { Card, Avatar, Delta, Chip, SectionHead, Button } from "@/components/ui";
+import { JsonLd } from "@/components/seo/json-ld";
 import { getPlayerBySlug, getSimilarPlayers } from "@/lib/queries";
 
 export const revalidate = 3600;
@@ -40,6 +41,17 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
   return (
     <div>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Person",
+          name: player.name,
+          jobTitle: "Footballer",
+          ...(player.nationality ? { nationality: player.nationality } : {}),
+          ...(player.club ? { affiliation: { "@type": "SportsTeam", name: player.club.name } } : {}),
+          description: `${player.name}${player.club ? `, ${player.club.name}` : ""}. Onside valuation ${fmtVal(player.value)}.`,
+        }}
+      />
       {/* Hero */}
       <div className="relative overflow-hidden border-b border-line">
         <div className="absolute inset-0 pointer-events-none" style={{ background: `linear-gradient(135deg, ${player.clubBg}40 0%, transparent 60%)` }} />

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui";
+import { JsonLd } from "@/components/seo/json-ld";
 import { getClubBySlug } from "@/lib/queries";
 import { SquadTable } from "@/components/clubs/SquadTable";
 
@@ -46,6 +47,15 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
 
   return (
     <div>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "SportsTeam",
+          name: club.name,
+          sport: "Soccer",
+          ...(club.league ? { memberOf: { "@type": "SportsOrganization", name: club.league } } : {}),
+        }}
+      />
       {/* Hero */}
       <div className="relative overflow-hidden border-b border-line">
         <div

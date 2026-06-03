@@ -16,9 +16,11 @@ const LINKS = {
   ],
   Company: [
     { href: "/pricing", label: "Pricing" },
-    { href: "#", label: "About" },
-    { href: "#", label: "Privacy" },
-    { href: "#", label: "Terms" },
+    { href: "/methodology", label: "About" },
+    { href: "/methodology", label: "Methodology" },
+    { href: "/data-sources", label: "Data sources" },
+    { href: "/privacy", label: "Privacy" },
+    { href: "/terms", label: "Terms" },
   ],
 };
 

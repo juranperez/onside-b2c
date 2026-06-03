@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Card, SectionHead, Avatar, Delta, Chip, Button } from "@/components/ui";
+import { JsonLd } from "@/components/seo/json-ld";
 import { getNationalTeamBySlug, type NationalTeamProfile } from "@/lib/queries";
 import { nationCode, nationStyle, nationFlagSrc } from "@/components/worldcup/nation-code";
 
@@ -48,6 +49,15 @@ export default async function NationalTeamPage({ params }: { params: Promise<{ i
 
   return (
     <div>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "SportsTeam",
+          name: `${team.name} national football team`,
+          sport: "Soccer",
+          ...(team.confederation ? { memberOf: { "@type": "SportsOrganization", name: team.confederation } } : {}),
+        }}
+      />
       {/* Hero */}
       <div className="relative overflow-hidden border-b border-line">
         <div

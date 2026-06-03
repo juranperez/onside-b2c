@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Card, SectionHead, Button } from "@/components/ui";
+import { JsonLd } from "@/components/seo/json-ld";
 import { getLeagueBySlug } from "@/lib/queries";
 
 export const revalidate = 3600;
@@ -42,6 +43,15 @@ export default async function LeagueDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="max-w-[1440px] mx-auto px-6 py-8">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "SportsOrganization",
+          name: league.name,
+          sport: "Soccer",
+          ...(league.country ? { location: { "@type": "Country", name: league.country } } : {}),
+        }}
+      />
       <Link href="/leagues" className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-white transition mb-6">
         <ArrowLeft size={14} /> All leagues
       </Link>

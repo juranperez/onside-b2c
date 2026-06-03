@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
+import { CookieConsent } from "@/components/ui/cookie-consent";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -23,9 +24,17 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "ONSIDE — Every player. Every valuation. Live.",
+  metadataBase: new URL("https://onsidemarket.com"),
+  title: "Onside — Every player. Every valuation. Live.",
   description:
-    "Real-time football player valuations, transfer intelligence, and AI-powered scouting for the modern fan.",
+    "Live Onside valuations for every player, club, league and World Cup 2026 squad — the reference price for football talent.",
+  openGraph: {
+    title: "Onside — Every player. Every valuation. Live.",
+    description: "Live valuations for every player, club, and World Cup 2026 squad.",
+    type: "website",
+    siteName: "Onside",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({
@@ -40,6 +49,7 @@ export default function RootLayout({
     >
       <body className="min-h-screen bg-ink-900 text-white font-sans antialiased">
         {children}
+        <CookieConsent />
       </body>
     </html>
   );
