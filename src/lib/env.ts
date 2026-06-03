@@ -1,33 +1,53 @@
 import { z } from "zod";
 
-const schema = z.object({
+/** Public config — safe for the read path and the browser. */
+const publicSchema = z.object({
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
+  NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+});
+
+/** Server-only secrets — required for ingestion and writes. */
+const serverSchema = z.object({
   API_FOOTBALL_KEY: z.string().min(1),
   FOOTBALL_DATA_API_KEY: z.string().optional(),
   ASA_BASE_URL: z.string().url().default("https://app.americansocceranalysis.com/api/v1"),
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
-  NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
   SENTRY_DSN: z.string().optional(),
 });
 
-export type Env = z.infer<typeof schema>;
+export type PublicEnv = z.infer<typeof publicSchema>;
+export type ServerEnv = z.infer<typeof serverSchema>;
 
-/** Parse + validate an env-like object. Throws with a clear message if invalid. */
-export function parseEnv(source: Record<string, string | undefined>): Env {
-  const parsed = schema.safeParse(source);
-  if (!parsed.success) {
-    throw new Error(
-      `Invalid environment: ${parsed.error.issues.map((i) => i.path.join(".")).join(", ")}`,
-    );
-  }
-  return parsed.data;
+function fail(error: z.ZodError): never {
+  throw new Error(
+    `Invalid environment: ${error.issues.map((i) => i.path.join(".")).join(", ")}`,
+  );
 }
 
-/** Lazily-validated process env (server-side). */
-let cached: Env | null = null;
-export function env(): Env {
-  if (!cached) cached = parseEnv(process.env);
-  return cached;
+export function parsePublicEnv(src: Record<string, string | undefined>): PublicEnv {
+  const r = publicSchema.safeParse(src);
+  if (!r.success) fail(r.error);
+  return r.data;
+}
+
+export function parseServerEnv(src: Record<string, string | undefined>): ServerEnv {
+  const r = serverSchema.safeParse(src);
+  if (!r.success) fail(r.error);
+  return r.data;
+}
+
+let pub: PublicEnv | null = null;
+/** Validated public env (URL + anon). Used by the read path. */
+export function publicEnv(): PublicEnv {
+  if (!pub) pub = parsePublicEnv(process.env);
+  return pub;
+}
+
+let srv: ServerEnv | null = null;
+/** Validated server secrets (service-role + provider keys). Used by ingestion/writes. */
+export function serverEnv(): ServerEnv {
+  if (!srv) srv = parseServerEnv(process.env);
+  return srv;
 }

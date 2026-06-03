@@ -185,8 +185,36 @@ create table notifications (
 create index notifications_profile_idx on notifications(profile_id, created_at desc);
 
 -- ============ RLS ============
--- Football + valuation tables are public-read (writes only via service-role key,
--- which bypasses RLS). User tables: RLS on, owner-only access.
+-- All tables have RLS enabled. Data tables are public read-only (SELECT for
+-- everyone; no write policy, so writes happen ONLY via the service-role key,
+-- which bypasses RLS). User tables are owner-only.
+
+-- Public read-only data tables
+alter table leagues              enable row level security;
+alter table managers             enable row level security;
+alter table clubs                enable row level security;
+alter table players              enable row level security;
+alter table player_stats         enable row level security;
+alter table fixtures             enable row level security;
+alter table transfers            enable row level security;
+alter table national_teams       enable row level security;
+alter table national_team_squads enable row level security;
+alter table player_valuations    enable row level security;
+alter table valuation_history    enable row level security;
+
+create policy "public read leagues"        on leagues              for select using (true);
+create policy "public read managers"       on managers             for select using (true);
+create policy "public read clubs"          on clubs                for select using (true);
+create policy "public read players"        on players              for select using (true);
+create policy "public read player_stats"   on player_stats         for select using (true);
+create policy "public read fixtures"       on fixtures             for select using (true);
+create policy "public read transfers"      on transfers            for select using (true);
+create policy "public read national_teams" on national_teams       for select using (true);
+create policy "public read nt_squads"      on national_team_squads for select using (true);
+create policy "public read valuations"     on player_valuations    for select using (true);
+create policy "public read val_history"    on valuation_history    for select using (true);
+
+-- Owner-only user tables
 alter table profiles        enable row level security;
 alter table watchlist_items enable row level security;
 alter table alerts          enable row level security;
