@@ -4,13 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import {
-  Search,
-  Bell,
-  User,
-  Menu,
-  X,
-} from "lucide-react";
+import { Search, Bell, Menu, X } from "lucide-react";
+import { OnsideMark } from "@/components/ui/logo";
 
 const NAV_ITEMS = [
   { href: "/discover", label: "Discover" },
@@ -24,21 +19,7 @@ const NAV_ITEMS = [
 function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2 group">
-      <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path
-          d="M3 12c0-5 4-9 9-9s9 4 9 9-4 9-9 9"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        />
-        <circle cx="12" cy="12" r="2.4" fill="currentColor" />
-        <path
-          d="M12 21c-2.5 0-4.5-2-4.5-4.5"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        />
-      </svg>
+      <OnsideMark size={20} />
       <span className="text-[15px] font-bold tracking-[-0.03em] group-hover:text-acc transition">
         ON<span className="text-mute">/</span>SIDE
       </span>
