@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils";
 import { Search, Bell, Menu, X } from "lucide-react";
 import { OnsideMark } from "@/components/ui/logo";
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { href: string; label: string; special?: boolean }[] = [
   { href: "/discover", label: "Discover" },
   { href: "/players", label: "Players" },
+  { href: "/worldcup", label: "World Cup", special: true },
   { href: "/compare", label: "Compare" },
   { href: "/community", label: "Community" },
   { href: "/coach", label: "AI Coach" },
@@ -21,7 +22,7 @@ function Logo() {
     <Link href="/" className="flex items-center gap-2 group">
       <OnsideMark size={20} />
       <span className="text-[15px] font-bold tracking-[-0.03em] group-hover:text-acc transition">
-        ON<span className="text-mute">/</span>SIDE
+        Onside<span className="text-up">.</span>
       </span>
     </Link>
   );
@@ -45,13 +46,20 @@ export function TopNav() {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-[13px] font-medium transition",
-                      active
-                        ? "text-white bg-white/5"
-                        : "text-mute hover:text-white hover:bg-white/[0.03]"
+                      "px-3 py-1.5 rounded-lg text-[13px] font-medium transition inline-flex items-center gap-1.5",
+                      item.special
+                        ? active
+                          ? "text-acc bg-acc/10"
+                          : "text-acc hover:bg-acc/10"
+                        : active
+                          ? "text-white bg-white/5"
+                          : "text-mute hover:text-white hover:bg-white/[0.03]"
                     )}
                   >
                     {item.label}
+                    {item.special && (
+                      <span className="text-[9px] font-bold leading-none rounded bg-acc text-ink-950 px-1 py-[3px] num">26</span>
+                    )}
                   </Link>
                 );
               })}

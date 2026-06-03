@@ -32,7 +32,7 @@ export function OnsideLogo({ className = "" }: { className?: string }) {
     <span className={`inline-flex items-center gap-2 ${className}`}>
       <OnsideMark size={22} />
       <span className="text-[15px] font-bold tracking-[-0.03em]">
-        ON<span className="text-mute">/</span>SIDE
+        Onside<span className="text-up">.</span>
       </span>
     </span>
   );
