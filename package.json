@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "sync": "node --env-file=.env.local --import tsx scripts/sync.ts",
-    "verify-fetch": "node --env-file=.env.local --import tsx scripts/verify-fetch.ts"
+    "verify-fetch": "node --env-file=.env.local --import tsx scripts/verify-fetch.ts",
+    "value": "node --env-file=.env.local --import tsx scripts/value.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
