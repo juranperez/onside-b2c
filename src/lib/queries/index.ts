@@ -340,3 +340,48 @@ export async function getCounts(): Promise<{ players: number; clubs: number; lea
   ]);
   return { players: players.count ?? 0, clubs: clubs.count ?? 0, leagues: leagues.count ?? 0 };
 }
+
+// ─────────────────────────── World Cup fixtures ───────────────────────────
+
+export type FixtureStatus = "scheduled" | "live" | "finished" | "postponed";
+
+export interface WcFixture {
+  id: string;
+  kickoff: string | null;
+  round: string | null;
+  status: FixtureStatus;
+  venue: string | null;
+  city: string | null;
+  home: { slug: string; name: string };
+  away: { slug: string; name: string };
+  scoreHome: number | null;
+  scoreAway: number | null;
+}
+
+/** The full World Cup 2026 schedule, chronological. Teams joined in JS (home/away → national_teams). */
+export async function getWcFixtures(): Promise<WcFixture[]> {
+  const db = readDb();
+  const [fxRes, ntRes] = await Promise.all([
+    db
+      .from("fixtures")
+      .select("id,kickoff,round,status,venue,city,home_id,away_id,score_home,score_away")
+      .eq("competition", "World Cup 2026")
+      .order("kickoff", { ascending: true }),
+    db.from("national_teams").select("slug,name"),
+  ]);
+  if (fxRes.error) throw new Error(fxRes.error.message);
+  const nameBySlug = new Map((ntRes.data ?? []).map((n) => [n.slug, n.name]));
+  const team = (slug: string | null) => ({ slug: slug ?? "", name: (slug && nameBySlug.get(slug)) || "TBD" });
+  return (fxRes.data ?? []).map((f) => ({
+    id: f.id,
+    kickoff: f.kickoff,
+    round: f.round,
+    status: (f.status as FixtureStatus) ?? "scheduled",
+    venue: f.venue,
+    city: f.city,
+    home: team(f.home_id),
+    away: team(f.away_id),
+    scoreHome: f.score_home,
+    scoreAway: f.score_away,
+  }));
+}

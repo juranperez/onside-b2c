@@ -128,56 +128,50 @@ export type Database = {
       fixtures: {
         Row: {
           away_id: string | null
+          city: string | null
           competition: string | null
           data_source: string | null
           fetched_at: string | null
           home_id: string | null
           id: string
           kickoff: string | null
+          round: string | null
           score_away: number | null
           score_home: number | null
           status: string | null
+          venue: string | null
         }
         Insert: {
           away_id?: string | null
+          city?: string | null
           competition?: string | null
           data_source?: string | null
           fetched_at?: string | null
           home_id?: string | null
           id: string
           kickoff?: string | null
+          round?: string | null
           score_away?: number | null
           score_home?: number | null
           status?: string | null
+          venue?: string | null
         }
         Update: {
           away_id?: string | null
+          city?: string | null
           competition?: string | null
           data_source?: string | null
           fetched_at?: string | null
           home_id?: string | null
           id?: string
           kickoff?: string | null
+          round?: string | null
           score_away?: number | null
           score_home?: number | null
           status?: string | null
+          venue?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "fixtures_away_id_fkey"
-            columns: ["away_id"]
-            isOneToOne: false
-            referencedRelation: "clubs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fixtures_home_id_fkey"
-            columns: ["home_id"]
-            isOneToOne: false
-            referencedRelation: "clubs"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       leagues: {
         Row: {

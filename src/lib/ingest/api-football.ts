@@ -82,6 +82,23 @@ export function fetchPlayersPage(
   return apiFetch<RawPlayer>("players", { league: leagueId, season, page });
 }
 
+export interface RawFixture {
+  fixture: {
+    id: number;
+    date: string;
+    status: { short: string; long: string };
+    venue: { name: string | null; city: string | null };
+  };
+  league: { round: string };
+  teams: { home: { id: number; name: string }; away: { id: number; name: string } };
+  goals: { home: number | null; away: number | null };
+}
+
+/** All fixtures for a league/season (one call; the WC fits in a single page). */
+export function fetchFixtures(leagueId: number, season: number): Promise<ApiResult<RawFixture>> {
+  return apiFetch<RawFixture>("fixtures", { league: leagueId, season });
+}
+
 /** Page through every player in a league/season. */
 export async function fetchAllPlayers(
   leagueId: number,

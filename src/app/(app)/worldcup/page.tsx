@@ -140,6 +140,9 @@ export default async function WorldCupPage() {
             <Link href="/worldcup/groups">
               <Button kind="primary" icon={<Globe size={14} />}>View all groups</Button>
             </Link>
+            <Link href="/worldcup/schedule">
+              <Button kind="outline" icon={<Calendar size={14} />}>Match schedule</Button>
+            </Link>
             <Link href="/worldcup/bracket">
               <Button kind="outline" icon={<Trophy size={14} />}>Projected bracket</Button>
             </Link>
