@@ -2,7 +2,7 @@
 // euro valuation with a confidence band and a pillar breakdown. Labeled as a model
 // estimate; confidence scales with data completeness. See /methodology.
 
-export const MODEL_VERSION = "v1.0.0";
+export const MODEL_VERSION = "v1.1.0";
 
 export type Position = "GK" | "DEF" | "MID" | "FWD";
 
@@ -37,8 +37,7 @@ const VALUE_FLOOR = 250_000;
 const VALUE_CEIL = 250_000_000;
 const FULL_SEASON_MINUTES = 3420; // 38 * 90
 
-const BASE: Record<Position, number> = { GK: 10_000_000, DEF: 16_000_000, MID: 20_000_000, FWD: 24_000_000 };
-const PEAK_AGE: Record<Position, number> = { GK: 28, DEF: 27, MID: 26, FWD: 25 };
+const BASE: Record<Position, number> = { GK: 9_000_000, DEF: 14_000_000, MID: 17_000_000, FWD: 20_000_000 };
 
 const LEAGUE_Q: Record<string, number> = {
   "premier-league": 1.0,
@@ -57,12 +56,15 @@ const LEAGUE_Q: Record<string, number> = {
   mls: 0.42,
 };
 
-// Position-conditional pillar weights (sum to 1).
-const WEIGHTS: Record<Position, PillarScores> = {
-  GK: { performance: 0.4, output: 0.02, involvement: 0.2, prestige: 0.2, age: 0.18 },
-  DEF: { performance: 0.38, output: 0.1, involvement: 0.2, prestige: 0.2, age: 0.12 },
-  MID: { performance: 0.32, output: 0.22, involvement: 0.16, prestige: 0.18, age: 0.12 },
-  FWD: { performance: 0.3, output: 0.3, involvement: 0.15, prestige: 0.15, age: 0.1 },
+// Position-conditional pillar weights (sum to 1). League quality is applied as a value
+// multiplier (LEAGUE_Q), so it is NOT also a score pillar — that double-counted league and
+// inflated the floor for big-league squad players. Prestige is computed for display only.
+type ScoreWeights = { performance: number; output: number; involvement: number; age: number };
+const WEIGHTS: Record<Position, ScoreWeights> = {
+  GK: { performance: 0.55, output: 0.03, involvement: 0.25, age: 0.17 },
+  DEF: { performance: 0.5, output: 0.13, involvement: 0.25, age: 0.12 },
+  MID: { performance: 0.42, output: 0.3, involvement: 0.18, age: 0.1 },
+  FWD: { performance: 0.38, output: 0.37, involvement: 0.15, age: 0.1 },
 };
 
 // Expected (goals + 0.7*assists) per 90, by position — the denominator for output.
@@ -74,11 +76,11 @@ export function leagueQuality(slug: string): number {
   return LEAGUE_Q[slug] ?? 0.45;
 }
 
-/** Age multiplier — parabolic peak per position, range ~0.30..1.15. */
-export function ageMultiplier(age: number | null, position: Position): number {
+/** Age multiplier — youth-friendly (the market pays for potential), steep veteran decline. */
+export function ageMultiplier(age: number | null, _position?: Position): number {
   if (age == null) return 0.85;
-  const peak = PEAK_AGE[position];
-  return clamp(1.15 - 0.008 * (age - peak) ** 2, 0.3, 1.15);
+  if (age <= 26) return clamp(1.15 - 0.006 * Math.max(0, 20 - age) ** 2, 0.85, 1.15);
+  return clamp(1.15 - 0.02 * (age - 26) ** 1.6, 0.3, 1.15);
 }
 
 function performanceScore(rating: number | null): number {
@@ -89,7 +91,9 @@ function performanceScore(rating: number | null): number {
 function outputScore(goals: number, assists: number, minutes: number, position: Position): number {
   if (minutes <= 0) return 10;
   const per90 = (goals + 0.7 * assists) / (minutes / 90);
-  const ratio = per90 / OUTPUT_EXPECTATION[position];
+  // Sample-size shrinkage: a hot per-90 in few minutes is dampened toward the floor.
+  const shrink = minutes / (minutes + 700);
+  const ratio = (per90 * shrink) / OUTPUT_EXPECTATION[position];
   return clamp(ratio * 55 + 20, 0, 100);
 }
 
@@ -116,13 +120,12 @@ export function valuePlayer(input: ValuationInput): Valuation {
     pillars.performance * w.performance +
       pillars.output * w.output +
       pillars.involvement * w.involvement +
-      pillars.prestige * w.prestige +
       pillars.age * w.age,
     0,
     100,
   );
 
-  const raw = BASE[position] * q * Math.exp(0.045 * (score - 50)) * ageMult;
+  const raw = BASE[position] * q * Math.exp(0.052 * (score - 50)) * ageMult;
   const value = Math.round(clamp(raw, VALUE_FLOOR, VALUE_CEIL));
 
   // Data completeness drives confidence + band width.

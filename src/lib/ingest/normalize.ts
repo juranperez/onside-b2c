@@ -3,7 +3,7 @@ import type { TablesInsert } from "../db/types";
 
 // ── Input shape (API-Football /players response item) ───────────────────────
 export interface RawStat {
-  team: { id: number; name: string };
+  team: { id: number | null; name: string | null };
   league: { id: number; season: number };
   games: {
     appearences?: number | null;
@@ -73,6 +73,7 @@ export function normalizePlayer(
 ): NormalizedPlayer | null {
   const stat = pickLeagueStat(raw.statistics, leagueId);
   if (!stat) return null;
+  if (!stat.team?.id || !stat.team?.name) return null; // skip players with no valid club
 
   const name = fullName(raw.player);
   if (!name) return null; // skip players with no usable name (no fabrication)
@@ -87,7 +88,7 @@ export function normalizePlayer(
   return {
     player: {
       id: playerId,
-      slug: slugify(name),
+      slug: `${slugify(name)}-${playerId}`,
       name,
       position: normalizePosition(stat.games?.position),
       detailed_pos: null,
@@ -101,7 +102,7 @@ export function normalizePlayer(
     },
     club: {
       id: clubId,
-      slug: slugify(stat.team.name),
+      slug: `${slugify(stat.team.name)}-${clubId}`,
       name: stat.team.name,
       league_id: String(leagueId),
       data_source: source,

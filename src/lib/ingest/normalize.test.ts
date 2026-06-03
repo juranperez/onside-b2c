@@ -59,7 +59,7 @@ describe("normalizePlayer", () => {
     const n = normalizePlayer(gakpo, 39)!;
     expect(n.player).toMatchObject({
       id: "247",
-      slug: "cody-mathes-gakpo",
+      slug: "cody-mathes-gakpo-247",
       name: "Cody Mathès Gakpo",
       position: "MID",
       age: 26,
@@ -70,7 +70,7 @@ describe("normalizePlayer", () => {
       shirt_no: 18,
       data_source: "api-football",
     });
-    expect(n.club).toMatchObject({ id: "40", slug: "liverpool", name: "Liverpool", league_id: "39" });
+    expect(n.club).toMatchObject({ id: "40", slug: "liverpool-40", name: "Liverpool", league_id: "39" });
     expect(n.stat).toMatchObject({
       player_id: "247",
       season: 2025,
@@ -103,5 +103,10 @@ describe("normalizePlayer", () => {
   it("skips a player with no usable name", () => {
     const nameless = { player: { id: 1, name: "", firstname: null, lastname: null }, statistics: gakpo.statistics };
     expect(normalizePlayer(nameless as unknown as RawPlayer, 39)).toBeNull();
+  });
+
+  it("skips a player with no valid club", () => {
+    const noClub = { player: gakpo.player, statistics: [{ ...gakpo.statistics[0], team: { id: null, name: null } }] };
+    expect(normalizePlayer(noClub as unknown as RawPlayer, 39)).toBeNull();
   });
 });

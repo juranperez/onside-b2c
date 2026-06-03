@@ -13,16 +13,6 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-/** Guarantee unique slugs within a batch by appending the (unique) id on collision. */
-function ensureUniqueSlugs<T extends { slug: string; id: string }>(rows: T[]): T[] {
-  const seen = new Set<string>();
-  for (const r of rows) {
-    if (seen.has(r.slug)) r.slug = `${r.slug}-${r.id}`;
-    seen.add(r.slug);
-  }
-  return rows;
-}
-
 export interface SyncSummary {
   leagues: number;
   clubs: number;
@@ -66,14 +56,23 @@ export async function syncLeague(
     stats.push(n.stat);
   }
 
-  const clubs = ensureUniqueSlugs([...clubsById.values()]);
-  ensureUniqueSlugs(players);
+  const clubs = [...clubsById.values()];
 
   // Order matters for FKs: clubs before players, players before stats.
-  for (const c of chunk(clubs, 500)) await db.from("clubs").upsert(c, { onConflict: "id" });
-  for (const p of chunk(players, 500)) await db.from("players").upsert(p, { onConflict: "id" });
-  for (const s of chunk(stats, 500))
-    await db.from("player_stats").upsert(s, { onConflict: "player_id,season" });
+  // Slugs are globally unique (name + id), so upserts never collide on slug;
+  // any error is surfaced rather than silently dropping a batch.
+  for (const c of chunk(clubs, 500)) {
+    const { error } = await db.from("clubs").upsert(c, { onConflict: "id" });
+    if (error) throw new Error(`clubs upsert: ${error.message}`);
+  }
+  for (const p of chunk(players, 500)) {
+    const { error } = await db.from("players").upsert(p, { onConflict: "id" });
+    if (error) throw new Error(`players upsert: ${error.message}`);
+  }
+  for (const s of chunk(stats, 500)) {
+    const { error } = await db.from("player_stats").upsert(s, { onConflict: "player_id,season" });
+    if (error) throw new Error(`player_stats upsert: ${error.message}`);
+  }
 
   log(`[sync]   ${league.name}: ${clubs.length} clubs, ${players.length} players`);
   return { clubs: clubs.length, players: players.length, stats: stats.length };
