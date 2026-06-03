@@ -228,6 +228,107 @@ export async function searchAll(q: string): Promise<SearchResults> {
   };
 }
 
+// ─────────────────────────── World Cup ───────────────────────────
+
+export interface NationalTeamSummary {
+  slug: string;
+  name: string;
+  confederation: string | null;
+  fifaRank: number | null;
+  group: string | null;
+  squadValueM: number;
+}
+
+export interface NationalTeamProfile extends NationalTeamSummary {
+  squad: PlayerListItem[];
+}
+
+function toNationSummary(t: { slug: string; name: string; confederation: string | null; fifa_rank: number | null; group_letter: string | null; squad_value: number | null }): NationalTeamSummary {
+  return {
+    slug: t.slug,
+    name: t.name,
+    confederation: t.confederation,
+    fifaRank: t.fifa_rank,
+    group: t.group_letter,
+    squadValueM: Math.round((t.squad_value ?? 0) / 1e6),
+  };
+}
+
+export async function getNationalTeams(): Promise<NationalTeamSummary[]> {
+  const { data, error } = await readDb()
+    .from("national_teams")
+    .select("slug,name,confederation,fifa_rank,group_letter,squad_value")
+    .order("squad_value", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((t) => toNationSummary(t as never));
+}
+
+export async function getNationalTeamBySlug(slug: string): Promise<NationalTeamProfile | null> {
+  const { data, error } = await readDb()
+    .from("national_teams")
+    .select(
+      "slug,name,confederation,fifa_rank,group_letter,squad_value, national_team_squads(players(id,slug,name,position,age, clubs(slug,name,short_name, leagues(slug,name)), player_valuations(value_eur)))",
+    )
+    .eq("slug", slug)
+    .maybeSingle();
+  if (error || !data) return null;
+  const t = data as never as {
+    slug: string;
+    name: string;
+    confederation: string | null;
+    fifa_rank: number | null;
+    group_letter: string | null;
+    squad_value: number | null;
+    national_team_squads: Array<{ players: PlayerRowDB | null }>;
+  };
+  const now = new Date();
+  const squad = (t.national_team_squads ?? [])
+    .map((s) => s.players)
+    .filter((p): p is PlayerRowDB => p !== null)
+    .map((p) => toPlayerListItem(p, now))
+    .sort((a, b) => b.val - a.val);
+  return { ...toNationSummary(t as never), squad };
+}
+
+// ─────────────────────────── Stat leaders ───────────────────────────
+
+export interface StatLeader {
+  slug: string;
+  name: string;
+  club: string;
+  clubBg: string;
+  clubColor: string;
+  statValue: number;
+  valueM: number;
+}
+
+export async function getStatLeaders(metric: "goals" | "assists" | "rating", limit = 25): Promise<StatLeader[]> {
+  const { data, error } = await readDb()
+    .from("player_stats")
+    .select(`${metric}, players!inner(slug,name, clubs(slug,name), player_valuations(value_eur))`)
+    .not(metric, "is", null)
+    .order(metric, { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  const rows = (data ?? []) as unknown as Array<
+    Record<string, number | null> & {
+      players: { slug: string; name: string; clubs: { slug: string; name: string } | null; player_valuations: { value_eur: number } | null };
+    }
+  >;
+  return rows.map((row) => {
+    const style = clubStyle(row.players.clubs?.slug ?? row.players.slug);
+    return {
+      slug: row.players.slug,
+      name: row.players.name,
+      club: row.players.clubs?.name ?? "—",
+      clubBg: style.bg,
+      clubColor: style.color,
+      statValue: Math.round((row[metric] ?? 0) * 100) / 100,
+      valueM: Math.round((row.players.player_valuations?.value_eur ?? 0) / 1e6),
+    };
+  });
+}
+
 // ─────────────────────────── Coverage ───────────────────────────
 
 export async function getCounts(): Promise<{ players: number; clubs: number; leagues: number }> {

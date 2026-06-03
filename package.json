@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "sync": "node --env-file=.env.local --import tsx scripts/sync.ts",
     "verify-fetch": "node --env-file=.env.local --import tsx scripts/verify-fetch.ts",
-    "value": "node --env-file=.env.local --import tsx scripts/value.ts"
+    "value": "node --env-file=.env.local --import tsx scripts/value.ts",
+    "build-wc": "node --env-file=.env.local --import tsx scripts/build-wc.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

@@ -1,22 +1,50 @@
 import Link from "next/link";
-import { ArrowRight, Check, Sparkles, TrendingUp, MessageCircle, Shield } from "lucide-react";
-import { Button } from "@/components/ui";
-import { LiveDot } from "@/components/ui";
+import { ArrowRight, Check, Sparkles, TrendingUp, Shield } from "lucide-react";
+import { Button, Delta, LiveDot } from "@/components/ui";
+import { getMovers, getClubsRanked, getCounts } from "@/lib/queries";
+import type { PlayerListItem } from "@/lib/queries/map";
+import type { ClubSummary } from "@/lib/queries";
 
-export default function LandingPage() {
+export const revalidate = 1800;
+
+export default async function LandingPage() {
+  // Build-resilient: every fetch degrades to an empty/neutral default, never throws.
+  let movers: PlayerListItem[] = [];
+  let clubs: ClubSummary[] = [];
+  let counts: { players: number; clubs: number; leagues: number } = { players: 0, clubs: 0, leagues: 0 };
+  try {
+    movers = await getMovers(6);
+  } catch (e) {
+    console.error("[landing] movers unavailable:", e);
+  }
+  try {
+    clubs = await getClubsRanked(8);
+  } catch (e) {
+    console.error("[landing] clubs unavailable:", e);
+  }
+  try {
+    counts = await getCounts();
+  } catch (e) {
+    console.error("[landing] counts unavailable:", e);
+  }
+
+  const risers = movers.filter((m) => m.dWeek > 0).sort((a, b) => b.dWeek - a.dWeek);
+  const fallers = movers.filter((m) => m.dWeek < 0).sort((a, b) => a.dWeek - b.dWeek);
+
   return (
     <div className="relative">
-      <HeroSection />
+      <HeroSection counts={counts} />
       <TickerStrip />
       <ValueProps />
-      <MoversPreview />
+      <MoversPreview risers={risers} fallers={fallers} />
+      <SquadsPreview clubs={clubs} />
       <SocialProof />
       <PricingTeaser />
     </div>
   );
 }
 
-function HeroSection() {
+function HeroSection({ counts }: { counts: { players: number; clubs: number; leagues: number } }) {
   return (
     <section className="relative overflow-hidden border-b border-line">
       <div className="absolute inset-0 grid-bg opacity-60 pointer-events-none" />
@@ -39,16 +67,14 @@ function HeroSection() {
             <span className="opacity-40">&middot;</span>
             <span>Markets are open</span>
             <span className="opacity-40">&middot;</span>
-            <span>
-              <span className="num text-up">+€1.2B</span> moved this week
-            </span>
+            <span>Live model valuations</span>
           </div>
         </div>
 
         <div className="grid lg:grid-cols-[1.2fr_1fr] gap-12 items-center">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-line bg-ink-800 text-[11px] text-mute mb-6">
-              <span className="num text-acc">2,847</span> active fans on ONSIDE right now
+              The valuation engine clubs pay six figures for
             </div>
             <h1 className="display tracking-[-0.045em] text-[clamp(48px,6vw,78px)] leading-[0.92]">
               Every player.
@@ -68,22 +94,31 @@ function HeroSection() {
                   Start free — no card
                 </Button>
               </Link>
-              <Link href="/players/bellingham">
-                <Button kind="outline" size="lg">See a live player profile</Button>
+              <Link href="/players">
+                <Button kind="outline" size="lg">See live player profiles</Button>
               </Link>
             </div>
 
             <div className="mt-9 flex items-center gap-6 text-[11px] text-mute-soft">
               <div>
-                <span className="num text-white text-[13px]">128K+</span> players tracked
+                <span className="num text-white text-[13px]">
+                  {counts.players > 0 ? counts.players.toLocaleString() : "—"}
+                </span>{" "}
+                players tracked
               </div>
               <div className="w-px h-3 bg-line" />
               <div>
-                <span className="num text-white text-[13px]">14</span> top leagues
+                <span className="num text-white text-[13px]">
+                  {counts.clubs > 0 ? counts.clubs.toLocaleString() : "—"}
+                </span>{" "}
+                clubs
               </div>
               <div className="w-px h-3 bg-line" />
               <div>
-                <span className="num text-white text-[13px]">Used by 23</span> pro clubs
+                <span className="num text-white text-[13px]">
+                  {counts.leagues > 0 ? counts.leagues.toLocaleString() : "—"}
+                </span>{" "}
+                leagues
               </div>
             </div>
           </div>
@@ -106,7 +141,7 @@ function FeaturedPlayerCard() {
         <div className="absolute top-4 left-4 flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium bg-up/10 text-up border border-up/20">
             <span className="w-1.5 h-1.5 rounded-full bg-up pulse-dot" />
-            Featured today
+            How it looks
           </span>
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
@@ -126,9 +161,6 @@ function FeaturedPlayerCard() {
             BAR
           </div>
           <span className="text-mute">Barcelona</span>
-          <span className="text-mute-soft">&middot;</span>
-          <span>🇪🇸</span>
-          <span className="num text-mute text-[11px]">ESP</span>
           <span className="text-mute-soft">&middot;</span>
           <span className="text-mute num">RW</span>
         </div>
@@ -164,9 +196,9 @@ function FeaturedPlayerCard() {
             </svg>
           </div>
         </div>
-        <Link href="/players/yamal" className="block mt-4">
+        <Link href="/players" className="block mt-4">
           <Button kind="ghost" size="md" className="w-full" icon={<ArrowRight size={13} />}>
-            Open profile
+            Open live profiles
           </Button>
         </Link>
       </div>
@@ -175,31 +207,22 @@ function FeaturedPlayerCard() {
 }
 
 function TickerStrip() {
-  const tickers = [
-    { name: "Bellingham", club: "RMA", val: "€131.4M", delta: "+2.1M", up: true },
-    { name: "Haaland", club: "MCI", val: "€178.5M", delta: "+4.2M", up: true },
-    { name: "Mbappé", club: "RMA", val: "€185.0M", delta: "-3.8M", up: false },
-    { name: "Saka", club: "ARS", val: "€142.0M", delta: "+5.6M", up: true },
-    { name: "Vinicius Jr", club: "RMA", val: "€198.0M", delta: "+3.1M", up: true },
-    { name: "Pedri", club: "BAR", val: "€112.0M", delta: "-1.2M", up: false },
-    { name: "Wirtz", club: "LEV", val: "€140.5M", delta: "+6.8M", up: true },
-    { name: "Palmer", club: "CHE", val: "€128.0M", delta: "+8.4M", up: true },
-    { name: "Musiala", club: "BAY", val: "€148.0M", delta: "+2.9M", up: true },
-    { name: "Gyökeres", club: "SPO", val: "€82.0M", delta: "+11.2M", up: true },
-  ];
-
   return (
     <div className="relative border-b border-line bg-ink-850/40 overflow-hidden">
       <div className="flex gap-8 py-3 ticker whitespace-nowrap">
-        {[...tickers, ...tickers].map((p, i) => (
-          <span key={i} className="inline-flex items-center gap-2 text-[12px]">
-            <span className="w-4 h-4 rounded-[3px] bg-ink-700 grid place-items-center text-[7px] font-bold num">
-              {p.club}
+        {Array.from({ length: 2 }).map((_, rep) => (
+          <span key={rep} className="inline-flex items-center gap-3 text-[12px] text-mute">
+            <span className="inline-flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-up pulse-dot" />
+              Live model valuations, updated continuously
             </span>
-            <span className="font-medium">{p.name}</span>
-            <span className="num text-mute">{p.val}</span>
-            <span className={`num ${p.up ? "text-up" : "text-down"}`}>{p.delta}</span>
-            <span className="opacity-25 ml-4">&middot;</span>
+            <span className="opacity-25 mx-4">&middot;</span>
+            <span>Confidence bands on every player</span>
+            <span className="opacity-25 mx-4">&middot;</span>
+            <span>12-month valuation history</span>
+            <span className="opacity-25 mx-4">&middot;</span>
+            <span>Built on the engine clubs already trust</span>
+            <span className="opacity-25 mx-4">&middot;</span>
           </span>
         ))}
       </div>
@@ -230,19 +253,10 @@ function ValueProps() {
                   </div>
                   <LiveDot />
                 </div>
-                <div className="space-y-2">
-                  {[
-                    { name: "Yamal", val: "€215.0M", d: "+9.3M", up: true },
-                    { name: "Wirtz", val: "€140.5M", d: "+6.8M", up: true },
-                    { name: "Palmer", val: "€128.0M", d: "+8.4M", up: true },
-                  ].map((p) => (
-                    <div key={p.name} className="flex items-center justify-between text-[12px]">
-                      <span>{p.name}</span>
-                      <span className="num text-mute">{p.val}</span>
-                      <span className={`num ${p.up ? "text-up" : "text-down"}`}>{p.d}</span>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-[12px] text-mute leading-relaxed">
+                  Every valuation carries a confidence band and a 12-month trajectory — derived from
+                  the model, not a crowd-sourced guess.
+                </p>
               </div>
             </div>
           </div>
@@ -258,23 +272,13 @@ function ValueProps() {
             </p>
             <div className="mt-auto pt-2">
               <div className="rounded-xl bg-ink-900 border border-line p-4 space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-fuchsia-500 to-orange-400 grid place-items-center text-[10px] font-bold shrink-0">
-                    AE
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-1.5 text-[11.5px]">
-                      <span className="font-semibold">@AcademyEye</span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-acc/10 text-acc border border-acc/20 px-1.5 py-0.5 text-[9px] font-medium">
-                        <Shield size={8} /> Verified
-                      </span>
-                    </div>
-                    <div className="text-[12px] mt-1 leading-snug text-mute">
-                      Called Yamal at €16M (Jan 2023). He&apos;s at{" "}
-                      <span className="num text-up font-semibold">€215M</span> today.
-                    </div>
-                  </div>
+                <div className="flex items-center gap-2 text-[11.5px] text-mute">
+                  <Shield size={12} className="text-acc" /> Verified scout reputation — launching soon
                 </div>
+                <p className="text-[12px] text-mute leading-relaxed">
+                  Threads, reputation and receipts arrive with accounts. Your track record will be
+                  public and permanent.
+                </p>
               </div>
             </div>
           </div>
@@ -293,19 +297,9 @@ function ValueProps() {
                 <div className="flex items-center gap-2 text-[11px] text-mute">
                   <Sparkles size={11} className="text-acc" /> AI COACH &middot; PRO
                 </div>
-                <div className="text-[12.5px] leading-snug">
-                  Three names. Average age 19.7. Average valuation €43M. All three sub-€20M two years ago.
-                </div>
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {["D. Doué", "Endrick", "S. Guirassy"].map((n) => (
-                    <span
-                      key={n}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 text-[12px] font-medium"
-                    >
-                      {n}
-                    </span>
-                  ))}
-                </div>
+                <p className="text-[12.5px] text-mute leading-relaxed">
+                  Natural-language scouting across the full Onside dataset. Launching with Onside Pro.
+                </p>
               </div>
             </div>
           </div>
@@ -315,22 +309,7 @@ function ValueProps() {
   );
 }
 
-function MoversPreview() {
-  const risers = [
-    { name: "Viktor Gyökeres", club: "Sporting CP", age: 27, val: "€82.0M", delta: "+11.2M" },
-    { name: "Lamine Yamal", club: "Barcelona", age: 17, val: "€215.0M", delta: "+9.3M" },
-    { name: "Cole Palmer", club: "Chelsea", age: 23, val: "€128.0M", delta: "+8.4M" },
-    { name: "Florian Wirtz", club: "Bayer Leverkusen", age: 22, val: "€140.5M", delta: "+6.8M" },
-    { name: "Bukayo Saka", club: "Arsenal", age: 23, val: "€142.0M", delta: "+5.6M" },
-  ];
-  const fallers = [
-    { name: "Kylian Mbappé", club: "Real Madrid", age: 27, val: "€185.0M", delta: "-3.8M" },
-    { name: "Pedri", club: "Barcelona", age: 23, val: "€112.0M", delta: "-1.2M" },
-    { name: "Marcus Rashford", club: "Manchester Utd", age: 28, val: "€55.0M", delta: "-4.1M" },
-    { name: "N'Golo Kanté", club: "Al-Ittihad", age: 35, val: "€12.0M", delta: "-2.3M" },
-    { name: "Raphaël Varane", club: "Free Agent", age: 33, val: "€8.0M", delta: "-1.8M" },
-  ];
-
+function MoversPreview({ risers, fallers }: { risers: PlayerListItem[]; fallers: PlayerListItem[] }) {
   return (
     <section className="border-b border-line">
       <div className="max-w-[1440px] mx-auto px-6 py-20">
@@ -345,10 +324,16 @@ function MoversPreview() {
             </Button>
           </Link>
         </div>
-        <div className="grid md:grid-cols-2 gap-6">
-          <MoversList title="Risers" players={risers} direction="up" />
-          <MoversList title="Fallers" players={fallers} direction="down" />
-        </div>
+        {risers.length === 0 && fallers.length === 0 ? (
+          <div className="rounded-2xl bg-ink-850 border border-line shadow-soft p-8 text-center text-[13px] text-mute">
+            Live movers will appear here as valuations update.
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-6">
+            <MoversList title="Risers" players={risers} direction="up" />
+            <MoversList title="Fallers" players={fallers} direction="down" />
+          </div>
+        )}
       </div>
     </section>
   );
@@ -360,7 +345,7 @@ function MoversList({
   direction,
 }: {
   title: string;
-  players: { name: string; club: string; age: number; val: string; delta: string }[];
+  players: PlayerListItem[];
   direction: "up" | "down";
 }) {
   const color = direction === "up" ? "#00E599" : "#FF4D63";
@@ -382,31 +367,94 @@ function MoversList({
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium bg-white/5 text-mute border border-line/60">
           <span className="w-1.5 h-1.5 rounded-full bg-up pulse-dot" />
-          Last 24h
+          This week
         </span>
       </div>
-      <div className="divide-y divide-line">
-        {players.map((p) => (
-          <div key={p.name} className="flex items-center gap-3 py-2.5">
-            <div className="w-8 h-8 rounded-full bg-ink-700 grid place-items-center text-[11px] font-semibold shrink-0">
-              {p.name.split(" ").map((n) => n[0]).join("")}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[13.5px] font-medium truncate">{p.name}</div>
-              <div className="text-[11px] text-mute truncate">
-                {p.club} &middot; {p.age}y
+      {players.length === 0 ? (
+        <div className="py-6 text-center text-[12px] text-mute-soft">No {title.toLowerCase()} right now.</div>
+      ) : (
+        <div className="divide-y divide-line">
+          {players.map((p) => (
+            <Link
+              key={p.slug}
+              href={`/players/${p.slug}`}
+              className="flex items-center gap-3 py-2.5 hover:bg-white/[0.03] transition -mx-2 px-2 rounded-lg"
+            >
+              <div
+                className="w-8 h-8 rounded-full grid place-items-center text-[10px] font-bold num shrink-0"
+                style={{ background: p.clubBg, color: p.clubColor }}
+              >
+                {p.clubShort.slice(0, 3)}
               </div>
-            </div>
-            <div className="text-right">
-              <div className="num text-[12.5px] font-semibold">{p.val}</div>
-              <span className={`num text-xs ${direction === "up" ? "text-up" : "text-down"}`}>
-                {p.delta}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13.5px] font-medium truncate">{p.name}</div>
+                <div className="text-[11px] text-mute truncate">
+                  {p.club}
+                  {p.age ? <> &middot; {p.age}y</> : null}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="num text-[12.5px] font-semibold">€{p.val.toFixed(1)}M</div>
+                <Delta value={p.dWeek} />
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+function SquadsPreview({ clubs }: { clubs: ClubSummary[] }) {
+  return (
+    <section className="border-b border-line bg-ink-850/30">
+      <div className="max-w-[1440px] mx-auto px-6 py-20">
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-mute-soft mb-1.5 num">By total value</div>
+            <h2 className="text-2xl md:text-[28px] display tracking-tight">Most valuable squads.</h2>
+          </div>
+          <Link href="/clubs">
+            <Button kind="outline" size="md" icon={<ArrowRight size={14} />}>
+              All clubs
+            </Button>
+          </Link>
+        </div>
+        {clubs.length === 0 ? (
+          <div className="rounded-2xl bg-ink-850 border border-line shadow-soft p-8 text-center text-[13px] text-mute">
+            Squad valuations will appear here shortly.
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {clubs.map((c, i) => (
+              <Link
+                key={c.slug}
+                href={`/clubs/${c.slug}`}
+                className="rounded-2xl bg-ink-850 border border-line shadow-soft p-5 hover:bg-ink-800 transition"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div
+                    className="w-10 h-10 rounded-xl grid place-items-center text-[12px] font-bold num"
+                    style={{ background: c.bg, color: c.color }}
+                  >
+                    {c.short.slice(0, 3)}
+                  </div>
+                  <span className="num text-[12px] text-mute-soft">#{i + 1}</span>
+                </div>
+                <div className="text-[14px] font-semibold truncate">{c.name}</div>
+                <div className="text-[11px] text-mute truncate mb-3">{c.league}</div>
+                <div className="display text-[22px] num leading-none">
+                  {c.squadValueM >= 1000
+                    ? `€${(c.squadValueM / 1000).toFixed(2)}B`
+                    : `€${c.squadValueM}M`}
+                </div>
+                <div className="text-[10px] uppercase tracking-[0.18em] text-mute-soft mt-1">Squad value</div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
