@@ -99,4 +99,9 @@ describe("normalizePlayer", () => {
     expect(n.stat.rating).toBeNull();
     expect(n.player.height_cm).toBeNull();
   });
+
+  it("skips a player with no usable name", () => {
+    const nameless = { player: { id: 1, name: "", firstname: null, lastname: null }, statistics: gakpo.statistics };
+    expect(normalizePlayer(nameless as unknown as RawPlayer, 39)).toBeNull();
+  });
 });

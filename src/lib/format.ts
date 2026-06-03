@@ -15,6 +15,7 @@ export function fmtDelta(eur: number): string {
 
 /** URL-safe slug: lowercase, accent-stripped, hyphenated. */
 export function slugify(input: string): string {
+  if (!input) return "";
   return input
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")

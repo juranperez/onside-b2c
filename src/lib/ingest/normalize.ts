@@ -62,7 +62,7 @@ export function per90(value: number | null | undefined, minutes: number | null |
 
 export function fullName(p: RawPlayer["player"]): string {
   const joined = [p.firstname, p.lastname].filter(Boolean).join(" ").trim();
-  return joined || p.name;
+  return joined || p.name || "";
 }
 
 /** Map one API-Football player to player/club/stat insert rows. Null if no usable stats. */
@@ -75,6 +75,7 @@ export function normalizePlayer(
   if (!stat) return null;
 
   const name = fullName(raw.player);
+  if (!name) return null; // skip players with no usable name (no fabrication)
   const playerId = String(raw.player.id);
   const clubId = String(stat.team.id);
   const minutes = stat.games?.minutes ?? 0;
