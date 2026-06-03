@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
-import { publicEnv } from "@/lib/env";
+import { publicEnv } from "../env";
 
 /** Read-only anon client for Server Components (public data; RLS applies). */
 export function readDb() {

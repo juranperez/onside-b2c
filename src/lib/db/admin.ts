@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
-import { publicEnv, serverEnv } from "@/lib/env";
+import { publicEnv, serverEnv } from "../env";
 
 /** Service-role client for ingestion/writes. NEVER import into client components. */
 export function adminDb() {
