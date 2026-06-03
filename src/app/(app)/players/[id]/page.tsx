@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { fmtVal, fmtDelta } from "@/lib/format";
 import { Card, Avatar, Delta, Chip, SectionHead, Button } from "@/components/ui";
 import { JsonLd } from "@/components/seo/json-ld";
+import { WatchButton } from "@/components/players/WatchButton";
 import { getPlayerBySlug, getSimilarPlayers } from "@/lib/queries";
 
 export const revalidate = 3600;
@@ -98,7 +99,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                 {player.confidence}% confidence &middot; {fmtVal(player.bandLow)}–{fmtVal(player.bandHigh)}
               </div>
               <div className="mt-4 flex items-center gap-2 justify-end">
-                <Button kind="ghost" size="sm">Watch</Button>
+                <WatchButton playerId={player.id} />
                 <Button kind="ghost" size="sm">Share</Button>
               </div>
             </div>

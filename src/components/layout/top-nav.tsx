@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Search, Bell, Menu, X } from "lucide-react";
 import { OnsideMark } from "@/components/ui/logo";
+import { createClient } from "@/lib/db/supabase-browser";
 
 const NAV_ITEMS: { href: string; label: string; special?: boolean }[] = [
   { href: "/discover", label: "Discover" },
@@ -30,7 +31,25 @@ function Logo() {
 
 export function TopNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState<{ email: string } | null>(null);
+
+  useEffect(() => {
+    const sb = createClient();
+    sb.auth.getUser().then(({ data }) => setUser(data.user ? { email: data.user.email ?? "" } : null));
+    const { data: sub } = sb.auth.onAuthStateChange((_e, session) =>
+      setUser(session?.user ? { email: session.user.email ?? "" } : null),
+    );
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  async function handleSignOut() {
+    const sb = createClient();
+    await sb.auth.signOut();
+    setUser(null);
+    router.refresh();
+  }
 
   return (
     <nav className="sticky top-0 z-50 border-b border-line bg-ink-900/80 backdrop-blur-xl">
@@ -81,12 +100,30 @@ export function TopNav() {
               <Bell size={16} />
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-acc" />
             </Link>
-            <Link
-              href="/watchlist"
-              className="hidden md:flex w-8 h-8 rounded-full bg-acc/20 text-acc items-center justify-center text-[11px] font-bold"
-            >
-              M
-            </Link>
+            {user ? (
+              <div className="hidden md:flex items-center gap-2">
+                <Link
+                  href="/watchlist"
+                  title={user.email}
+                  className="w-8 h-8 rounded-full bg-acc/20 text-acc grid place-items-center text-[12px] font-bold uppercase"
+                >
+                  {user.email.slice(0, 1) || "U"}
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  className="text-[12px] text-mute hover:text-white transition cursor-pointer"
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="hidden md:flex items-center h-8 px-3.5 rounded-lg bg-acc text-ink-950 text-[12px] font-semibold hover:bg-acc/90 transition"
+              >
+                Sign in
+              </Link>
+            )}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
               className="md:hidden p-2 rounded-lg text-mute hover:text-white hover:bg-white/5 transition"
