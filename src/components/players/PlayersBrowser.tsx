@@ -105,7 +105,7 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
                   <div className="mt-4 flex items-end justify-between">
                     <div>
                       <div className="num display text-[24px] leading-none">{fmtVal(p.val)}</div>
-                      <div className="text-[10.5px] text-mute-soft mt-1 num">{p.age}y</div>
+                      <div className="text-[10.5px] text-mute-soft mt-1 num">{p.age ? `${p.age}y` : "—"}</div>
                     </div>
                   </div>
                 </div>
@@ -134,7 +134,7 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
                   </div>
                 </div>
                 <span className="num text-[12px] text-right">{p.pos}</span>
-                <span className="num text-[12px] text-right">{p.age}</span>
+                <span className="num text-[12px] text-right">{p.age || "—"}</span>
                 <span className="num text-[13px] text-right font-semibold">{fmtVal(p.val)}</span>
                 <span className="text-right">
                   <Delta value={p.dWeek} />
