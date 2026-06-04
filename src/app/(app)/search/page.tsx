@@ -49,7 +49,7 @@ export default async function SearchPage({
             <Link
               key={s}
               href={`/search?q=${encodeURIComponent(s)}`}
-              className="px-3 py-1.5 rounded-lg bg-ink-800 border border-line text-[12px] text-mute hover:text-white transition"
+              className="px-3 py-1.5 rounded-lg bg-ink-800 border border-line text-[12px] text-mute hover:text-fg transition"
             >
               {s}
             </Link>
@@ -92,7 +92,7 @@ export default async function SearchPage({
                   <Link
                     key={p.id}
                     href={`/players/${p.slug}`}
-                    className="flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 hover:bg-white/[0.03] transition"
+                    className="flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 hover:bg-overlay/[0.03] transition"
                   >
                     <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={32} />
                     <div className="flex-1 min-w-0">
@@ -124,7 +124,7 @@ export default async function SearchPage({
                   <Link
                     key={c.slug}
                     href={`/clubs/${c.slug}`}
-                    className="flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 hover:bg-white/[0.03] transition"
+                    className="flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 hover:bg-overlay/[0.03] transition"
                   >
                     <div
                       className="w-8 h-8 rounded-md grid place-items-center text-[10px] font-bold num shrink-0"
@@ -156,7 +156,7 @@ export default async function SearchPage({
                   <Link
                     key={l.slug}
                     href={`/leagues/${l.slug}`}
-                    className="flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 hover:bg-white/[0.03] transition"
+                    className="flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 hover:bg-overlay/[0.03] transition"
                   >
                     <div className="w-8 h-8 rounded-md grid place-items-center bg-ink-700 border border-line shrink-0">
                       <Globe size={15} className="text-mute" />

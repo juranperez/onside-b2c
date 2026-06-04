@@ -52,7 +52,7 @@ function MatchRow({ f }: { f: WcFixture }) {
   const score = decided ? `${f.scoreHome ?? 0}–${f.scoreAway ?? 0}` : "v";
   return (
     <Link href={`/worldcup/teams/${f.home.slug}`} className="block">
-      <div className="grid grid-cols-[64px_1fr_auto_1fr] md:grid-cols-[92px_1fr_64px_1fr_150px] items-center gap-2 px-3 md:px-4 py-3 hover:bg-white/[0.03] transition border-b border-line last:border-0">
+      <div className="grid grid-cols-[64px_1fr_auto_1fr] md:grid-cols-[92px_1fr_64px_1fr_150px] items-center gap-2 px-3 md:px-4 py-3 hover:bg-overlay/[0.03] transition border-b border-line last:border-0">
         {/* time / status */}
         <div className="text-left">
           {f.status === "live" ? (
@@ -158,7 +158,7 @@ export default async function WorldCupSchedulePage() {
           {opener?.kickoff && (
             <p className="text-mute text-[14px] mb-6">
               The tournament opens at {opener.venue}, {opener.city} —{" "}
-              <span className="num text-white">
+              <span className="num text-fg">
                 {fmtDate(opener.kickoff)}, {fmtTime(opener.kickoff)} ET
               </span>
               .

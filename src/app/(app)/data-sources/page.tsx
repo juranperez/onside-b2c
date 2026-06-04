@@ -65,7 +65,7 @@ export default function DataSourcesPage() {
             {SOURCES.map((s) => (
               <Card key={s.name} className="p-5">
                 <div className="flex items-start justify-between gap-4">
-                  <h3 className="text-[16px] font-semibold tracking-tight text-white">
+                  <h3 className="text-[16px] font-semibold tracking-tight text-fg">
                     {s.href ? (
                       <Link
                         href={s.href}
@@ -99,7 +99,7 @@ export default function DataSourcesPage() {
                 href="https://www.americansocceranalysis.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-white font-medium hover:text-acc transition"
+                className="text-fg font-medium hover:text-acc transition"
               >
                 American Soccer Analysis
               </Link>
@@ -120,7 +120,7 @@ export default function DataSourcesPage() {
               <li className="flex gap-3">
                 <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
                 <span>
-                  <span className="text-white font-medium">
+                  <span className="text-fg font-medium">
                     We do not use licensed player photographs or club crests.
                   </span>{" "}
                   Player imagery and club badges are rights-protected, so you won't find them here. We use
@@ -130,7 +130,7 @@ export default function DataSourcesPage() {
               <li className="flex gap-3">
                 <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
                 <span>
-                  <span className="text-white font-medium">
+                  <span className="text-fg font-medium">
                     Onside is not affiliated with, endorsed by, or associated with FIFA.
                   </span>{" "}
                   &ldquo;World Cup&rdquo; is referenced descriptively, to identify the tournament our coverage
@@ -140,10 +140,10 @@ export default function DataSourcesPage() {
               <li className="flex gap-3">
                 <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
                 <span>
-                  <span className="text-white font-medium">Valuations are model estimates.</span> Every figure
+                  <span className="text-fg font-medium">Valuations are model estimates.</span> Every figure
                   on Onside is produced by our own model — not sourced from any official market, club, or
                   third party as a quoted price. See{" "}
-                  <Link href="/methodology" className="text-white font-medium hover:text-acc transition">
+                  <Link href="/methodology" className="text-fg font-medium hover:text-acc transition">
                     the methodology
                   </Link>{" "}
                   for exactly how they're built.

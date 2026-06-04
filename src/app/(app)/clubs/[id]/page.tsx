@@ -65,7 +65,7 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
         <div className="max-w-[1440px] mx-auto px-6 py-10 relative">
           <Link
             href="/clubs"
-            className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-white transition mb-6"
+            className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-fg transition mb-6"
           >
             <ArrowLeft size={14} /> All clubs
           </Link>

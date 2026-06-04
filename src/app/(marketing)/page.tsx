@@ -101,21 +101,21 @@ function HeroSection({ counts }: { counts: { players: number; clubs: number; lea
 
             <div className="mt-9 flex items-center gap-6 text-[11px] text-mute-soft">
               <div>
-                <span className="num text-white text-[13px]">
+                <span className="num text-fg text-[13px]">
                   {counts.players > 0 ? counts.players.toLocaleString() : "—"}
                 </span>{" "}
                 players tracked
               </div>
               <div className="w-px h-3 bg-line" />
               <div>
-                <span className="num text-white text-[13px]">
+                <span className="num text-fg text-[13px]">
                   {counts.clubs > 0 ? counts.clubs.toLocaleString() : "—"}
                 </span>{" "}
                 clubs
               </div>
               <div className="w-px h-3 bg-line" />
               <div>
-                <span className="num text-white text-[13px]">
+                <span className="num text-fg text-[13px]">
                   {counts.leagues > 0 ? counts.leagues.toLocaleString() : "—"}
                 </span>{" "}
                 leagues
@@ -146,18 +146,18 @@ function FeaturedPlayerCard() {
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
           <div>
-            <div className="font-serif text-[44px] leading-[0.92] tracking-tight text-white">Lamine</div>
+            <div className="font-serif text-[44px] leading-[0.92] tracking-tight text-fg">Lamine</div>
             <div className="display text-[44px] leading-[0.92] tracking-[-0.04em]">Yamal</div>
           </div>
           <div className="text-right num">
             <div className="text-[11px] text-mute uppercase tracking-wider">#19</div>
-            <div className="text-[34px] font-light text-white opacity-80">17</div>
+            <div className="text-[34px] font-light text-fg opacity-80">17</div>
           </div>
         </div>
       </div>
       <div className="p-5">
         <div className="flex items-center gap-2 text-[12px] mb-3">
-          <div className="w-[18px] h-[18px] rounded-[4px] bg-[#A50044] grid place-items-center text-[8px] font-bold text-white num">
+          <div className="w-[18px] h-[18px] rounded-[4px] bg-[#A50044] grid place-items-center text-[8px] font-bold text-fg num">
             BAR
           </div>
           <span className="text-mute">Barcelona</span>
@@ -365,7 +365,7 @@ function MoversList({
           </div>
           <div className="display text-[18px]">{title}</div>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium bg-white/5 text-mute border border-line/60">
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium bg-overlay/5 text-mute border border-line/60">
           <span className="w-1.5 h-1.5 rounded-full bg-up pulse-dot" />
           This week
         </span>
@@ -378,7 +378,7 @@ function MoversList({
             <Link
               key={p.slug}
               href={`/players/${p.slug}`}
-              className="flex items-center gap-3 py-2.5 hover:bg-white/[0.03] transition -mx-2 px-2 rounded-lg"
+              className="flex items-center gap-3 py-2.5 hover:bg-overlay/[0.03] transition -mx-2 px-2 rounded-lg"
             >
               <div
                 className="w-8 h-8 rounded-full grid place-items-center text-[10px] font-bold num shrink-0"
@@ -567,7 +567,7 @@ function PricingTeaser() {
                     t.name === "Pro"
                       ? "bg-acc text-ink-900"
                       : t.name === "Plus"
-                        ? "bg-white/8 text-white border border-white/10"
+                        ? "bg-overlay/8 text-fg border border-overlay/10"
                         : "bg-ink-700 text-mute"
                   }`}
                 >
@@ -582,7 +582,7 @@ function PricingTeaser() {
                 {t.features.map((f) => (
                   <div key={f} className="flex items-center gap-2 text-[13px] text-mute">
                     <Check size={13} className="text-acc" />
-                    <span className="text-white/90">{f}</span>
+                    <span className="text-fg/90">{f}</span>
                   </div>
                 ))}
               </div>

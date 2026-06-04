@@ -210,19 +210,42 @@ export interface SearchResults {
   leagues: LeagueSummary[];
 }
 
+/**
+ * Normalize a query for matching against the folded `name_norm` columns: strip
+ * accents (so "mbappe" matches "Mbappé"), fold a few non-decomposable letters,
+ * lowercase, and escape LIKE wildcards so literal "%"/"_" don't act as globs.
+ */
+function normalizeSearchTerm(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/ø/gi, "o")
+    .replace(/ł/gi, "l")
+    .replace(/đ/gi, "d")
+    .replace(/æ/gi, "ae")
+    .replace(/œ/gi, "oe")
+    .replace(/ß/g, "ss")
+    .toLowerCase()
+    .replace(/[\\%_]/g, (m) => `\\${m}`);
+}
+
 export async function searchAll(q: string): Promise<SearchResults> {
-  const term = q.trim();
+  const term = normalizeSearchTerm(q.trim());
   if (!term) return { players: [], clubs: [], leagues: [] };
   const pat = `%${term}%`;
   const db = readDb();
   const [pl, cl, lg] = await Promise.all([
-    db.from("players").select(`${PLAYER_EMBED}, player_valuations(value_eur)`).ilike("name", pat).limit(10),
-    db.from("clubs").select("slug,name,short_name,squad_value, leagues(slug,name)").ilike("name", pat).limit(8),
-    db.from("leagues").select("slug,name,country,total_value,club_count").ilike("name", pat).limit(5),
+    db.from("players").select(`${PLAYER_EMBED}, player_valuations(value_eur)`).ilike("name_norm", pat).limit(24),
+    db.from("clubs").select("slug,name,short_name,squad_value, leagues(slug,name)").ilike("name_norm", pat).limit(8),
+    db.from("leagues").select("slug,name,country,total_value,club_count").ilike("name_norm", pat).limit(5),
   ]);
   const now = new Date();
   return {
-    players: (pl.data ?? []).map((r) => toPlayerListItem(r as unknown as PlayerRowDB, now)),
+    // Rank players by live value so the most notable matches surface first.
+    players: (pl.data ?? [])
+      .map((r) => toPlayerListItem(r as unknown as PlayerRowDB, now))
+      .sort((a, b) => b.val - a.val)
+      .slice(0, 12),
     clubs: (cl.data ?? []).map((c) => toClubSummary(c as never)),
     leagues: (lg.data ?? []).map((l) => toLeagueSummary(l as never)),
   };

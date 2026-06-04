@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Search, Bell, Menu, X } from "lucide-react";
 import { OnsideMark } from "@/components/ui/logo";
 import { createClient } from "@/lib/db/supabase-browser";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const NAV_ITEMS: { href: string; label: string; special?: boolean }[] = [
   { href: "/discover", label: "Discover" },
@@ -71,8 +72,8 @@ export function TopNav() {
                           ? "text-acc bg-acc/10"
                           : "text-acc hover:bg-acc/10"
                         : active
-                          ? "text-white bg-white/5"
-                          : "text-mute hover:text-white hover:bg-white/[0.03]"
+                          ? "text-fg bg-overlay/5"
+                          : "text-mute hover:text-fg hover:bg-overlay/[0.03]"
                     )}
                   >
                     {item.label}
@@ -86,16 +87,24 @@ export function TopNav() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="/search"
-              className="hidden md:flex items-center gap-2 h-8 px-3 rounded-lg bg-white/5 border border-line text-[12px] text-mute-soft hover:text-mute hover:bg-white/8 transition min-w-[180px]"
+            <form
+              action="/search"
+              className="hidden md:flex items-center gap-2 h-8 px-3 rounded-lg bg-overlay/5 border border-line focus-within:border-mute transition min-w-[200px]"
             >
-              <Search size={13} />
-              <span>Search players, leagues...</span>
-            </Link>
+              <Search size={13} className="text-mute-soft shrink-0" />
+              <input
+                type="text"
+                name="q"
+                placeholder="Search players, clubs…"
+                autoComplete="off"
+                aria-label="Search players, clubs and leagues"
+                className="w-full bg-transparent outline-none text-[12px] text-fg placeholder:text-mute-soft"
+              />
+            </form>
+            <ThemeToggle />
             <Link
               href="/notifications"
-              className="p-2 rounded-lg text-mute hover:text-white hover:bg-white/5 transition relative"
+              className="p-2 rounded-lg text-mute hover:text-fg hover:bg-overlay/5 transition relative"
             >
               <Bell size={16} />
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-acc" />
@@ -111,7 +120,7 @@ export function TopNav() {
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  className="text-[12px] text-mute hover:text-white transition cursor-pointer"
+                  className="text-[12px] text-mute hover:text-fg transition cursor-pointer"
                 >
                   Sign out
                 </button>
@@ -126,7 +135,7 @@ export function TopNav() {
             )}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden p-2 rounded-lg text-mute hover:text-white hover:bg-white/5 transition"
+              className="md:hidden p-2 rounded-lg text-mute hover:text-fg hover:bg-overlay/5 transition"
             >
               {mobileOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
@@ -136,6 +145,21 @@ export function TopNav() {
 
       {mobileOpen && (
         <div className="md:hidden border-t border-line bg-ink-900 px-4 py-3 space-y-1 fade-in">
+          <form
+            action="/search"
+            onSubmit={() => setMobileOpen(false)}
+            className="flex items-center gap-2 h-10 px-3 mb-2 rounded-lg bg-overlay/5 border border-line focus-within:border-mute transition"
+          >
+            <Search size={15} className="text-mute-soft shrink-0" />
+            <input
+              type="text"
+              name="q"
+              placeholder="Search players, clubs…"
+              autoComplete="off"
+              aria-label="Search"
+              className="w-full bg-transparent outline-none text-[14px] text-fg placeholder:text-mute-soft"
+            />
+          </form>
           {NAV_ITEMS.map((item) => {
             const active = pathname.startsWith(item.href);
             return (
@@ -146,8 +170,8 @@ export function TopNav() {
                 className={cn(
                   "block px-3 py-2.5 rounded-lg text-[14px] font-medium transition",
                   active
-                    ? "text-white bg-white/5"
-                    : "text-mute hover:text-white"
+                    ? "text-fg bg-overlay/5"
+                    : "text-mute hover:text-fg"
                 )}
               >
                 {item.label}

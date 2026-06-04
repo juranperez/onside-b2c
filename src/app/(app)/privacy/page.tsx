@@ -40,9 +40,9 @@ export default function PrivacyPage() {
         <LegalSection id="who-we-are" title="Who we are">
           <p>
             &ldquo;Onside&rdquo; (&ldquo;we&rdquo;, &ldquo;us&rdquo;) operates the Onside website and app. For
-            the purposes of the UK GDPR and the EU GDPR, we are the <strong className="text-white">data controller</strong>{" "}
+            the purposes of the UK GDPR and the EU GDPR, we are the <strong className="text-fg">data controller</strong>{" "}
             for the personal data described here. You can reach our privacy team at{" "}
-            <a href={`mailto:${CONTACT}`} className="text-white font-medium hover:text-acc transition">
+            <a href={`mailto:${CONTACT}`} className="text-fg font-medium hover:text-acc transition">
               {CONTACT}
             </a>
             .
@@ -55,7 +55,7 @@ export default function PrivacyPage() {
             <li className="flex gap-3">
               <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
               <span>
-                <span className="text-white font-medium">Account information.</span> When you create an
+                <span className="text-fg font-medium">Account information.</span> When you create an
                 account, your email address and a securely hashed password (or the identifier from a sign-in
                 provider you choose). We never store your password in plain text.
               </span>
@@ -63,7 +63,7 @@ export default function PrivacyPage() {
             <li className="flex gap-3">
               <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
               <span>
-                <span className="text-white font-medium">Watchlist &amp; preferences.</span> The players,
+                <span className="text-fg font-medium">Watchlist &amp; preferences.</span> The players,
                 clubs, and competitions you follow, your alert settings, and product preferences such as
                 theme — the data that makes Onside yours.
               </span>
@@ -71,7 +71,7 @@ export default function PrivacyPage() {
             <li className="flex gap-3">
               <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
               <span>
-                <span className="text-white font-medium">Anonymous analytics.</span> Aggregated, privacy-
+                <span className="text-fg font-medium">Anonymous analytics.</span> Aggregated, privacy-
                 respecting usage data — pages viewed, broad device and browser type, approximate region — to
                 understand what's working and fix what isn't. This is not used to build advertising profiles
                 of you.
@@ -80,7 +80,7 @@ export default function PrivacyPage() {
             <li className="flex gap-3">
               <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
               <span>
-                <span className="text-white font-medium">Communications.</span> If you email us or contact
+                <span className="text-fg font-medium">Communications.</span> If you email us or contact
                 support, we keep that correspondence so we can help you and keep a record of the request.
               </span>
             </li>
@@ -122,28 +122,28 @@ export default function PrivacyPage() {
             <li className="flex gap-3">
               <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
               <span>
-                <span className="text-white font-medium">Contract.</span> Processing your account, watchlist,
+                <span className="text-fg font-medium">Contract.</span> Processing your account, watchlist,
                 and preferences is necessary to provide the service you've signed up for.
               </span>
             </li>
             <li className="flex gap-3">
               <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
               <span>
-                <span className="text-white font-medium">Consent.</span> Non-essential cookies and analytics
+                <span className="text-fg font-medium">Consent.</span> Non-essential cookies and analytics
                 run only where you've consented (see Cookies below). You can withdraw consent at any time.
               </span>
             </li>
             <li className="flex gap-3">
               <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
               <span>
-                <span className="text-white font-medium">Legitimate interests.</span> Keeping the service
+                <span className="text-fg font-medium">Legitimate interests.</span> Keeping the service
                 secure and improving it, balanced against your rights and freedoms.
               </span>
             </li>
             <li className="flex gap-3">
               <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
               <span>
-                <span className="text-white font-medium">Legal obligation.</span> Where we must retain or
+                <span className="text-fg font-medium">Legal obligation.</span> Where we must retain or
                 disclose data to comply with the law.
               </span>
             </li>
@@ -152,9 +152,9 @@ export default function PrivacyPage() {
 
         <LegalSection id="cookies" title="Cookies">
           <p>
-            We use a small number of cookies and similar technologies. <strong className="text-white">Essential
+            We use a small number of cookies and similar technologies. <strong className="text-fg">Essential
             cookies</strong> keep you signed in and the service functioning — these are required and can't be
-            switched off. <strong className="text-white">Analytics cookies</strong> help us measure usage in
+            switched off. <strong className="text-fg">Analytics cookies</strong> help us measure usage in
             aggregate and run only with your consent.
           </p>
           <p>
@@ -173,42 +173,42 @@ export default function PrivacyPage() {
             <li className="flex gap-3">
               <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
               <span>
-                <span className="text-white font-medium">Access.</span> Ask for a copy of the personal data we
+                <span className="text-fg font-medium">Access.</span> Ask for a copy of the personal data we
                 hold about you.
               </span>
             </li>
             <li className="flex gap-3">
               <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
               <span>
-                <span className="text-white font-medium">Rectification.</span> Have inaccurate or incomplete
+                <span className="text-fg font-medium">Rectification.</span> Have inaccurate or incomplete
                 data corrected.
               </span>
             </li>
             <li className="flex gap-3">
               <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
               <span>
-                <span className="text-white font-medium">Erasure.</span> Ask us to delete your account and
+                <span className="text-fg font-medium">Erasure.</span> Ask us to delete your account and
                 personal data (&ldquo;the right to be forgotten&rdquo;).
               </span>
             </li>
             <li className="flex gap-3">
               <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
               <span>
-                <span className="text-white font-medium">Portability.</span> Receive your data in a portable,
+                <span className="text-fg font-medium">Portability.</span> Receive your data in a portable,
                 machine-readable format, or have us export it.
               </span>
             </li>
             <li className="flex gap-3">
               <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
               <span>
-                <span className="text-white font-medium">Restriction &amp; objection.</span> Restrict or object
+                <span className="text-fg font-medium">Restriction &amp; objection.</span> Restrict or object
                 to certain processing, including withdrawing consent for analytics.
               </span>
             </li>
           </ul>
           <p>
             To exercise any of these, email{" "}
-            <a href={`mailto:${CONTACT}`} className="text-white font-medium hover:text-acc transition">
+            <a href={`mailto:${CONTACT}`} className="text-fg font-medium hover:text-acc transition">
               {CONTACT}
             </a>
             . We'll respond within one month. You also have the right to lodge a complaint with your local
@@ -220,7 +220,7 @@ export default function PrivacyPage() {
           <p>
             We keep personal data only as long as we need it. Account data is retained while your account is
             active; if you delete your account, we erase or anonymise your personal data within{" "}
-            <strong className="text-white">30 days</strong>, except where we're legally required to keep
+            <strong className="text-fg">30 days</strong>, except where we're legally required to keep
             certain records for longer. Anonymous analytics, which can't be tied back to you, may be retained
             in aggregate.
           </p>
@@ -254,7 +254,7 @@ export default function PrivacyPage() {
         <LegalSection id="contact" title="Contact us">
           <p>
             Questions about your privacy, or want to exercise a right? Email{" "}
-            <a href={`mailto:${CONTACT}`} className="text-white font-medium hover:text-acc transition">
+            <a href={`mailto:${CONTACT}`} className="text-fg font-medium hover:text-acc transition">
               {CONTACT}
             </a>{" "}
             and we'll help.
@@ -265,11 +265,11 @@ export default function PrivacyPage() {
         <div className="mt-12 pt-8 border-t border-line">
           <p className="text-[13px] text-mute-soft">
             See also our{" "}
-            <Link href="/terms" className="text-mute hover:text-white transition">
+            <Link href="/terms" className="text-mute hover:text-fg transition">
               Terms of use
             </Link>{" "}
             and{" "}
-            <Link href="/methodology" className="text-mute hover:text-white transition">
+            <Link href="/methodology" className="text-mute hover:text-fg transition">
               the methodology
             </Link>{" "}
             behind our valuations.

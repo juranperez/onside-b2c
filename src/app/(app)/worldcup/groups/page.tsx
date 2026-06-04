@@ -64,7 +64,7 @@ export default async function WorldCupGroupsPage() {
 
   return (
     <div className="max-w-[1440px] mx-auto px-6 py-8">
-      <Link href="/worldcup" className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-white transition mb-6">
+      <Link href="/worldcup" className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-fg transition mb-6">
         <ArrowLeft size={14} /> World Cup 2026
       </Link>
 
@@ -99,7 +99,7 @@ export default async function WorldCupGroupsPage() {
                 <div className="divide-y divide-line">
                   {g.teams.map((t, i) => (
                     <Link key={t.slug} href={`/worldcup/teams/${t.slug}`}>
-                      <div className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03] transition cursor-pointer">
+                      <div className="flex items-center gap-3 px-4 py-3 hover:bg-overlay/[0.03] transition cursor-pointer">
                         <span className="num text-[11px] text-mute-soft w-4">{i + 1}</span>
                         <CodeTile slug={t.slug} name={t.name} />
                         <div className="flex-1 min-w-0">

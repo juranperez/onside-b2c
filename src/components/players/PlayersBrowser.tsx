@@ -60,14 +60,14 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
           <div className="inline-flex items-center gap-0.5 p-1 rounded-lg bg-ink-800 border border-line">
             <button
               onClick={() => setView("grid")}
-              className={cn("p-1.5 rounded-md cursor-pointer", view === "grid" ? "bg-ink-700 text-white" : "text-mute")}
+              className={cn("p-1.5 rounded-md cursor-pointer", view === "grid" ? "bg-ink-700 text-fg" : "text-mute")}
               aria-label="Grid view"
             >
               <LayoutGrid size={14} />
             </button>
             <button
               onClick={() => setView("list")}
-              className={cn("p-1.5 rounded-md cursor-pointer", view === "list" ? "bg-ink-700 text-white" : "text-mute")}
+              className={cn("p-1.5 rounded-md cursor-pointer", view === "list" ? "bg-ink-700 text-fg" : "text-mute")}
               aria-label="List view"
             >
               <List size={14} />
@@ -125,7 +125,7 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
           </div>
           {filtered.map((p) => (
             <Link key={p.id} href={`/players/${p.slug}`}>
-              <div className="w-full grid grid-cols-[1.5fr_60px_60px_90px_90px_1fr] px-4 py-3 items-center hover:bg-white/[0.03] transition text-left border-b border-line last:border-0 cursor-pointer">
+              <div className="w-full grid grid-cols-[1.5fr_60px_60px_90px_90px_1fr] px-4 py-3 items-center hover:bg-overlay/[0.03] transition text-left border-b border-line last:border-0 cursor-pointer">
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={28} />
                   <div className="min-w-0">

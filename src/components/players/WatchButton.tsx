@@ -53,7 +53,7 @@ export function WatchButton({ playerId }: { playerId: string }) {
 
   if (state === "out") {
     return (
-      <Link href="/login" className={cn(cls, "bg-white/5 border border-line text-mute hover:text-white")}>
+      <Link href="/login" className={cn(cls, "bg-overlay/5 border border-line text-mute hover:text-fg")}>
         <Bookmark size={13} /> Watch
       </Link>
     );
@@ -62,7 +62,7 @@ export function WatchButton({ playerId }: { playerId: string }) {
     <button
       onClick={toggle}
       disabled={state === "loading"}
-      className={cn(cls, state === "on" ? "bg-acc text-ink-950" : "bg-white/5 border border-line text-mute hover:text-white")}
+      className={cn(cls, state === "on" ? "bg-acc text-ink-950" : "bg-overlay/5 border border-line text-mute hover:text-fg")}
     >
       {state === "on" ? <Check size={13} /> : <Bookmark size={13} />}
       {state === "on" ? "Watching" : "Watch"}

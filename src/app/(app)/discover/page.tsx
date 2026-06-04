@@ -62,7 +62,7 @@ export default async function DiscoverPage() {
           </h1>
           <div className="flex items-center gap-2 shrink-0">
             <Link href="/players">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-line text-[12px] font-medium text-mute hover:text-white transition">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-overlay/5 border border-line text-[12px] font-medium text-mute hover:text-fg transition">
                 <TrendingUp size={13} className="text-acc" />
                 <span className="num">{counts.players.toLocaleString()}</span> players tracked
               </div>
@@ -162,7 +162,7 @@ export default async function DiscoverPage() {
               <div className="space-y-1">
                 {trending.map((p) => (
                   <Link key={p.id} href={`/players/${p.slug}`}>
-                    <div className="flex items-center gap-2 py-1.5 -mx-2 px-2 rounded hover:bg-white/[0.03] transition">
+                    <div className="flex items-center gap-2 py-1.5 -mx-2 px-2 rounded hover:bg-overlay/[0.03] transition">
                       <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={24} />
                       <span className="text-[12px] flex-1 truncate">{p.name}</span>
                       <Delta value={p.dWeek} />

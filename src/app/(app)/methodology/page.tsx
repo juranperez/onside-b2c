@@ -74,7 +74,7 @@ export default function MethodologyPage() {
             {PILLARS.map((p) => (
               <Card key={p.name} className="p-5">
                 <div className="flex items-baseline justify-between gap-4">
-                  <h3 className="text-[16px] font-semibold tracking-tight text-white">{p.name}</h3>
+                  <h3 className="text-[16px] font-semibold tracking-tight text-fg">{p.name}</h3>
                   <span className="text-[11px] uppercase tracking-[0.14em] text-mute-soft num shrink-0">
                     {p.weight}
                   </span>
@@ -107,7 +107,7 @@ export default function MethodologyPage() {
               The band's width is honest about what we know. When we hold a full, clean season — minutes,
               ratings, goals, age — the band is tight and confidence is high. When a player is barely
               featured, has no reliable rating, or is missing an age, we{" "}
-              <span className="text-white font-medium">widen the band and lower the confidence</span>{" "}
+              <span className="text-fg font-medium">widen the band and lower the confidence</span>{" "}
               rather than fake a number. Less data, more humility. You always see exactly how sure we are.
             </p>
           </div>
@@ -149,7 +149,7 @@ export default function MethodologyPage() {
             </h2>
             <div className="mt-3 space-y-3 text-[14px] text-mute leading-relaxed">
               <p>
-                It is <span className="text-white font-medium">not</span> a market quote, a transfer fee, an
+                It is <span className="text-fg font-medium">not</span> a market quote, a transfer fee, an
                 offer, or financial advice. No money changes hands at our number. It is our best,
                 fully-disclosed estimate of what a player is worth on the pitch today, given the data we can
                 see — nothing more, and we'd rather you held us to that than oversold it.
@@ -176,7 +176,7 @@ export default function MethodologyPage() {
               the pillars are visible, and the maths is the maths. You can disagree with our weighting — but
               you can see it, and you'll always get the same answer from the same data. That's the trade we're
               making:{" "}
-              <span className="text-white font-medium">transparency and consistency over the wisdom of the crowd.</span>
+              <span className="text-fg font-medium">transparency and consistency over the wisdom of the crowd.</span>
             </p>
           </div>
         </section>
@@ -193,7 +193,7 @@ export default function MethodologyPage() {
               <li className="flex gap-3">
                 <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
                 <span>
-                  <span className="text-white font-medium">Advanced metrics aren't everywhere yet.</span> We
+                  <span className="text-fg font-medium">Advanced metrics aren't everywhere yet.</span> We
                   don't have live expected-goals (xG) and shot-quality data for every league we cover. Where
                   it's missing, the model leans harder on the signals it does have, and the confidence band
                   reflects that.
@@ -202,7 +202,7 @@ export default function MethodologyPage() {
               <li className="flex gap-3">
                 <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
                 <span>
-                  <span className="text-white font-medium">National-team valuations are squad-based.</span> A
+                  <span className="text-fg font-medium">National-team valuations are squad-based.</span> A
                   country's value is built up from the players in its pool, not from a separate international
                   model. It's a useful lens for a tournament, but it's an aggregate, and we label it as one.
                 </span>
@@ -210,7 +210,7 @@ export default function MethodologyPage() {
               <li className="flex gap-3">
                 <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
                 <span>
-                  <span className="text-white font-medium">We don't model the intangibles.</span> Injuries,
+                  <span className="text-fg font-medium">We don't model the intangibles.</span> Injuries,
                   contract length, a falling-out with a manager, off-pitch noise — the things a human scout
                   weighs that don't show up cleanly in a stat line. The Pulse and the bands soften this, but
                   they don't erase it.

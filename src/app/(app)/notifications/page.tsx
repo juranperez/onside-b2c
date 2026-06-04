@@ -19,7 +19,7 @@ function FeedRow({ p, note }: { p: PlayerListItem; note: string }) {
   const up = p.dWeek >= 0;
   return (
     <Link href={`/players/${p.slug}`}>
-      <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-white/[0.03] transition border-b border-line last:border-0 cursor-pointer">
+      <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-overlay/[0.03] transition border-b border-line last:border-0 cursor-pointer">
         <div
           className={cn(
             "w-8 h-8 rounded-full grid place-items-center shrink-0",

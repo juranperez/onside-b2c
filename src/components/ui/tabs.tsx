@@ -26,8 +26,8 @@ export function Tabs({ tabs, value, onChange, size = "md" }: TabsProps) {
             "rounded-lg font-medium transition cursor-pointer",
             size === "sm" ? "h-7 px-2.5 text-xs" : "h-9 px-3 text-sm",
             value === t.id
-              ? "bg-ink-700 text-white shadow-sm"
-              : "text-mute hover:text-white"
+              ? "bg-ink-700 text-fg shadow-sm"
+              : "text-mute hover:text-fg"
           )}
         >
           {t.label}

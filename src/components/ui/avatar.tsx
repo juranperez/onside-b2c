@@ -26,10 +26,10 @@ export function Avatar({ name, clubBg = "#333", clubColor = "#fff", size = 40, r
       }}
       className={cn(
         "relative shrink-0 rounded-full grid place-items-center font-semibold tracking-tight overflow-hidden",
-        ring && "ring-2 ring-white/10"
+        ring && "ring-2 ring-overlay/10"
       )}
     >
-      <span className="text-white drop-shadow-sm">{initials}</span>
+      <span className="text-fg drop-shadow-sm">{initials}</span>
       <div
         className="absolute inset-0 pointer-events-none"
         style={{ background: "radial-gradient(circle at 30% 25%, rgba(255,255,255,0.18), transparent 55%)" }}

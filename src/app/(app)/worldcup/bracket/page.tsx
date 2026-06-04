@@ -105,7 +105,7 @@ export default async function BracketPage() {
 
   return (
     <div className="max-w-[1440px] mx-auto px-6 py-8">
-      <Link href="/worldcup" className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-white transition mb-6">
+      <Link href="/worldcup" className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-fg transition mb-6">
         <ArrowLeft size={14} /> World Cup 2026
       </Link>
 
@@ -157,7 +157,7 @@ export default async function BracketPage() {
                 ) : (
                   winners.map((s) => (
                     <Link key={s.slug} href={`/worldcup/teams/${s.slug}`}>
-                      <div className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03] transition cursor-pointer border-b border-line last:border-0">
+                      <div className="flex items-center gap-3 px-4 py-3 hover:bg-overlay/[0.03] transition cursor-pointer border-b border-line last:border-0">
                         <span className="num text-[11px] text-acc w-8">{s.seedLabel}</span>
                         <CodeTile slug={s.slug} name={s.name} size={28} />
                         <span className="text-[13px] font-medium flex-1 truncate">{s.name}</span>
@@ -176,7 +176,7 @@ export default async function BracketPage() {
                 ) : (
                   runnersUp.map((s) => (
                     <Link key={s.slug} href={`/worldcup/teams/${s.slug}`}>
-                      <div className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03] transition cursor-pointer border-b border-line last:border-0">
+                      <div className="flex items-center gap-3 px-4 py-3 hover:bg-overlay/[0.03] transition cursor-pointer border-b border-line last:border-0">
                         <span className="num text-[11px] text-mute w-8">{s.seedLabel}</span>
                         <CodeTile slug={s.slug} name={s.name} size={28} />
                         <span className="text-[13px] font-medium flex-1 truncate">{s.name}</span>

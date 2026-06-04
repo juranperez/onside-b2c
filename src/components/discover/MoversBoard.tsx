@@ -47,7 +47,7 @@ export function MoversBoard({ movers }: { movers: PlayerListItem[] }) {
               onClick={() => setDir(t.id)}
               className={cn(
                 "px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer",
-                dir === t.id ? "bg-white/10 text-white" : "text-mute hover:text-white",
+                dir === t.id ? "bg-overlay/10 text-fg" : "text-mute hover:text-fg",
               )}
             >
               {t.label}

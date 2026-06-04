@@ -67,7 +67,7 @@ export default async function NationalTeamPage({ params }: { params: Promise<{ i
         <div className="max-w-[1440px] mx-auto px-6 py-10 relative">
           <Link
             href="/worldcup"
-            className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-white transition mb-6"
+            className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-fg transition mb-6"
           >
             <ArrowLeft size={14} /> World Cup 2026
           </Link>
@@ -137,7 +137,7 @@ export default async function NationalTeamPage({ params }: { params: Promise<{ i
               </div>
               {squad.map((p) => (
                 <Link key={p.id} href={`/players/${p.slug}`}>
-                  <div className="grid grid-cols-[1.5fr_56px_50px_90px_80px] px-4 py-3 items-center hover:bg-white/[0.03] transition border-b border-line last:border-0 cursor-pointer">
+                  <div className="grid grid-cols-[1.5fr_56px_50px_90px_80px] px-4 py-3 items-center hover:bg-overlay/[0.03] transition border-b border-line last:border-0 cursor-pointer">
                     <div className="flex items-center gap-3 min-w-0">
                       <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={28} />
                       <div className="min-w-0">
@@ -161,7 +161,7 @@ export default async function NationalTeamPage({ params }: { params: Promise<{ i
         {squad.length > 0 && (
           <p className="text-[12px] text-mute mt-3">
             These {squad.length} players are valued at{" "}
-            <span className="num text-white font-semibold">{money(squadSumM)}</span> at their clubs — the sum of live
+            <span className="num text-fg font-semibold">{money(squadSumM)}</span> at their clubs — the sum of live
             Onside valuations, a model estimate rather than a market quote.
           </p>
         )}

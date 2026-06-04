@@ -195,7 +195,7 @@ export default async function WorldCupPage() {
                 </div>
                 <p className="text-[13px] text-mute max-w-[420px]">
                   Four nations worth a combined{" "}
-                  <span className="num text-white font-semibold">{money(groupOfDeath.total)}</span> — the densest
+                  <span className="num text-fg font-semibold">{money(groupOfDeath.total)}</span> — the densest
                   concentration of talent in the draw.
                 </p>
               </div>

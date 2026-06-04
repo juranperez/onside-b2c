@@ -5,7 +5,7 @@ type Tier = "Free" | "Plus" | "Pro";
 
 const tierStyles: Record<Tier, string> = {
   Free: "bg-ink-700 text-mute",
-  Plus: "bg-white/8 text-white border border-white/10",
+  Plus: "bg-overlay/8 text-fg border border-overlay/10",
   Pro: "bg-acc text-ink-900",
 };
 

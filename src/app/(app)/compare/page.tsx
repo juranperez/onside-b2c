@@ -102,7 +102,7 @@ function Picker({ players, firstPick }: { players: PlayerListItem[]; firstPick: 
           ) : (
             <Chip tone="acc">Player A selected</Chip>
           )}
-          <Link href="/compare" className="text-[12px] text-mute hover:text-white transition">
+          <Link href="/compare" className="text-[12px] text-mute hover:text-fg transition">
             Reset
           </Link>
         </div>
@@ -269,7 +269,7 @@ function Comparison({ a, b }: { a: PlayerProfile; b: PlayerProfile }) {
       </Card>
 
       <div className="text-center mt-6">
-        <Link href="/compare" className="text-[13px] text-mute hover:text-white transition">
+        <Link href="/compare" className="text-[13px] text-mute hover:text-fg transition">
           Compare a different pair
         </Link>
       </div>

@@ -58,7 +58,7 @@ export function StatLeaderboards({
             <Link
               key={`${p.slug}-${i}`}
               href={`/players/${p.slug}`}
-              className="grid grid-cols-[40px_1.5fr_1fr_80px_90px] px-4 py-3 items-center border-b border-line last:border-0 hover:bg-white/[0.03] transition"
+              className="grid grid-cols-[40px_1.5fr_1fr_80px_90px] px-4 py-3 items-center border-b border-line last:border-0 hover:bg-overlay/[0.03] transition"
             >
               <span className={`num text-[13px] font-semibold ${i < 3 ? "text-acc" : "text-mute"}`}>
                 {i + 1}

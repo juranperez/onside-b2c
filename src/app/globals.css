@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
-@theme inline {
+/*
+ * Non-inline @theme so utilities compile to var(--color-*) and the palette can be
+ * flipped at runtime by overriding the variables under :root[data-theme="light"].
+ * Defaults below ARE the dark theme.
+ */
+@theme {
   --color-ink-950: #070708;
   --color-ink-900: #0A0A0B;
   --color-ink-850: #0E0E10;
@@ -28,6 +33,10 @@
   --color-mute-soft: #5C5C64;
   --color-mute-faint: #3F3F46;
 
+  /* Semantic, theme-flipping tokens */
+  --color-fg: #FFFFFF;       /* primary text   (text-fg)      */
+  --color-overlay: #FFFFFF;  /* hover/surface tints (bg-overlay/x) */
+
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
   --font-serif: "Instrument Serif", serif;
@@ -37,9 +46,49 @@
   --shadow-upglow: 0 0 32px rgba(0,229,153,0.18);
 }
 
+:root {
+  --grid-line: rgba(255,255,255,0.025);
+  color-scheme: dark;
+}
+
+/* Light theme — override the palette; utilities (var-based) pick these up. */
+:root[data-theme="light"] {
+  --color-ink-950: #FFFFFF;
+  --color-ink-900: #F6F7F9;
+  --color-ink-850: #EFF1F4;
+  --color-ink-800: #FFFFFF;
+  --color-ink-750: #ECEEF2;
+  --color-ink-700: #E4E6EB;
+  --color-ink-600: #D6D9DF;
+  --color-ink-500: #C0C4CC;
+
+  --color-line: #E4E6EB;
+  --color-line-soft: #EEF0F3;
+
+  /* Greens/reds darkened so deltas stay legible on light surfaces */
+  --color-up: #047857;
+  --color-up-dim: #059669;
+  --color-down: #DC2626;
+  --color-down-dim: #B91C1C;
+
+  /* Brand accent goes deep so text-acc reads on white; bg-acc pairs with light text */
+  --color-acc: #50600F;
+  --color-acc-dim: #6B7A12;
+
+  --color-mute: #585E69;
+  --color-mute-soft: #8B909B;
+  --color-mute-faint: #B4B9C2;
+
+  --color-fg: #0A0A0B;
+  --color-overlay: #0A0A0B;
+
+  --grid-line: rgba(0,0,0,0.05);
+  color-scheme: light;
+}
+
 html, body {
-  background: #0A0A0B;
-  color: #fff;
+  background: var(--color-ink-900);
+  color: var(--color-fg);
 }
 
 body {
@@ -63,13 +112,13 @@ body {
 }
 
 .hairline {
-  border-color: #27272A;
+  border-color: var(--color-line);
 }
 
 .grid-bg {
   background-image:
-    linear-gradient(to right, rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
   background-size: 56px 56px;
 }
 
@@ -91,7 +140,7 @@ body {
 }
 
 .focus-ring:focus {
-  outline: 2px solid #E8FF5A;
+  outline: 2px solid var(--color-acc);
   outline-offset: 2px;
 }
 

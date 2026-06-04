@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { CookieConsent } from "@/components/ui/cookie-consent";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -45,11 +46,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable}`}
     >
-      <body className="min-h-screen bg-ink-900 text-white font-sans antialiased">
-        {children}
-        <CookieConsent />
+      <body className="min-h-screen bg-ink-900 text-fg font-sans antialiased">
+        <ThemeProvider>
+          {children}
+          <CookieConsent />
+        </ThemeProvider>
       </body>
     </html>
   );

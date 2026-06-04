@@ -18,11 +18,11 @@ const sizes: Record<ButtonSize, string> = {
 
 const kinds: Record<ButtonKind, string> = {
   primary: "bg-acc text-ink-900 hover:bg-acc/90",
-  secondary: "bg-white text-ink-900 hover:bg-white/90",
-  ghost: "bg-white/5 hover:bg-white/10 text-white border border-line",
-  outline: "bg-transparent hover:bg-white/5 text-white border border-line",
+  secondary: "bg-fg text-ink-900 hover:bg-fg/90",
+  ghost: "bg-overlay/5 hover:bg-overlay/10 text-fg border border-line",
+  outline: "bg-transparent hover:bg-overlay/5 text-fg border border-line",
   danger: "bg-down/15 hover:bg-down/25 text-down border border-down/30",
-  quiet: "text-mute hover:text-white",
+  quiet: "text-mute hover:text-fg",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

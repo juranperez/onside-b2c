@@ -117,7 +117,7 @@ export default function PricingPage() {
             onClick={() => setAnnual(false)}
             className={cn(
               "px-4 py-2 rounded-lg text-[13px] font-medium transition",
-              !annual ? "bg-ink-700 text-white" : "text-mute hover:text-white"
+              !annual ? "bg-ink-700 text-fg" : "text-mute hover:text-fg"
             )}
           >
             Monthly
@@ -126,7 +126,7 @@ export default function PricingPage() {
             onClick={() => setAnnual(true)}
             className={cn(
               "px-4 py-2 rounded-lg text-[13px] font-medium transition flex items-center gap-2",
-              annual ? "bg-ink-700 text-white" : "text-mute hover:text-white"
+              annual ? "bg-ink-700 text-fg" : "text-mute hover:text-fg"
             )}
           >
             Annual
@@ -160,7 +160,7 @@ export default function PricingPage() {
                     tier.name === "Pro"
                       ? "bg-acc text-ink-900"
                       : tier.name === "Plus"
-                        ? "bg-white/8 text-white border border-white/10"
+                        ? "bg-overlay/8 text-fg border border-overlay/10"
                         : "bg-ink-700 text-mute"
                   )}
                 >
@@ -181,7 +181,7 @@ export default function PricingPage() {
                 {tier.features.map((f) => (
                   <div key={f} className="flex items-center gap-2 text-[13px] text-mute">
                     <Check size={13} className="text-acc shrink-0" />
-                    <span className="text-white/90">{f}</span>
+                    <span className="text-fg/90">{f}</span>
                   </div>
                 ))}
               </div>

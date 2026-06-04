@@ -77,7 +77,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                   {player.lastName}
                 </h1>
                 {player.club && (
-                  <Link href={`/clubs/${player.club.slug}`} className="flex items-center gap-2 mt-2 text-[13px] text-mute hover:text-white transition w-fit">
+                  <Link href={`/clubs/${player.club.slug}`} className="flex items-center gap-2 mt-2 text-[13px] text-mute hover:text-fg transition w-fit">
                     <div className="w-5 h-5 rounded-[4px] grid place-items-center text-[8px] font-bold num" style={{ background: player.clubBg, color: player.clubColor }}>
                       {player.clubShort.slice(0, 2)}
                     </div>

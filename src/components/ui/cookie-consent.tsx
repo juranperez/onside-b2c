@@ -56,12 +56,12 @@ export function CookieConsent({ className }: { className?: string }) {
       <div className="max-w-[680px] mx-auto rounded-2xl bg-ink-850 border border-line shadow-soft p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className="w-9 h-9 shrink-0 rounded-xl bg-white/5 border border-line grid place-items-center text-mute">
+            <div className="w-9 h-9 shrink-0 rounded-xl bg-overlay/5 border border-line grid place-items-center text-mute">
               <Cookie size={18} />
             </div>
             <p className="text-[13px] text-mute leading-relaxed">
               We use cookies for analytics and to keep you signed in.{" "}
-              <Link href="/privacy" className="text-white font-medium hover:text-acc transition">
+              <Link href="/privacy" className="text-fg font-medium hover:text-acc transition">
                 Privacy policy
               </Link>
               .

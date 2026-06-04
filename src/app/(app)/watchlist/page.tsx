@@ -61,7 +61,7 @@ export default async function WatchlistPage() {
           </div>
           {players.map((p) => (
             <Link key={p.id} href={`/players/${p.slug}`}>
-              <div className="grid grid-cols-[1.5fr_64px_92px_84px] px-4 py-3 items-center hover:bg-white/[0.03] transition border-b border-line last:border-0 cursor-pointer">
+              <div className="grid grid-cols-[1.5fr_64px_92px_84px] px-4 py-3 items-center hover:bg-overlay/[0.03] transition border-b border-line last:border-0 cursor-pointer">
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={28} />
                   <div className="min-w-0">

@@ -47,7 +47,7 @@ export default function LoginPage() {
             </div>
             <h1 className="display text-[22px] mb-2">Check your email</h1>
             <p className="text-[13px] text-mute leading-relaxed">
-              We sent a sign-in link to <span className="text-white num">{email}</span>. Click it to access your
+              We sent a sign-in link to <span className="text-fg num">{email}</span>. Click it to access your
               watchlist and alerts.
             </p>
           </div>

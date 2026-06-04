@@ -52,7 +52,7 @@ export default async function LeagueDetailPage({ params }: { params: Promise<{ i
           ...(league.country ? { location: { "@type": "Country", name: league.country } } : {}),
         }}
       />
-      <Link href="/leagues" className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-white transition mb-6">
+      <Link href="/leagues" className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-fg transition mb-6">
         <ArrowLeft size={14} /> All leagues
       </Link>
 
@@ -99,7 +99,7 @@ export default async function LeagueDetailPage({ params }: { params: Promise<{ i
             </div>
             {clubs.map((club, i) => (
               <Link key={club.slug} href={`/clubs/${club.slug}`}>
-                <div className="grid grid-cols-[40px_1fr_110px] px-4 py-3 items-center hover:bg-white/[0.03] transition border-b border-line last:border-0 cursor-pointer">
+                <div className="grid grid-cols-[40px_1fr_110px] px-4 py-3 items-center hover:bg-overlay/[0.03] transition border-b border-line last:border-0 cursor-pointer">
                   <span className="num text-[12px] text-mute">{i + 1}</span>
                   <div className="flex items-center gap-3 min-w-0">
                     <div

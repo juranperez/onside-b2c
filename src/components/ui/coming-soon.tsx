@@ -28,7 +28,7 @@ export function ComingSoon({ eyebrow, title, line, cta, icon, note, className }:
       <div className={cn("max-w-[520px] mx-auto", className)}>
         <div className="rounded-2xl bg-ink-850 border border-line shadow-soft relative p-8 sm:p-10 text-center">
           {icon && (
-            <div className="w-12 h-12 mx-auto mb-5 rounded-xl bg-white/5 border border-line grid place-items-center text-mute">
+            <div className="w-12 h-12 mx-auto mb-5 rounded-xl bg-overlay/5 border border-line grid place-items-center text-mute">
               {icon}
             </div>
           )}

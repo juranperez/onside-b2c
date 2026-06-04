@@ -69,7 +69,7 @@ export function ClubsBrowser({ clubs }: { clubs: ClubSummary[] }) {
               <div
                 className={cn(
                   "grid grid-cols-[40px_1.5fr_1fr_110px] px-4 py-3 items-center",
-                  "hover:bg-white/[0.03] transition border-b border-line last:border-0 cursor-pointer",
+                  "hover:bg-overlay/[0.03] transition border-b border-line last:border-0 cursor-pointer",
                 )}
               >
                 <span className="num text-[12px] text-mute-soft">{i + 1}</span>

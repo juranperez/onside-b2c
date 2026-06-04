@@ -63,7 +63,7 @@ export function SquadTable({ squad }: { squad: PlayerListItem[] }) {
               <div
                 className={cn(
                   "grid grid-cols-[1.5fr_60px_50px_90px_80px] px-4 py-3 items-center",
-                  "hover:bg-white/[0.03] transition border-b border-line last:border-0 cursor-pointer",
+                  "hover:bg-overlay/[0.03] transition border-b border-line last:border-0 cursor-pointer",
                 )}
               >
                 <div className="flex items-center gap-3 min-w-0">
