@@ -69,6 +69,7 @@ export type Database = {
           league_id: string | null
           manager_id: string | null
           name: string
+          name_norm: string | null
           primary_color: string | null
           secondary_color: string | null
           short_name: string | null
@@ -85,6 +86,7 @@ export type Database = {
           league_id?: string | null
           manager_id?: string | null
           name: string
+          name_norm?: string | null
           primary_color?: string | null
           secondary_color?: string | null
           short_name?: string | null
@@ -101,6 +103,7 @@ export type Database = {
           league_id?: string | null
           manager_id?: string | null
           name?: string
+          name_norm?: string | null
           primary_color?: string | null
           secondary_color?: string | null
           short_name?: string | null
@@ -181,6 +184,7 @@ export type Database = {
           fetched_at: string | null
           id: string
           name: string
+          name_norm: string | null
           season: number | null
           slug: string
           tier: number | null
@@ -193,6 +197,7 @@ export type Database = {
           fetched_at?: string | null
           id: string
           name: string
+          name_norm?: string | null
           season?: number | null
           slug: string
           tier?: number | null
@@ -205,6 +210,7 @@ export type Database = {
           fetched_at?: string | null
           id?: string
           name?: string
+          name_norm?: string | null
           season?: number | null
           slug?: string
           tier?: number | null
@@ -458,6 +464,7 @@ export type Database = {
         Row: {
           age: number | null
           club_id: string | null
+          contract_until: number | null
           data_source: string | null
           detailed_pos: string | null
           dob: string | null
@@ -466,6 +473,7 @@ export type Database = {
           height_cm: number | null
           id: string
           name: string
+          name_norm: string | null
           nationality: string | null
           position: string | null
           shirt_no: number | null
@@ -474,6 +482,7 @@ export type Database = {
         Insert: {
           age?: number | null
           club_id?: string | null
+          contract_until?: number | null
           data_source?: string | null
           detailed_pos?: string | null
           dob?: string | null
@@ -482,6 +491,7 @@ export type Database = {
           height_cm?: number | null
           id: string
           name: string
+          name_norm?: string | null
           nationality?: string | null
           position?: string | null
           shirt_no?: number | null
@@ -490,6 +500,7 @@ export type Database = {
         Update: {
           age?: number | null
           club_id?: string | null
+          contract_until?: number | null
           data_source?: string | null
           detailed_pos?: string | null
           dob?: string | null
@@ -498,6 +509,7 @@ export type Database = {
           height_cm?: number | null
           id?: string
           name?: string
+          name_norm?: string | null
           nationality?: string | null
           position?: string | null
           shirt_no?: number | null
@@ -671,7 +683,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      f_unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

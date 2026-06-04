@@ -22,6 +22,7 @@ interface PlayerRow {
   id: string;
   position: string | null;
   age: number | null;
+  contract_until: number | null;
   club_id: string | null;
   player_stats: StatRow[];
 }
@@ -51,7 +52,7 @@ export async function computeAll(db: DB, log: Log = () => {}): Promise<{ valued:
   for (;;) {
     const { data, error } = await db
       .from("players")
-      .select("id,position,age,club_id, player_stats(season,minutes,goals,assists,rating)")
+      .select("id,position,age,contract_until,club_id, player_stats(season,minutes,goals,assists,rating)")
       .range(from, from + PAGE - 1);
     if (error) throw new Error(error.message);
     const players = (data ?? []) as unknown as PlayerRow[];
@@ -69,6 +70,7 @@ export async function computeAll(db: DB, log: Log = () => {}): Promise<{ valued:
         goals: stat?.goals ?? 0,
         assists: stat?.assists ?? 0,
         rating: stat?.rating ?? null,
+        contractUntil: p.contract_until,
       });
       valuations.push({
         player_id: p.id,

@@ -86,7 +86,8 @@ export default function MethodologyPage() {
 
           <p className="text-[15px] text-mute mt-6 leading-relaxed">
             Those pillars combine into a single 0&ndash;100 score, and the score maps onto a euro value
-            through a position baseline, the league multiplier, and the age curve. The result is clamped
+            through a position baseline, the league multiplier, the age curve, and &mdash; where a player&apos;s
+            contract end is publicly known &mdash; a contract-length factor. The result is clamped
             to a sane range — we won't print a &euro;0 player or a billion-euro one — so a thin or noisy
             data point can never produce an absurd headline.
           </p>
@@ -210,8 +211,8 @@ export default function MethodologyPage() {
               <li className="flex gap-3">
                 <span className="text-acc mt-1.5 text-[10px]">&#9679;</span>
                 <span>
-                  <span className="text-fg font-medium">We don't model the intangibles.</span> Injuries,
-                  contract length, a falling-out with a manager, off-pitch noise — the things a human scout
+                  <span className="text-fg font-medium">We don't model every intangible.</span> Injuries,
+                  release clauses, a falling-out with a manager, off-pitch noise — the things a human scout
                   weighs that don't show up cleanly in a stat line. The Pulse and the bands soften this, but
                   they don't erase it.
                 </span>

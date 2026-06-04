@@ -2,7 +2,10 @@
 // euro valuation with a confidence band and a pillar breakdown. Labeled as a model
 // estimate; confidence scales with data completeness. See /methodology.
 
-export const MODEL_VERSION = "v1.1.0";
+export const MODEL_VERSION = "v1.2.0";
+
+// Reference year for contract-length math. The product targets the 2026 window.
+const SEASON_YEAR = 2026;
 
 export type Position = "GK" | "DEF" | "MID" | "FWD";
 
@@ -14,6 +17,8 @@ export interface ValuationInput {
   goals: number;
   assists: number;
   rating: number | null;
+  /** Reported contract end year (public fact). Null → contract factor is neutral. */
+  contractUntil?: number | null;
 }
 
 export interface PillarScores {
@@ -83,6 +88,22 @@ export function ageMultiplier(age: number | null, _position?: Position): number 
   return clamp(1.15 - 0.02 * (age - 26) ** 1.6, 0.3, 1.15);
 }
 
+/**
+ * Contract-length factor — the "running-down-the-deal" effect markets price in.
+ * A player entering the final 18 months loses leverage (cheaper to prise away); a
+ * long deal supports value. Neutral (1.0) when the contract year is unknown.
+ */
+export function contractMultiplier(contractUntil: number | null | undefined): number {
+  if (!contractUntil) return 1.0;
+  const yearsLeft = contractUntil - SEASON_YEAR;
+  if (yearsLeft <= 0) return 0.8; // expiring / out of contract
+  if (yearsLeft === 1) return 0.88;
+  if (yearsLeft === 2) return 0.96;
+  if (yearsLeft === 3) return 1.0;
+  if (yearsLeft === 4) return 1.04;
+  return 1.06; // 5+ years, locked down
+}
+
 function performanceScore(rating: number | null): number {
   if (rating == null) return 50;
   return clamp(((rating - 6.0) / 2.0) * 65 + 30, 0, 100);
@@ -106,6 +127,7 @@ export function valuePlayer(input: ValuationInput): Valuation {
   const { position, age, leagueSlug, minutes, goals, assists, rating } = input;
   const q = leagueQuality(leagueSlug);
   const ageMult = ageMultiplier(age, position);
+  const contractMult = contractMultiplier(input.contractUntil);
 
   const pillars: PillarScores = {
     performance: performanceScore(rating),
@@ -125,7 +147,7 @@ export function valuePlayer(input: ValuationInput): Valuation {
     100,
   );
 
-  const raw = BASE[position] * q * Math.exp(0.052 * (score - 50)) * ageMult;
+  const raw = BASE[position] * q * Math.exp(0.052 * (score - 50)) * ageMult * contractMult;
   const value = Math.round(clamp(raw, VALUE_FLOOR, VALUE_CEIL));
 
   // Data completeness drives confidence + band width.

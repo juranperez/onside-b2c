@@ -71,6 +71,14 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                       <span className="num">#{player.shirtNo}</span>
                     </>
                   ) : null}
+                  {player.contractUntil ? (
+                    <>
+                      <span className="text-mute-soft">&middot;</span>
+                      <span className="num" title="Reported contract end (public record)">
+                        Contract until {player.contractUntil}
+                      </span>
+                    </>
+                  ) : null}
                 </div>
                 <h1 className="display text-[clamp(28px,4vw,48px)] tracking-tight leading-[1.05]">
                   {player.firstName && <span className="font-serif italic font-normal">{player.firstName}</span>}{" "}

@@ -74,6 +74,7 @@ export interface PlayerProfile {
   heightCm: number | null;
   foot: string | null;
   shirtNo: number | null;
+  contractUntil: number | null;
   club: { name: string; slug: string } | null;
   league: { name: string; slug: string } | null;
   clubBg: string;
@@ -101,6 +102,7 @@ export interface PlayerProfileRow {
   height_cm: number | null;
   foot: string | null;
   shirt_no: number | null;
+  contract_until: number | null;
   clubs: { slug: string; name: string; short_name: string | null; leagues: { slug: string; name: string } | null } | null;
   player_valuations: {
     value_eur: number;
@@ -158,6 +160,7 @@ export function toPlayerProfile(r: PlayerProfileRow, now: Date = new Date()): Pl
     heightCm: r.height_cm,
     foot: r.foot,
     shirtNo: r.shirt_no,
+    contractUntil: r.contract_until,
     club: r.clubs ? { name: r.clubs.name, slug: r.clubs.slug } : null,
     league: r.clubs?.leagues ? { name: r.clubs.leagues.name, slug: r.clubs.leagues.slug } : null,
     clubBg: style.bg,
