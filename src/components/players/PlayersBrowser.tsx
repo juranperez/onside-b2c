@@ -21,8 +21,11 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
         if (sort === "val") return b.val - a.val;
         if (sort === "rise") return b.dWeek - a.dWeek;
         return a.age - b.age;
-      });
+      })
+      .slice(0, 360);
   }, [players, pos, sort]);
+
+  const sortLabel = sort === "val" ? "value" : sort === "rise" ? "weekly rise" : "age";
 
   return (
     <div className="max-w-[1440px] mx-auto px-6 py-8">
@@ -145,6 +148,9 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
           ))}
         </Card>
       )}
+      <p className="text-[11px] text-mute-soft mt-4 num">
+        Showing the top {filtered.length} {pos === "all" ? "players" : `${pos}s`} by {sortLabel}.
+      </p>
     </div>
   );
 }

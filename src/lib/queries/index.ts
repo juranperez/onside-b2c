@@ -37,6 +37,37 @@ export async function getTopPlayers(limit = 60): Promise<PlayerListItem[]> {
     .map((row) => toPlayerListItem(row, now));
 }
 
+/** Top-valued players in a single position. */
+export async function getPlayersByPosition(position: string, limit = 200): Promise<PlayerListItem[]> {
+  const { data, error } = await readDb()
+    .from("player_valuations")
+    .select(`value_eur, players!inner(${PLAYER_EMBED})`)
+    .eq("players.position", position)
+    .order("value_eur", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  const now = new Date();
+  return (data ?? [])
+    .map((r) => reshape(r as unknown as { value_eur: number; players: unknown }))
+    .filter((x): x is PlayerRowDB => x !== null)
+    .map((row) => toPlayerListItem(row, now));
+}
+
+/**
+ * Position-balanced pool for the players browser. Loading by overall value alone
+ * starved the GK/DEF filters (keepers are modelled lower, so almost none made the
+ * global top-N); pulling each position's top tier guarantees every filter has depth.
+ */
+export async function getBrowsePlayers(): Promise<PlayerListItem[]> {
+  const [fwd, mid, def, gk] = await Promise.all([
+    getPlayersByPosition("FWD", 200),
+    getPlayersByPosition("MID", 200),
+    getPlayersByPosition("DEF", 200),
+    getPlayersByPosition("GK", 200),
+  ]);
+  return [...fwd, ...mid, ...def, ...gk];
+}
+
 /** Biggest movers over the last week (Pulse-derived; ranked in JS over a value pool). */
 export async function getMovers(limit = 8, dir: "up" | "down" | "all" = "all"): Promise<PlayerListItem[]> {
   const pool = await getTopPlayers(400);

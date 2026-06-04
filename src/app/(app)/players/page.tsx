@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTopPlayers, getCounts } from "@/lib/queries";
+import { getBrowsePlayers, getCounts } from "@/lib/queries";
 import { PlayersBrowser } from "@/components/players/PlayersBrowser";
 import type { PlayerListItem } from "@/lib/queries/map";
 
@@ -15,7 +15,7 @@ export default async function PlayersPage() {
   let players: PlayerListItem[] = [];
   let total = 0;
   try {
-    players = await getTopPlayers(120);
+    players = await getBrowsePlayers();
     total = (await getCounts()).players;
   } catch (e) {
     // Never let a transient data issue crash the build/page — degrade to empty state.
