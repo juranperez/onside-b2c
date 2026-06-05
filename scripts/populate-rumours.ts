@@ -7,9 +7,8 @@
 //   · Matheus Nunes — surname collides with a Santa Clara journeyman; the elite
 //     "Matheus Luiz Nunes" (id 41621) reads as Man City in our squad data, which
 //     contradicts the "Atlético-from-Wolves" report. Too muddled to publish.
-//   · Julián Álvarez — correct player (id 6009) but his B2B Transfermarkt anchor is
-//     stale (€15M), so his Onside value is wrong; would make the fee-vs-value
-//     Confidence factor misleading. Re-add once the anchor is refreshed.
+// (Julián Álvarez was previously excluded for a stale anchor — now fixed by
+//  refresh-anchors.ts, so his rumour is included below.)
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../src/lib/db/types";
 
@@ -33,6 +32,7 @@ const RUMOURS: RumourSeed[] = [
   { id: "138787", to: "Barcelona", fee: m(69.3), source: "Sky Sports", tier: 2, corrob: 3, status: "confirmed", daysAgo: 1, summary: "Completed move from Newcastle to Barcelona for a reported £69.3m." },
   { id: "288006", to: "Napoli", fee: m(38), source: "Sky Sports", tier: 2, corrob: 2, status: "confirmed", daysAgo: 2, summary: "Manchester United striker joins Napoli in a £38m deal." },
   { match: "elliot anderson", to: "Manchester City", fee: null, source: "Sky Sports", tier: 2, corrob: 2, status: "rumour", daysAgo: 1, summary: "Manchester City in pole position for the Nottingham Forest midfielder, ahead of United and Arsenal." },
+  { id: "6009", to: "Arsenal", fee: m(130), source: "Sky Sports", tier: 2, corrob: 2, status: "rumour", daysAgo: 2, summary: "Arsenal and Barcelona keen; Atlético value him at about £130m and are reluctant to sell." },
 ];
 
 async function main() {
