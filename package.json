@@ -16,7 +16,8 @@
     "sync:wc-fixtures": "node --env-file=.env.local --import tsx scripts/sync-wc-fixtures.ts",
     "seed:contracts": "node --env-file=.env.local --import tsx scripts/seed-contracts.ts",
     "sync:b2b-valuations": "node --env-file=.env.local --import tsx scripts/sync-b2b-valuations.ts",
-    "value:fallback": "node --env-file=.env.local --import tsx scripts/value-fallback.ts"
+    "value:fallback": "node --env-file=.env.local --import tsx scripts/value-fallback.ts",
+    "populate:rumours": "node --env-file=.env.local --import tsx scripts/populate-rumours.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
