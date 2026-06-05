@@ -126,7 +126,7 @@ export async function getCandidates(limit = 50): Promise<RumourItem[]> {
 
 /** A single rumour by id (for the detail page). */
 export async function getRumourById(id: string): Promise<RumourItem | null> {
-  const { data } = await readDb().from("rumours").select(RUMOUR_SELECT).eq("id", id).maybeSingle();
+  const { data } = await readDb().from("rumours").select(RUMOUR_SELECT).eq("id", id).neq("status", "candidate").maybeSingle();
   if (!data) return null;
   return toItem(data as unknown as RumourRow, new Date());
 }
@@ -159,6 +159,7 @@ export async function getRumoursForPlayer(playerId: string): Promise<RumourItem[
     .from("rumours")
     .select(RUMOUR_SELECT)
     .eq("player_id", playerId)
+    .neq("status", "candidate")
     .order("last_update", { ascending: false });
   const now = new Date();
   return (data ?? [])
