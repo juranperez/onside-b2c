@@ -18,7 +18,8 @@
     "sync:b2b-valuations": "node --env-file=.env.local --import tsx scripts/sync-b2b-valuations.ts",
     "value:fallback": "node --env-file=.env.local --import tsx scripts/value-fallback.ts",
     "populate:rumours": "node --env-file=.env.local --import tsx scripts/populate-rumours.ts",
-    "refresh:anchors": "node --env-file=.env.local --import tsx scripts/refresh-anchors.ts"
+    "refresh:anchors": "node --env-file=.env.local --import tsx scripts/refresh-anchors.ts",
+    "ingest:once": "node --env-file=.env.local --import tsx scripts/ingest-once.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
