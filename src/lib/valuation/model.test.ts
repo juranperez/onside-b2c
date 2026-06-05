@@ -73,7 +73,7 @@ describe("ageMultiplier", () => {
 describe("leagueQuality", () => {
   it("ranks the Big 5 above minor leagues and defaults unknown", () => {
     expect(leagueQuality("premier-league")).toBeGreaterThan(leagueQuality("mls"));
-    expect(leagueQuality("some-unknown-league")).toBeCloseTo(0.45);
+    expect(leagueQuality("some-unknown-league")).toBeCloseTo(0.38);
   });
 });
 

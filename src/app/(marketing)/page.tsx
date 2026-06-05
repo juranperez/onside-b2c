@@ -46,7 +46,7 @@ export default async function LandingPage() {
 
 function HeroSection({ counts }: { counts: { players: number; clubs: number; leagues: number } }) {
   return (
-    <section className="relative overflow-hidden border-b border-line">
+    <section className="relative overflow-hidden border-b border-line noise">
       <div className="absolute inset-0 grid-bg opacity-60 pointer-events-none" />
       <div
         className="absolute -top-40 -right-20 w-[700px] h-[700px] rounded-full pointer-events-none"
@@ -58,7 +58,7 @@ function HeroSection({ counts }: { counts: { players: number; clubs: number; lea
       />
 
       <div className="max-w-[1440px] mx-auto px-6 pt-16 pb-12 relative">
-        <div className="flex items-center gap-3 mb-12">
+        <div className="rise flex items-center gap-3 mb-12" style={{ animationDelay: "0ms" }}>
           <LiveDot />
           <div className="flex items-center gap-2 text-[11.5px] text-mute">
             <span className="num">
@@ -73,22 +73,22 @@ function HeroSection({ counts }: { counts: { players: number; clubs: number; lea
 
         <div className="grid lg:grid-cols-[1.2fr_1fr] gap-12 items-center">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-line bg-ink-800 text-[11px] text-mute mb-6">
-              The valuation engine clubs pay six figures for
+            <div className="rise inline-flex items-center gap-2 px-3 py-1 rounded-full border border-acc/25 bg-acc/[0.06] text-[11px] text-acc/90 mb-6" style={{ animationDelay: "60ms" }}>
+              <Sparkles size={11} /> Live for World Cup 2026
             </div>
-            <h1 className="display tracking-[-0.045em] text-[clamp(48px,6vw,78px)] leading-[0.92]">
+            <h1 className="rise display tracking-[-0.045em] text-[clamp(48px,6vw,78px)] leading-[0.92]" style={{ animationDelay: "120ms" }}>
               Every player.
               <br />
               Every valuation.
               <br />
               <span className="font-serif text-acc italic font-normal">Live.</span>
             </h1>
-            <p className="mt-7 text-[18px] text-mute max-w-[520px] leading-relaxed">
+            <p className="rise mt-7 text-[18px] text-mute max-w-[520px] leading-relaxed text-pretty" style={{ animationDelay: "200ms" }}>
               The same valuation engine that top-flight clubs pay six figures for — now
               open to the fans, the bettors, and football twitter who actually saw it first.
             </p>
 
-            <div className="mt-9 flex items-center gap-3 flex-wrap">
+            <div className="rise mt-9 flex items-center gap-3 flex-wrap" style={{ animationDelay: "280ms" }}>
               <Link href="/discover">
                 <Button kind="primary" size="lg" icon={<ArrowRight size={15} />}>
                   Start free — no card
@@ -99,7 +99,7 @@ function HeroSection({ counts }: { counts: { players: number; clubs: number; lea
               </Link>
             </div>
 
-            <div className="mt-9 flex items-center gap-6 text-[11px] text-mute-soft">
+            <div className="rise mt-9 flex items-center gap-6 text-[11px] text-mute-soft" style={{ animationDelay: "360ms" }}>
               <div>
                 <span className="num text-fg text-[13px]">
                   {counts.players > 0 ? counts.players.toLocaleString() : "—"}
@@ -132,7 +132,7 @@ function HeroSection({ counts }: { counts: { players: number; clubs: number; lea
 
 function FeaturedPlayerCard() {
   return (
-    <div className="rounded-2xl bg-ink-850 border border-line shadow-soft overflow-hidden">
+    <div className="rise lift rounded-2xl bg-ink-850 border border-line shadow-ring overflow-hidden hover:border-up/30 hover:shadow-[0_0_44px_rgba(0,229,153,0.16)]" style={{ animationDelay: "220ms" }}>
       <div
         className="relative h-[200px] overflow-hidden"
         style={{ background: "linear-gradient(135deg, #A50044 0%, #0A0A0B 90%)" }}
