@@ -15,7 +15,8 @@
     "build-wc": "node --env-file=.env.local --import tsx scripts/build-wc.ts",
     "sync:wc-fixtures": "node --env-file=.env.local --import tsx scripts/sync-wc-fixtures.ts",
     "seed:contracts": "node --env-file=.env.local --import tsx scripts/seed-contracts.ts",
-    "sync:b2b-valuations": "node --env-file=.env.local --import tsx scripts/sync-b2b-valuations.ts"
+    "sync:b2b-valuations": "node --env-file=.env.local --import tsx scripts/sync-b2b-valuations.ts",
+    "value:fallback": "node --env-file=.env.local --import tsx scripts/value-fallback.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
@@ -33,6 +34,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.41",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
