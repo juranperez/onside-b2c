@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Gauge, TrendingUp, ArrowRight, Sparkles, Target } from "lucide-react";
+import { Gauge, TrendingUp, ArrowRight, Sparkles, Target, CalendarDays } from "lucide-react";
 import { Card } from "@/components/ui";
 
 export const revalidate = 1800;
@@ -29,6 +29,12 @@ const REPORTS = [
     title: "The Onside Accuracy Report",
     dek: "How the Confidence % performs — the share of rumours we rated highly that were confirmed.",
     icon: Target,
+  },
+  {
+    href: "/the-board",
+    title: "The Board — weekly digest",
+    dek: "The week's biggest movers and the top rumours, in one place. In your inbox every Monday.",
+    icon: CalendarDays,
   },
 ];
 
