@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../db/types";
+import { fold, buildPlayerIndex, buildClubIndex, matchPlayer, matchDestClub } from "./match";
 
 export interface FeedSource {
   name: string; // fallback source label
@@ -10,23 +11,18 @@ export interface FeedSource {
 
 const UA = "Mozilla/5.0 (compatible; OnsideBot/1.0; +https://onsidemarket.com)";
 
-// Google News RSS query feed (free, no auth). Each item's source is attributed in
-// the title as a trailing " - Source", which we map to a reliability tier.
 const gnews = (q: string) =>
   `https://news.google.com/rss/search?q=${encodeURIComponent(`${q} when:2d`)}&hl=en-GB&gl=GB&ceid=GB:en`;
 
 // Free multi-source firehose. Replaces the paid X API: the tier-1 journalist signal
-// comes from Reddit r/soccer (the community tags posts with the reporting journalist,
-// e.g. "[Fabrizio Romano] …") + Google News attribution. Used only when
-// RUMOUR_INGEST_ENABLED=1; everything inserts as a human-review candidate, never live.
+// comes from Reddit r/soccer (the community names the reporting journalist) + Google
+// News attribution. Used only when RUMOUR_INGEST_ENABLED=1; everything inserts as a
+// human-review candidate, never live.
 export const DEFAULT_FEEDS: FeedSource[] = [
-  // Reddit r/soccer — community-curated, journalist named in "[ ]" at the title start.
   { name: "r/soccer", tier: 3, kind: "reddit", url: "https://www.reddit.com/r/soccer/search.rss?q=flair%3ATransfers&restrict_sr=on&sort=new&limit=75" },
-  // Google News — broad transfer queries across the top leagues + "done deal" phrasing.
   { name: "Google News", tier: 3, kind: "google", url: gnews("Premier League transfer") },
   { name: "Google News", tier: 3, kind: "google", url: gnews("La Liga OR Serie A OR Bundesliga OR Ligue 1 transfer") },
   { name: "Google News", tier: 3, kind: "google", url: gnews('football transfer "here we go" OR "agreement reached" OR "medical"') },
-  // Reputable outlet RSS (general football — gated to transfer items below).
   { name: "BBC Football", tier: 3, kind: "outlet", url: "https://feeds.bbci.co.uk/sport/football/rss.xml" },
   { name: "Guardian Football", tier: 3, kind: "outlet", url: "https://www.theguardian.com/football/rss" },
 ];
@@ -37,13 +33,11 @@ const TRANSFER_KEYWORDS = [
   "here we go", "medical", "contract",
 ];
 
-// Source → reliability tier. Tier 1 = the elite individual reporters; tier 2 = major
-// outlets/known journalists; tier 3 = tabloids/aggregators. Unknown → 3 (neutral).
 const TIER1 = ["fabrizio romano", "romano", "david ornstein", "ornstein"];
 const TIER2 = [
   "sky sports", "the athletic", "bbc", "guardian", "telegraph", "espn", "l'equipe",
-  "lequipe", "l'équipe", "bild", "gazzetta", "di marzio", "matteo moretto",
-  "florian plettenberg", "santi aouna", "rmc", "relevo", "the times", "reuters",
+  "lequipe", "bild", "gazzetta", "di marzio", "matteo moretto", "florian plettenberg",
+  "santi aouna", "rmc", "relevo", "the times", "reuters",
 ];
 const TIER3 = [
   "mirror", "the sun", "daily mail", "express", "teamtalk", "caughtoffside",
@@ -58,8 +52,6 @@ function tierFor(source: string): number {
   if (TIER3.some((k) => s.includes(k))) return 3;
   return 3;
 }
-
-const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 function decodeEntities(s: string): string {
   return s
@@ -98,7 +90,9 @@ function resolveItem(feed: FeedSource, title: string): { source: string; tier: n
   if (feed.kind === "reddit") {
     const m = title.match(/^\[([^\]]+)\]\s*/);
     const source = m ? m[1].trim() : feed.name;
-    return { source, tier: tierFor(source), summary: title };
+    // Strip the "[Journalist]" prefix before it becomes the match text — otherwise
+    // the reporter's name (e.g. "Romano") can match a player with that name.
+    return { source, tier: tierFor(source), summary: m ? title.slice(m[0].length).trim() : title };
   }
   if (feed.kind === "google") {
     const i = title.lastIndexOf(" - ");
@@ -116,38 +110,41 @@ export interface IngestResult {
   matched: number;
   inserted: number;
   tier1: number;
+  skippedResolved: number; // player already has a confirmed move — saga over
 }
 
 /**
- * Free multi-source ingestion → candidate rumours (never auto-published). Matches
- * headlines to notable players by surname, gated on a transfer keyword, deduped by
- * URL. The reporting source is extracted per item and mapped to a reliability tier
- * (so a Romano/Ornstein report lands as tier 1 — the signal the paid X API sold).
+ * Free multi-source ingestion → candidate rumours (never auto-published). Resolves
+ * each headline to a player with the precision matcher (src/lib/ingest/match.ts),
+ * extracts a destination club, suppresses stale stories for players whose move is
+ * already confirmed, and dedupes by URL + (player → club). Source → reliability tier.
  */
 export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSource[]): Promise<IngestResult> {
-  const { data: players } = await db
+  // Top players (precision matcher + current-club lookup for destination exclusion).
+  const { data: pv } = await db
     .from("player_valuations")
-    .select("value_eur, players!inner(id,name_norm)")
+    .select("value_eur, players!inner(id,name_norm, clubs(name))")
     .order("value_eur", { ascending: false })
-    .limit(3000);
+    .limit(5000);
+  const players = ((pv ?? []) as unknown as { players: { id: string; name_norm: string | null; clubs: { name: string } | null } }[]).map((r) => r.players);
+  const playerIndex = buildPlayerIndex(players);
+  const currentClub = new Map(players.map((p) => [p.id, p.clubs?.name ?? null]));
 
-  // surname → player id (highest-value player wins, since rows are value-desc)
-  const index = new Map<string, string>();
-  for (const row of (players ?? []) as unknown as { players: { id: string; name_norm: string | null } }[]) {
-    const norm = row.players?.name_norm;
-    if (!norm) continue;
-    const parts = norm.split(/\s+/).filter((w) => w.length >= 4);
-    const surname = parts[parts.length - 1];
-    if (surname && !index.has(surname)) index.set(surname, row.players.id);
+  const { data: clubRows } = await db.from("clubs").select("id,name,name_norm,short_name");
+  const clubIndex = buildClubIndex((clubRows ?? []) as { id: string; name: string; name_norm: string | null; short_name: string | null }[]);
+
+  // Existing state for dedup + saga suppression.
+  const { data: existing } = await db.from("rumours").select("url,player_id,status,to_club").limit(5000);
+  const seenUrls = new Set<string>();
+  const confirmedPlayers = new Set<string>();
+  const seenPairs = new Set<string>(); // player_id|toClub
+  for (const r of existing ?? []) {
+    if (r.url) seenUrls.add(r.url);
+    if (r.status === "confirmed") confirmedPlayers.add(r.player_id);
+    seenPairs.add(`${r.player_id}|${r.to_club}`);
   }
 
-  const { data: existing } = await db.from("rumours").select("url").not("url", "is", null).limit(2000);
-  const seenUrls = new Set((existing ?? []).map((r) => r.url));
-
-  let items = 0;
-  let matched = 0;
-  let inserted = 0;
-  let tier1 = 0;
+  let items = 0, matched = 0, inserted = 0, tier1 = 0, skippedResolved = 0;
   const now = new Date().toISOString();
 
   for (const feed of feeds) {
@@ -165,19 +162,23 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
       items++;
       const folded = fold(resolved.summary);
       if (!TRANSFER_KEYWORDS.some((k) => folded.includes(k))) continue;
-      let playerId: string | undefined;
-      for (const tok of folded.replace(/[^a-z\s]/g, " ").split(/\s+/)) {
-        if (tok.length >= 4 && index.has(tok)) {
-          playerId = index.get(tok);
-          break;
-        }
-      }
-      if (!playerId) continue;
+
+      const hit = matchPlayer(resolved.summary, playerIndex);
+      if (!hit) continue; // no confident player match — skip rather than guess
       matched++;
+
+      if (confirmedPlayers.has(hit.playerId)) {
+        skippedResolved++; // their move is already confirmed — don't queue stale chatter
+        continue;
+      }
       if (it.link && seenUrls.has(it.link)) continue;
+
+      const toClub = matchDestClub(resolved.summary, clubIndex, currentClub.get(hit.playerId) ?? null) ?? "—";
+      if (seenPairs.has(`${hit.playerId}|${toClub}`)) continue;
+
       const { error } = await db.from("rumours").insert({
-        player_id: playerId,
-        to_club: "—", // not reliably extractable from a headline — editor sets on approval
+        player_id: hit.playerId,
+        to_club: toClub,
         reported_fee_eur: extractFeeEur(resolved.summary),
         status: "candidate",
         summary: resolved.summary.slice(0, 280),
@@ -192,22 +193,20 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
         inserted++;
         if (resolved.tier === 1) tier1++;
         if (it.link) seenUrls.add(it.link);
+        seenPairs.add(`${hit.playerId}|${toClub}`);
       }
     }
   }
-  return { feeds: feeds.length, items, matched, inserted, tier1 };
+  return { feeds: feeds.length, items, matched, inserted, tier1, skippedResolved };
 }
 
 /**
  * X / Twitter filtered-stream layer — OPTIONAL paid upgrade. The free Reddit + Google
- * News sources above already surface the tier-1 journalist signal, so this is no longer
- * required to run the pipeline. Enable only if you later want the raw journalist
- * firehose: set X_API_BEARER (Pro/Enterprise tier) + clear the legal review.
+ * News sources already surface the tier-1 journalist signal, so this is no longer
+ * required. Enable only for the raw journalist firehose: set X_API_BEARER + clear legal.
  */
 export async function ingestFromX(): Promise<IngestResult> {
-  const empty = { feeds: 0, items: 0, matched: 0, inserted: 0, tier1: 0 };
+  const empty = { feeds: 0, items: 0, matched: 0, inserted: 0, tier1: 0, skippedResolved: 0 };
   if (!process.env.X_API_BEARER) return empty;
-  // TODO (paid upgrade): subscribe to the filtered stream with tier-1 journalist rules,
-  // classify + extract, insert candidates. Free sources cover this for now.
   return empty;
 }

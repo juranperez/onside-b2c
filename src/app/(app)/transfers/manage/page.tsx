@@ -47,9 +47,13 @@ export default async function RumourManagePage() {
             {candidates.map((c) => (
               <div key={c.id} className="flex items-center gap-3 px-4 py-3 rounded-lg bg-ink-850 border border-acc/20">
                 <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-medium truncate">{c.player.name}</div>
+                  <div className="text-[13px] font-medium truncate">
+                    {c.player.name} <span className="text-mute-soft font-normal">→ {c.toClub}</span>
+                  </div>
                   <div className="text-[11px] text-mute-soft truncate">{c.summary}</div>
-                  <div className="text-[10.5px] text-mute-soft truncate">{c.source} · auto-ingested</div>
+                  <div className="text-[10.5px] text-mute-soft truncate">
+                    {c.source} · tier {c.sourceTier} · {c.confidence.pct}% · auto-ingested
+                  </div>
                 </div>
                 <form action={setRumourStatus.bind(null, c.id, "rumour")}>
                   <button className="inline-flex items-center gap-1 h-8 px-3 rounded-lg bg-up/15 text-up text-[12px] font-semibold cursor-pointer">
