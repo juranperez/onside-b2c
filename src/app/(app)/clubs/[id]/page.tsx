@@ -4,7 +4,9 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getClubBySlug } from "@/lib/queries";
+import { getRumours } from "@/lib/queries/rumours";
 import { SquadTable } from "@/components/clubs/SquadTable";
+import { ClubDashboard } from "@/components/clubs/ClubDashboard";
 
 export const revalidate = 3600;
 
@@ -44,6 +46,11 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
 
   // Hero meta line — only show the parts we actually have.
   const meta = [club.league, club.stadium, club.country].filter(Boolean) as string[];
+
+  // Club rumours from the curated feed (incoming + outgoing). Empty until curated.
+  const rumours = (await getRumours().catch(() => [])).filter(
+    (r) => r.toClub === club.name || r.player.fromClub === club.name,
+  );
 
   return (
     <div>
@@ -106,6 +113,8 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
 
       {/* Content */}
       <div className="max-w-[1440px] mx-auto px-6 py-8">
+        <ClubDashboard squad={club.squad} rumours={rumours} />
+        <h2 className="text-[18px] font-semibold mb-3">Full squad</h2>
         <SquadTable squad={club.squad} />
         <p className="text-[11px] text-mute-soft mt-3">
           Squad value is the sum of live Onside valuations across the roster — a model estimate, not a market quote.
