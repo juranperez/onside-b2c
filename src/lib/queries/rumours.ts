@@ -95,14 +95,29 @@ function toItem(r: RumourRow, now: Date): RumourItem | null {
   };
 }
 
-/** Live rumour feed, newest first. */
+/** Live rumour feed, newest first. Excludes unreviewed ingestion candidates. */
 export async function getRumours(limit = 60): Promise<RumourItem[]> {
   const { data, error } = await readDb()
     .from("rumours")
     .select(RUMOUR_SELECT)
+    .neq("status", "candidate")
     .order("last_update", { ascending: false })
     .limit(limit);
   if (error) return [];
+  const now = new Date();
+  return (data ?? [])
+    .map((r) => toItem(r as unknown as RumourRow, now))
+    .filter((x): x is RumourItem => x !== null);
+}
+
+/** Unreviewed ingestion candidates (for the curation queue). */
+export async function getCandidates(limit = 50): Promise<RumourItem[]> {
+  const { data } = await readDb()
+    .from("rumours")
+    .select(RUMOUR_SELECT)
+    .eq("status", "candidate")
+    .order("first_seen", { ascending: false })
+    .limit(limit);
   const now = new Date();
   return (data ?? [])
     .map((r) => toItem(r as unknown as RumourRow, now))
