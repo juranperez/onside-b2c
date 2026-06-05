@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Card, Avatar, Delta, Chip, SectionHead, Button } from "@/components/ui";
+import { ShareButton } from "@/components/ui/share-button";
 import { getPlayerBySlug, getTopPlayers } from "@/lib/queries";
 import type { PlayerProfile, PlayerListItem } from "@/lib/queries/map";
 
@@ -268,7 +269,8 @@ function Comparison({ a, b }: { a: PlayerProfile; b: PlayerProfile }) {
         </div>
       </Card>
 
-      <div className="text-center mt-6">
+      <div className="flex items-center justify-center gap-4 mt-6">
+        <ShareButton title={`${a.name} vs ${b.name} — Onside head-to-head`} />
         <Link href="/compare" className="text-[13px] text-mute hover:text-fg transition">
           Compare a different pair
         </Link>
