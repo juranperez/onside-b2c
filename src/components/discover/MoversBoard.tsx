@@ -67,7 +67,7 @@ export function MoversBoard({ movers }: { movers: PlayerListItem[] }) {
             <Link key={p.id} href={`/players/${p.slug}`}>
               <Card className="p-4 hover:bg-ink-800 transition cursor-pointer h-full">
                 <div className="flex items-center justify-between mb-3">
-                  <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={36} />
+                  <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} src={p.photoUrl} size={36} />
                   <Delta value={p.dWeek} big />
                 </div>
                 <div className="text-[14px] font-semibold leading-snug truncate">{p.displayName}</div>

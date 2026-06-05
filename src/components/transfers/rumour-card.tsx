@@ -29,7 +29,7 @@ export function RumourCard({ r }: { r: RumourItem }) {
   return (
     <div className={cn("rounded-xl border bg-ink-850 p-4 transition", dead ? "border-line opacity-60" : "border-line hover:bg-ink-800")}>
       <div className="flex items-start gap-3">
-        <Avatar name={r.player.name} clubBg={r.player.clubBg} clubColor={r.player.clubColor} size={40} />
+        <Avatar name={r.player.name} clubBg={r.player.clubBg} clubColor={r.player.clubColor} src={r.player.photoUrl} size={40} />
         <div className="flex-1 min-w-0">
           <Link href={`/players/${r.player.slug}`} className={cn("text-[14px] font-semibold hover:text-acc transition block truncate", dead && "line-through")}>
             {r.player.name}

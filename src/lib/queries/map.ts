@@ -8,8 +8,9 @@ const DAY = 86_400_000;
 export interface PlayerListItem {
   id: string;
   slug: string;
-  name: string;       // full legal name (for search/SEO)
+  name: string;        // full legal name (for search/SEO)
   displayName: string; // fan-facing: "Kylian Mbappé" not "Kylian Mbappé Lottin"
+  photoUrl: string | null;
   pos: string;
   age: number;
   club: string;
@@ -29,6 +30,7 @@ export interface PlayerRowDB {
   slug: string;
   name: string;
   known_as: string | null;
+  photo_url: string | null;
   position: string | null;
   age: number | null;
   clubs: {
@@ -54,6 +56,7 @@ export function toPlayerListItem(r: PlayerRowDB, now: Date = new Date()): Player
     slug: r.slug,
     name: r.name,
     displayName: r.known_as ?? r.name,
+    photoUrl: r.photo_url ?? null,
     pos: r.position ?? "—",
     age: r.age ?? 0,
     club: r.clubs?.name ?? "Free agent",
@@ -76,6 +79,7 @@ export interface PlayerProfile {
   slug: string;
   name: string;        // full legal name (search/SEO/meta)
   displayName: string; // fan-facing display: "Kylian Mbappé"
+  photoUrl: string | null;
   firstName: string;
   lastName: string;
   position: string;
@@ -106,6 +110,7 @@ export interface PlayerProfileRow {
   slug: string;
   name: string;
   known_as: string | null;
+  photo_url: string | null;
   position: string | null;
   age: number | null;
   dob: string | null;
@@ -165,6 +170,7 @@ export function toPlayerProfile(r: PlayerProfileRow, now: Date = new Date()): Pl
     slug: r.slug,
     name: r.name,
     displayName,
+    photoUrl: r.photo_url ?? null,
     firstName,
     lastName,
     position: r.position ?? "—",

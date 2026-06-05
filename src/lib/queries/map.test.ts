@@ -5,7 +5,7 @@ const row: PlayerRowDB = {
   id: "247",
   slug: "cody-mathes-gakpo",
   name: "Cody Mathès Gakpo",
-  known_as: "Cody Gakpo",   // fan name: firstname + last meaningful surname token
+  known_as: "Cody Gakpo", photo_url: null,   // fan name: firstname + last meaningful surname token
   position: "MID",
   age: 26,
   clubs: { slug: "liverpool", name: "Liverpool", short_name: null, leagues: { slug: "premier-league", name: "Premier League" } },
@@ -28,7 +28,7 @@ describe("toPlayerListItem", () => {
   });
 
   it("falls back gracefully when club/valuation are missing", () => {
-    const orphan: PlayerRowDB = { id: "9", slug: "x", name: "Trialist", known_as: null, position: null, age: null, clubs: null, player_valuations: null };
+    const orphan: PlayerRowDB = { id: "9", slug: "x", name: "Trialist", known_as: null, photo_url: null, position: null, age: null, clubs: null, player_valuations: null };
     const item = toPlayerListItem(orphan, new Date("2026-06-03"));
     expect(item.club).toBe("Free agent");
     expect(item.clubShort).toBe("FC");

@@ -63,7 +63,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
         <div className="max-w-[1440px] mx-auto px-6 py-10 relative">
           <div className="flex items-start justify-between gap-8 flex-wrap">
             <div className="flex items-start gap-6">
-              <Avatar name={player.displayName} clubBg={player.clubBg} clubColor={player.clubColor} size={80} ring />
+              <Avatar name={player.displayName} clubBg={player.clubBg} clubColor={player.clubColor} src={player.photoUrl} size={80} ring />
               <div>
                 <div className="flex items-center gap-2 mb-1 text-[12px] text-mute">
                   {player.nationality && <span>{player.nationality}</span>}
@@ -181,7 +181,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                   {similar.map((p) => (
                     <Link key={p.id} href={`/players/${p.slug}`} className="rounded-xl bg-ink-800 hover:bg-ink-750 transition border border-line p-3">
                       <div className="flex items-center gap-2 mb-2">
-                        <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={28} />
+                        <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} src={p.photoUrl} size={28} />
                         <div className="min-w-0">
                           <div className="text-[12px] font-semibold truncate">{p.name}</div>
                           <div className="text-[10px] text-mute truncate">{p.club}</div>

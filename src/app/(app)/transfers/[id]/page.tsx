@@ -51,7 +51,7 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
       </Link>
 
       <div className="flex items-start gap-4">
-        <Avatar name={r.player.name} clubBg={r.player.clubBg} clubColor={r.player.clubColor} size={56} ring />
+        <Avatar name={r.player.name} clubBg={r.player.clubBg} clubColor={r.player.clubColor} src={r.player.photoUrl} size={56} ring />
         <div className="flex-1 min-w-0">
           <Link href={`/players/${r.player.slug}`} className="display text-[clamp(22px,3.5vw,30px)] tracking-tight hover:text-acc transition block leading-tight">
             {r.player.name}

@@ -93,7 +93,7 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
                 />
                 <div className="relative">
                   <div className="flex items-start justify-between mb-4">
-                    <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={48} />
+                    <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} src={p.photoUrl} size={48} />
                     <Delta value={p.dWeek} big />
                   </div>
                   <div className="text-[15px] font-semibold leading-tight">{p.displayName}</div>
@@ -132,7 +132,7 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
             <Link key={p.id} href={`/players/${p.slug}`}>
               <div className="w-full grid grid-cols-[1.5fr_60px_60px_90px_90px_1fr] px-4 py-3 items-center hover:bg-overlay/[0.03] transition text-left border-b border-line last:border-0 cursor-pointer">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={28} />
+                  <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} src={p.photoUrl} size={28} />
                   <div className="min-w-0">
                     <div className="text-[13.5px] font-semibold truncate">{p.displayName}</div>
                     <div className="text-[11px] text-mute truncate">{p.club}</div>

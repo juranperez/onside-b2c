@@ -29,7 +29,7 @@ function MoverRow({ p }: { p: PlayerListItem }) {
   return (
     <Link href={`/players/${p.slug}`}>
       <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition border-b border-line last:border-0 cursor-pointer">
-        <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={26} />
+        <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} src={p.photoUrl} size={26} />
         <span className="text-[13px] font-medium truncate flex-1">{p.displayName}</span>
         <Sparkline points={p.spark} width={40} />
         <div className="text-right shrink-0 w-[72px]">
@@ -105,7 +105,7 @@ export function ClubDashboard({ squad, rumours }: { squad: PlayerListItem[]; rum
                   <Link key={p.id} href={`/players/${p.slug}`}>
                     <Card className="p-3 hover:bg-ink-800 transition cursor-pointer">
                       <div className="flex items-center gap-2">
-                        <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={26} />
+                        <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} src={p.photoUrl} size={26} />
                         <div className="min-w-0">
                           <div className="text-[12px] font-medium truncate leading-tight">{p.displayName}</div>
                           <div className="num text-[12px] font-semibold text-up">€{p.val.toFixed(1)}M</div>
