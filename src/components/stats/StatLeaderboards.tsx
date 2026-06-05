@@ -64,8 +64,8 @@ export function StatLeaderboards({
                 {i + 1}
               </span>
               <div className="flex items-center gap-3 min-w-0">
-                <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={32} />
-                <span className="text-[13px] font-medium truncate">{p.name}</span>
+                <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={32} />
+                <span className="text-[13px] font-medium truncate">{p.displayName}</span>
               </div>
               <span className="text-[12px] text-mute truncate">{p.club}</span>
               <span className="num text-[16px] text-right font-bold">{fmtStat(metric, p.statValue)}</span>

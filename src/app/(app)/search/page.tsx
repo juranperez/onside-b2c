@@ -94,9 +94,9 @@ export default async function SearchPage({
                     href={`/players/${p.slug}`}
                     className="flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 hover:bg-overlay/[0.03] transition"
                   >
-                    <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={32} />
+                    <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={32} />
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-medium truncate">{p.name}</div>
+                      <div className="text-[13px] font-medium truncate">{p.displayName}</div>
                       <div className="text-[11px] text-mute truncate">
                         {p.club} &middot; {p.pos}
                       </div>

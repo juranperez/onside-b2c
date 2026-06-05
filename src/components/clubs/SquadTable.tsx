@@ -67,8 +67,8 @@ export function SquadTable({ squad }: { squad: PlayerListItem[] }) {
                 )}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={28} />
-                  <span className="text-[13px] font-medium truncate">{p.name}</span>
+                  <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={28} />
+                  <span className="text-[13px] font-medium truncate">{p.displayName}</span>
                 </div>
                 <span className="num text-[12px] text-right text-mute">{p.pos}</span>
                 <span className="num text-[12px] text-right text-mute">{p.age || "—"}</span>

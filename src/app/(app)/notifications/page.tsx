@@ -28,9 +28,9 @@ function FeedRow({ p, note }: { p: PlayerListItem; note: string }) {
         >
           {up ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
         </div>
-        <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={30} />
+        <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={30} />
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-medium truncate">{p.name}</div>
+          <div className="text-[13px] font-medium truncate">{p.displayName}</div>
           <div className="text-[11px] text-mute truncate">{note}</div>
         </div>
         <div className="text-right shrink-0">

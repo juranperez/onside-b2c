@@ -17,9 +17,9 @@ function MoverRow({ p }: { p: PlayerListItem }) {
   return (
     <Link href={`/players/${p.slug}`}>
       <div className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03] transition border-b border-line last:border-0 cursor-pointer">
-        <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={28} />
+        <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={28} />
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-medium truncate">{p.name}</div>
+          <div className="text-[13px] font-medium truncate">{p.displayName}</div>
           <div className="text-[11px] text-mute truncate">{p.club}</div>
         </div>
         <Sparkline points={p.spark} width={44} />
@@ -51,7 +51,7 @@ export default async function BiggestMoversPage() {
           {top && (
             <>
               {" "}
-              <Link href={`/players/${top.slug}`} className="text-acc hover:underline">{top.name}</Link> leads the
+              <Link href={`/players/${top.slug}`} className="text-acc hover:underline">{top.displayName}</Link> leads the
               risers, up <span className="num text-up">€{Math.abs(top.dWeek).toFixed(1)}M</span>.
             </>
           )}

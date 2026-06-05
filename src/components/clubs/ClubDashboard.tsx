@@ -29,8 +29,8 @@ function MoverRow({ p }: { p: PlayerListItem }) {
   return (
     <Link href={`/players/${p.slug}`}>
       <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition border-b border-line last:border-0 cursor-pointer">
-        <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={26} />
-        <span className="text-[13px] font-medium truncate flex-1">{p.name}</span>
+        <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={26} />
+        <span className="text-[13px] font-medium truncate flex-1">{p.displayName}</span>
         <Sparkline points={p.spark} width={40} />
         <div className="text-right shrink-0 w-[72px]">
           <div className="num text-[12px] font-semibold">€{p.val.toFixed(1)}M</div>
@@ -61,7 +61,7 @@ export function ClubDashboard({ squad, rumours }: { squad: PlayerListItem[]; rum
         <Stat
           icon={<Crown size={13} />}
           label="Most valuable"
-          value={top ? top.name.split(" ").slice(-1)[0] : "—"}
+          value={top ? top.displayName.split(" ").slice(-1)[0] : "—"}
           sub={top ? money(top.val) : undefined}
           href={top ? `/players/${top.slug}` : undefined}
         />
@@ -105,9 +105,9 @@ export function ClubDashboard({ squad, rumours }: { squad: PlayerListItem[]; rum
                   <Link key={p.id} href={`/players/${p.slug}`}>
                     <Card className="p-3 hover:bg-ink-800 transition cursor-pointer">
                       <div className="flex items-center gap-2">
-                        <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={26} />
+                        <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={26} />
                         <div className="min-w-0">
-                          <div className="text-[12px] font-medium truncate leading-tight">{p.name}</div>
+                          <div className="text-[12px] font-medium truncate leading-tight">{p.displayName}</div>
                           <div className="num text-[12px] font-semibold text-up">€{p.val.toFixed(1)}M</div>
                         </div>
                       </div>

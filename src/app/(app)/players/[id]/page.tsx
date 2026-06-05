@@ -17,8 +17,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const p = await getPlayerBySlug(id).catch(() => null);
   if (!p) return { title: "Player — Onside" };
   return {
-    title: `${p.name} — Onside valuation ${fmtVal(p.value)}`,
-    description: `${p.name}${p.club ? `, ${p.club.name}` : ""}. Live Onside valuation ${fmtVal(p.value)} with confidence band and 12-month history.`,
+    title: `${p.displayName} — Onside valuation ${fmtVal(p.value)}`,
+    description: `${p.displayName}${p.club ? `, ${p.club.name}` : ""}. Live Onside valuation ${fmtVal(p.value)} with confidence band and 12-month history.`,
   };
 }
 
@@ -50,11 +50,11 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
         data={{
           "@context": "https://schema.org",
           "@type": "Person",
-          name: player.name,
+          name: player.displayName,
           jobTitle: "Footballer",
           ...(player.nationality ? { nationality: player.nationality } : {}),
           ...(player.club ? { affiliation: { "@type": "SportsTeam", name: player.club.name } } : {}),
-          description: `${player.name}${player.club ? `, ${player.club.name}` : ""}. Onside valuation ${fmtVal(player.value)}.`,
+          description: `${player.displayName}${player.club ? `, ${player.club.name}` : ""}. Onside valuation ${fmtVal(player.value)}.`,
         }}
       />
       {/* Hero */}
@@ -63,7 +63,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
         <div className="max-w-[1440px] mx-auto px-6 py-10 relative">
           <div className="flex items-start justify-between gap-8 flex-wrap">
             <div className="flex items-start gap-6">
-              <Avatar name={player.name} clubBg={player.clubBg} clubColor={player.clubColor} size={80} ring />
+              <Avatar name={player.displayName} clubBg={player.clubBg} clubColor={player.clubColor} size={80} ring />
               <div>
                 <div className="flex items-center gap-2 mb-1 text-[12px] text-mute">
                   {player.nationality && <span>{player.nationality}</span>}
@@ -112,7 +112,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
               </div>
               <div className="mt-4 flex items-center gap-2 justify-end">
                 <WatchButton playerId={player.id} />
-                <ShareButton title={`${player.name} — Onside valuation ${fmtVal(player.value)}`} />
+                <ShareButton title={`${player.displayName} — Onside valuation ${fmtVal(player.value)}`} />
               </div>
             </div>
           </div>

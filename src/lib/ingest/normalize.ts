@@ -65,6 +65,42 @@ export function fullName(p: RawPlayer["player"]): string {
   return joined || p.name || "";
 }
 
+// Name particles that are never a distinguishing surname token.
+const NAME_PARTICLES = new Set([
+  "da","de","di","do","dos","das","van","von","der","den",
+  "del","della","le","la","el","al","bin","ibn","ter","af","y",
+]);
+
+/**
+ * Fan-facing display name: firstname + first non-particle word of lastname.
+ * e.g. firstname="Kylian", lastname="Mbappé Lottin" → "Kylian Mbappé"
+ *      firstname="Cody Mathès", lastname="Gakpo"     → "Cody Mathès Gakpo" (short)
+ *      firstname="Alisson", lastname="Becker"         → "Alisson Becker"
+ *      firstname="Vinicius", lastname=null            → "Vinicius"
+ *
+ * Falls back to fullName() when firstname/lastname are absent (API abbreviation).
+ * Wikidata integration will override this with the authoritative known name later.
+ */
+export function knownAs(p: RawPlayer["player"]): string {
+  const first = p.firstname?.trim() ?? "";
+  const last = p.lastname?.trim() ?? "";
+
+  if (!first && !last) return p.name?.trim() ?? "";
+  if (!last) return first;
+  if (!first) return last.split(/\s+/)[0]; // single-name player
+
+  // Take first word of lastname, skipping leading particles.
+  const lastWords = last.split(/\s+/);
+  const meaningful = lastWords.find((w) => !NAME_PARTICLES.has(w.toLowerCase())) ?? lastWords[0];
+
+  // If the firstname already ends with the meaningful last word (e.g. "Alisson Becker"
+  // where firstname="Alisson" lastname="Becker"), avoid duplication.
+  const firstWords = first.split(/\s+/);
+  if (firstWords[firstWords.length - 1].toLowerCase() === meaningful.toLowerCase()) return first;
+
+  return `${first} ${meaningful}`;
+}
+
 /** Map one API-Football player to player/club/stat insert rows. Null if no usable stats. */
 export function normalizePlayer(
   raw: RawPlayer,
@@ -90,6 +126,7 @@ export function normalizePlayer(
       id: playerId,
       slug: `${slugify(name)}-${playerId}`,
       name,
+      known_as: knownAs(raw.player),
       position: normalizePosition(stat.games?.position),
       detailed_pos: null,
       age: raw.player.age ?? null,

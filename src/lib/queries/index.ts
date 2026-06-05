@@ -10,9 +10,9 @@ import {
   type PlayerProfileRow,
 } from "./map";
 
-const PLAYER_EMBED = "id,slug,name,position,age, clubs(slug,name,short_name, leagues(slug,name))";
+const PLAYER_EMBED = "id,slug,name,known_as,position,age, clubs(slug,name,short_name, leagues(slug,name))";
 const PROFILE_SELECT =
-  "id,slug,name,position,detailed_pos,age,dob,nationality,height_cm,foot,shirt_no,contract_until, clubs(slug,name,short_name, leagues(slug,name)), player_valuations(value_eur,pillar_scores,confidence_pct,band_low,band_high), player_stats(season,apps,minutes,goals,assists,rating)";
+  "id,slug,name,known_as,position,detailed_pos,age,dob,nationality,height_cm,foot,shirt_no,contract_until, clubs(slug,name,short_name, leagues(slug,name)), player_valuations(value_eur,pillar_scores,confidence_pct,band_low,band_high), player_stats(season,apps,minutes,goals,assists,rating)";
 
 function reshape(r: { value_eur: number; players: unknown }): PlayerRowDB | null {
   const p = r.players as Omit<PlayerRowDB, "player_valuations"> | null;
@@ -349,6 +349,7 @@ export async function getNationalTeamBySlug(slug: string): Promise<NationalTeamP
 export interface StatLeader {
   slug: string;
   name: string;
+  displayName: string;
   club: string;
   clubBg: string;
   clubColor: string;
@@ -359,14 +360,14 @@ export interface StatLeader {
 export async function getStatLeaders(metric: "goals" | "assists" | "rating", limit = 25): Promise<StatLeader[]> {
   const { data, error } = await readDb()
     .from("player_stats")
-    .select(`${metric}, players!inner(slug,name, clubs(slug,name), player_valuations(value_eur))`)
+    .select(`${metric}, players!inner(slug,name,known_as, clubs(slug,name), player_valuations(value_eur))`)
     .not(metric, "is", null)
     .order(metric, { ascending: false })
     .limit(limit);
   if (error) return [];
   const rows = (data ?? []) as unknown as Array<
     Record<string, number | null> & {
-      players: { slug: string; name: string; clubs: { slug: string; name: string } | null; player_valuations: { value_eur: number } | null };
+      players: { slug: string; name: string; known_as: string | null; clubs: { slug: string; name: string } | null; player_valuations: { value_eur: number } | null };
     }
   >;
   return rows.map((row) => {
@@ -374,6 +375,7 @@ export async function getStatLeaders(metric: "goals" | "assists" | "rating", lim
     return {
       slug: row.players.slug,
       name: row.players.name,
+      displayName: row.players.known_as ?? row.players.name,
       club: row.players.clubs?.name ?? "—",
       clubBg: style.bg,
       clubColor: style.color,

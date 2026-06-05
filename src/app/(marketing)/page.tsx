@@ -387,7 +387,7 @@ function MoversList({
                 {p.clubShort.slice(0, 3)}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[13.5px] font-medium truncate">{p.name}</div>
+                <div className="text-[13.5px] font-medium truncate">{p.displayName}</div>
                 <div className="text-[11px] text-mute truncate">
                   {p.club}
                   {p.age ? <> &middot; {p.age}y</> : null}

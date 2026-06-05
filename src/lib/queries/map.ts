@@ -8,7 +8,8 @@ const DAY = 86_400_000;
 export interface PlayerListItem {
   id: string;
   slug: string;
-  name: string;
+  name: string;       // full legal name (for search/SEO)
+  displayName: string; // fan-facing: "Kylian Mbappé" not "Kylian Mbappé Lottin"
   pos: string;
   age: number;
   club: string;
@@ -27,6 +28,7 @@ export interface PlayerRowDB {
   id: string;
   slug: string;
   name: string;
+  known_as: string | null;
   position: string | null;
   age: number | null;
   clubs: {
@@ -51,6 +53,7 @@ export function toPlayerListItem(r: PlayerRowDB, now: Date = new Date()): Player
     id: r.id,
     slug: r.slug,
     name: r.name,
+    displayName: r.known_as ?? r.name,
     pos: r.position ?? "—",
     age: r.age ?? 0,
     club: r.clubs?.name ?? "Free agent",
@@ -71,7 +74,8 @@ export function toPlayerListItem(r: PlayerRowDB, now: Date = new Date()): Player
 export interface PlayerProfile {
   id: string;
   slug: string;
-  name: string;
+  name: string;        // full legal name (search/SEO/meta)
+  displayName: string; // fan-facing display: "Kylian Mbappé"
   firstName: string;
   lastName: string;
   position: string;
@@ -101,6 +105,7 @@ export interface PlayerProfileRow {
   id: string;
   slug: string;
   name: string;
+  known_as: string | null;
   position: string | null;
   age: number | null;
   dob: string | null;
@@ -135,8 +140,9 @@ export function toPlayerProfile(r: PlayerProfileRow, now: Date = new Date()): Pl
   const dMonth = value - liveValue(anchor, r.id, new Date(now.getTime() - 30 * DAY));
   const style = clubStyle(r.clubs?.slug ?? r.id);
 
-  const words = r.name.trim().split(/\s+/);
-  const lastName = words.length > 1 ? words[words.length - 1] : r.name;
+  const displayName = r.known_as ?? r.name;
+  const words = displayName.trim().split(/\s+/);
+  const lastName = words.length > 1 ? words[words.length - 1] : displayName;
   const firstName = words.length > 1 ? words.slice(0, -1).join(" ") : "";
 
   const scores = r.player_valuations?.pillar_scores ?? {};
@@ -158,6 +164,7 @@ export function toPlayerProfile(r: PlayerProfileRow, now: Date = new Date()): Pl
     id: r.id,
     slug: r.slug,
     name: r.name,
+    displayName,
     firstName,
     lastName,
     position: r.position ?? "—",

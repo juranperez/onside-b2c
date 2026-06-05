@@ -18,8 +18,8 @@ function Row({ p }: { p: PlayerListItem }) {
   return (
     <Link href={`/players/${p.slug}`}>
       <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition border-b border-line last:border-0 cursor-pointer">
-        <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={26} />
-        <span className="text-[13px] font-medium truncate flex-1">{p.name}</span>
+        <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={26} />
+        <span className="text-[13px] font-medium truncate flex-1">{p.displayName}</span>
         <Sparkline points={p.spark} width={40} />
         <div className="text-right shrink-0 w-[72px]">
           <div className="num text-[12px] font-semibold">€{p.val.toFixed(1)}M</div>

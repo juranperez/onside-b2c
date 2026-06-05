@@ -3,7 +3,8 @@ import { clubStyle, monogram } from "../club-style";
 
 export interface ValueGap {
   slug: string;
-  name: string;
+  name: string;       // full legal name (search/SEO)
+  displayName: string; // fan-facing
   pos: string;
   club: string;
   clubSlug: string;
@@ -22,6 +23,7 @@ interface GapRow {
   players: {
     slug: string;
     name: string;
+    known_as: string | null;
     position: string | null;
     clubs: { name: string; slug: string; short_name: string | null } | null;
   } | null;
@@ -41,7 +43,7 @@ export async function getUndervaluedXI(): Promise<{ pos: string; players: ValueG
   // jsonb-key filters are fragile, and the notable gaps live among high values anyway.
   const { data } = await readDb()
     .from("player_valuations")
-    .select("value_eur, pillar_scores, players!inner(slug,name,position, clubs(name,slug,short_name))")
+    .select("value_eur, pillar_scores, players!inner(slug,name,known_as,position, clubs(name,slug,short_name))")
     .order("value_eur", { ascending: false })
     .limit(1500);
 
@@ -59,6 +61,7 @@ export async function getUndervaluedXI(): Promise<{ pos: string; players: ValueG
     gaps.push({
       slug: p.slug,
       name: p.name,
+      displayName: p.known_as ?? p.name,
       pos: p.position ?? "—",
       club: p.clubs?.name ?? "—",
       clubSlug: p.clubs?.slug ?? "",

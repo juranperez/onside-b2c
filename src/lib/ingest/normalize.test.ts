@@ -7,6 +7,7 @@ import {
   pickLeagueStat,
   per90,
   fullName,
+  knownAs,
   normalizePlayer,
   type RawPlayer,
 } from "./normalize";
@@ -43,6 +44,33 @@ describe("per90", () => {
 describe("fullName", () => {
   it("prefers firstname + lastname over the abbreviated name", () => {
     expect(fullName(gakpo.player)).toBe("Cody Mathès Gakpo");
+  });
+});
+
+describe("knownAs", () => {
+  it("returns firstname + first meaningful lastname token", () => {
+    // Cody Mathès Gakpo: firstname="Cody Mathès", lastname="Gakpo" → "Cody Mathès Gakpo"
+    // (lastname is single-word so knownAs = fullName here)
+    expect(knownAs(gakpo.player)).toBe("Cody Mathès Gakpo");
+  });
+
+  it("returns just the name for single-name players (no firstname/lastname)", () => {
+    // Alisson: firstname="Alisson", lastname="Becker" → "Alisson Becker"
+    expect(knownAs(alisson.player)).toBe("Alisson Becker");
+  });
+
+  it("skips particles in lastname", () => {
+    const mbappe = {
+      id: 1, name: "K. Mbappé",
+      firstname: "Kylian", lastname: "Mbappé Lottin",
+    };
+    expect(knownAs(mbappe)).toBe("Kylian Mbappé");
+  });
+
+  it("skips leading particles (van, de, etc.) in lastname", () => {
+    const player = { id: 2, name: "L. de Ligt", firstname: "Matthijs", lastname: "de Ligt" };
+    // "de" is a particle → takes "Ligt" as the meaningful token
+    expect(knownAs(player)).toBe("Matthijs Ligt");
   });
 });
 

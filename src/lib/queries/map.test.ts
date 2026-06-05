@@ -5,6 +5,7 @@ const row: PlayerRowDB = {
   id: "247",
   slug: "cody-mathes-gakpo",
   name: "Cody Mathès Gakpo",
+  known_as: "Cody Gakpo",   // fan name: firstname + last meaningful surname token
   position: "MID",
   age: 26,
   clubs: { slug: "liverpool", name: "Liverpool", short_name: null, leagues: { slug: "premier-league", name: "Premier League" } },
@@ -14,7 +15,8 @@ const row: PlayerRowDB = {
 describe("toPlayerListItem", () => {
   it("maps DB fields and derives a live value in millions", () => {
     const item = toPlayerListItem(row, new Date("2026-06-03"));
-    expect(item.name).toBe("Cody Mathès Gakpo");
+    expect(item.name).toBe("Cody Mathès Gakpo");        // full legal name preserved
+    expect(item.displayName).toBe("Cody Gakpo");         // fan name from known_as
     expect(item.pos).toBe("MID");
     expect(item.club).toBe("Liverpool");
     expect(item.league).toBe("Premier League");
@@ -26,7 +28,7 @@ describe("toPlayerListItem", () => {
   });
 
   it("falls back gracefully when club/valuation are missing", () => {
-    const orphan: PlayerRowDB = { id: "9", slug: "x", name: "Trialist", position: null, age: null, clubs: null, player_valuations: null };
+    const orphan: PlayerRowDB = { id: "9", slug: "x", name: "Trialist", known_as: null, position: null, age: null, clubs: null, player_valuations: null };
     const item = toPlayerListItem(orphan, new Date("2026-06-03"));
     expect(item.club).toBe("Free agent");
     expect(item.clubShort).toBe("FC");

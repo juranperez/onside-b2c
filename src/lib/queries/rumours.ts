@@ -29,7 +29,7 @@ export interface RumourItem {
 }
 
 const RUMOUR_SELECT =
-  "id,to_club,reported_fee_eur,status,summary,primary_source,source_tier,corroborations,first_seen,url, players(id,slug,name,position,contract_until, clubs(name,short_name,slug), player_valuations(value_eur))";
+  "id,to_club,reported_fee_eur,status,summary,primary_source,source_tier,corroborations,first_seen,url, players(id,slug,name,known_as,position,contract_until, clubs(name,short_name,slug), player_valuations(value_eur))";
 
 interface RumourRow {
   id: string;
@@ -46,6 +46,7 @@ interface RumourRow {
     id: string;
     slug: string;
     name: string;
+    known_as: string | null;
     position: string | null;
     contract_until: number | null;
     clubs: { name: string; short_name: string | null; slug: string } | null;
@@ -84,7 +85,7 @@ function toItem(r: RumourRow, now: Date): RumourItem | null {
     player: {
       id: p.id,
       slug: p.slug,
-      name: p.name,
+      name: p.known_as ?? p.name,
       pos: p.position ?? "—",
       fromClub: p.clubs?.name ?? "Free agent",
       clubBg: style.bg,

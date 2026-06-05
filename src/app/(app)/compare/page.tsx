@@ -89,7 +89,7 @@ function Picker({ players, firstPick }: { players: PlayerListItem[]; firstPick: 
         </h1>
         <p className="text-[13px] text-mute mt-2">
           {firstPick && picked
-            ? `${picked.name} is in. Choose who they go up against.`
+            ? `${picked.displayName} is in. Choose who they go up against.`
             : "Choose your first player, then a second, to put them head to head."}
         </p>
       </div>
@@ -98,7 +98,7 @@ function Picker({ players, firstPick }: { players: PlayerListItem[]; firstPick: 
         <div className="flex items-center justify-center gap-3 mb-6">
           {picked ? (
             <Chip tone="acc" icon={<span className="num">A</span>}>
-              {picked.name}
+              {picked.displayName}
             </Chip>
           ) : (
             <Chip tone="acc">Player A selected</Chip>
@@ -135,10 +135,10 @@ function Picker({ players, firstPick }: { players: PlayerListItem[]; firstPick: 
                 />
                 <div className="relative">
                   <div className="flex items-start justify-between mb-4">
-                    <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={48} />
+                    <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={48} />
                     {isPicked ? <Chip tone="acc">Picked</Chip> : <Delta value={p.dWeek} big />}
                   </div>
-                  <div className="text-[15px] font-semibold leading-tight">{p.name}</div>
+                  <div className="text-[15px] font-semibold leading-tight">{p.displayName}</div>
                   <div className="text-[11.5px] text-mute mt-1 flex items-center gap-1.5">
                     <div
                       className="w-3 h-3 rounded-[3px] grid place-items-center text-[6px] font-bold num"
@@ -270,7 +270,7 @@ function Comparison({ a, b }: { a: PlayerProfile; b: PlayerProfile }) {
       </Card>
 
       <div className="flex items-center justify-center gap-4 mt-6">
-        <ShareButton title={`${a.name} vs ${b.name} — Onside head-to-head`} />
+        <ShareButton title={`${a.displayName} vs ${b.displayName} — Onside head-to-head`} />
         <Link href="/compare" className="text-[13px] text-mute hover:text-fg transition">
           Compare a different pair
         </Link>
@@ -284,10 +284,10 @@ function PlayerHeadCard({ p, badge, highlight }: { p: PlayerProfile; badge: stri
     <Link href={`/players/${p.slug}`} className="block">
       <Card className={cn("p-5 text-center h-full transition hover:bg-ink-800", highlight && "ring-1 ring-up/40")}>
         <div className="flex justify-center mb-3">
-          <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={64} ring />
+          <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={64} ring />
         </div>
         <div className="text-[10px] uppercase tracking-[0.18em] text-mute-soft num">{badge}</div>
-        <div className="mt-1 text-[16px] font-semibold">{p.name}</div>
+        <div className="mt-1 text-[16px] font-semibold">{p.displayName}</div>
         <div className="text-[12px] text-mute">
           {p.club?.name ?? "Free agent"} &middot; {p.position}
         </div>

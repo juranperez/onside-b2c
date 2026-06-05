@@ -101,9 +101,9 @@ export default async function DiscoverPage() {
                   <Link key={p.id} href={`/players/${p.slug}`}>
                     <Card className="p-4 hover:bg-ink-800 transition cursor-pointer h-full">
                       <div className="flex items-center gap-3">
-                        <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={36} />
+                        <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={36} />
                         <div className="flex-1 min-w-0">
-                          <div className="text-[13px] font-semibold truncate">{p.name}</div>
+                          <div className="text-[13px] font-semibold truncate">{p.displayName}</div>
                           <div className="text-[11px] text-mute truncate">
                             <span className="inline-flex items-center gap-1 align-middle">
                               <span
@@ -163,8 +163,8 @@ export default async function DiscoverPage() {
                 {trending.map((p) => (
                   <Link key={p.id} href={`/players/${p.slug}`}>
                     <div className="flex items-center gap-2 py-1.5 -mx-2 px-2 rounded hover:bg-overlay/[0.03] transition">
-                      <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={24} />
-                      <span className="text-[12px] flex-1 truncate">{p.name}</span>
+                      <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={24} />
+                      <span className="text-[12px] flex-1 truncate">{p.displayName}</span>
                       <Delta value={p.dWeek} />
                     </div>
                   </Link>

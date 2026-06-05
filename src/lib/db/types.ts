@@ -472,6 +472,7 @@ export type Database = {
           foot: string | null
           height_cm: number | null
           id: string
+          known_as: string | null
           name: string
           name_norm: string | null
           nationality: string | null
@@ -490,6 +491,7 @@ export type Database = {
           foot?: string | null
           height_cm?: number | null
           id: string
+          known_as?: string | null
           name: string
           name_norm?: string | null
           nationality?: string | null
@@ -508,6 +510,7 @@ export type Database = {
           foot?: string | null
           height_cm?: number | null
           id?: string
+          known_as?: string | null
           name?: string
           name_norm?: string | null
           nationality?: string | null
