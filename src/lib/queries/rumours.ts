@@ -109,6 +109,35 @@ export async function getRumours(limit = 60): Promise<RumourItem[]> {
     .filter((x): x is RumourItem => x !== null);
 }
 
+/** A single rumour by id (for the detail page). */
+export async function getRumourById(id: string): Promise<RumourItem | null> {
+  const { data } = await readDb().from("rumours").select(RUMOUR_SELECT).eq("id", id).maybeSingle();
+  if (!data) return null;
+  return toItem(data as unknown as RumourRow, new Date());
+}
+
+export interface CommentItem {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: string;
+}
+
+/** Discussion thread for a rumour. */
+export async function getRumourComments(rumourId: string): Promise<CommentItem[]> {
+  const { data } = await readDb()
+    .from("rumour_comments")
+    .select("id,body,created_at,author_name")
+    .eq("rumour_id", rumourId)
+    .order("created_at", { ascending: true });
+  return (data ?? []).map((c) => ({
+    id: c.id,
+    body: c.body,
+    createdAt: c.created_at,
+    author: c.author_name || "Member",
+  }));
+}
+
 /** Active rumours involving one player (for the profile "rumour status" strip). */
 export async function getRumoursForPlayer(playerId: string): Promise<RumourItem[]> {
   const { data } = await readDb()

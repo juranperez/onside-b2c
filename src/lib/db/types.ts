@@ -549,6 +549,48 @@ export type Database = {
         }
         Relationships: []
       }
+      rumour_comments: {
+        Row: {
+          author_name: string | null
+          body: string
+          created_at: string
+          id: string
+          profile_id: string
+          rumour_id: string
+        }
+        Insert: {
+          author_name?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          profile_id: string
+          rumour_id: string
+        }
+        Update: {
+          author_name?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          profile_id?: string
+          rumour_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rumour_comments_rumour_id_fkey"
+            columns: ["rumour_id"]
+            isOneToOne: false
+            referencedRelation: "rumours"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rumour_comments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rumours: {
         Row: {
           corroborations: number

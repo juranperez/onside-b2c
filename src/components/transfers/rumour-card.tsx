@@ -71,7 +71,12 @@ export function RumourCard({ r }: { r: RumourItem }) {
           {r.source}
           {r.corroborations > 1 ? ` +${r.corroborations - 1} more` : ""}
         </span>
-        <span className="num shrink-0">{timeAgo(r.firstSeen)}</span>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <span className="num">{timeAgo(r.firstSeen)}</span>
+          <Link href={`/transfers/${r.id}`} className="text-acc hover:underline font-medium">
+            Discuss →
+          </Link>
+        </div>
       </div>
     </div>
   );

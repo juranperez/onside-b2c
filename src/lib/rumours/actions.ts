@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { adminDb } from "@/lib/db/admin";
-import { getSessionUser } from "@/lib/db/supabase-server";
+import { getSessionUser, createSupabaseServer } from "@/lib/db/supabase-server";
 
 // Single-owner curation for now. Set ADMIN_EMAIL in env to override.
 const OWNER = (process.env.ADMIN_EMAIL ?? "juranperez@gmail.com").toLowerCase();
@@ -73,4 +73,29 @@ export async function setRumourStatus(id: string, status: "rumour" | "confirmed"
   if (!(await isCurator())) return;
   await adminDb().from("rumours").update({ status, last_update: new Date().toISOString() }).eq("id", id);
   revalidatePath("/transfers");
+}
+
+// ── Community discussion ──────────────────────────────────────────────────
+export type CommentActionState = { ok?: boolean; error?: string };
+
+/** Post a comment on a rumour (signed-in users; RLS scopes to the author). */
+export async function postComment(rumourId: string, _prev: CommentActionState, formData: FormData): Promise<CommentActionState> {
+  const user = await getSessionUser();
+  if (!user) return { error: "Sign in to join the discussion." };
+  const body = String(formData.get("body") ?? "").trim();
+  if (!body) return { error: "Say something first." };
+
+  const supabase = await createSupabaseServer();
+  const { data: prof } = await supabase.from("profiles").select("display_name,username").eq("id", user.id).maybeSingle();
+  const author = prof?.display_name || prof?.username || (user.email ?? "Member").split("@")[0];
+
+  const { error } = await supabase.from("rumour_comments").insert({
+    rumour_id: rumourId,
+    profile_id: user.id,
+    body: body.slice(0, 1000),
+    author_name: author,
+  });
+  if (error) return { error: error.message };
+  revalidatePath(`/transfers/${rumourId}`);
+  return { ok: true };
 }
