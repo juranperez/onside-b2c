@@ -19,6 +19,8 @@
     "value:fallback": "node --env-file=.env.local --import tsx scripts/value-fallback.ts",
     "populate:rumours": "node --env-file=.env.local --import tsx scripts/populate-rumours.ts",
     "refresh:anchors": "node --env-file=.env.local --import tsx scripts/refresh-anchors.ts",
+    "sync:wikidata-names": "node --env-file=.env.local --import tsx scripts/sync-wikidata-names.ts",
+    "sync:player-photos": "node --env-file=.env.local --import tsx scripts/sync-player-photos.ts",
     "ingest:once": "node --env-file=.env.local --import tsx scripts/ingest-once.ts"
   },
   "dependencies": {

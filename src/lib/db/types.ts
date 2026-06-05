@@ -476,6 +476,7 @@ export type Database = {
           name: string
           name_norm: string | null
           nationality: string | null
+          photo_url: string | null
           position: string | null
           shirt_no: number | null
           slug: string
@@ -495,6 +496,7 @@ export type Database = {
           name: string
           name_norm?: string | null
           nationality?: string | null
+          photo_url?: string | null
           position?: string | null
           shirt_no?: number | null
           slug: string
@@ -514,6 +516,7 @@ export type Database = {
           name?: string
           name_norm?: string | null
           nationality?: string | null
+          photo_url?: string | null
           position?: string | null
           shirt_no?: number | null
           slug?: string

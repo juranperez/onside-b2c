@@ -25,6 +25,25 @@ export const LEAGUES: LeagueConfig[] = [
   // Calendar-year leagues (mid-2026 season in progress)
   { apiId: 253, season: 2026, name: "MLS", slug: "mls", country: "USA" },
   { apiId: 71, season: 2026, name: "Brasileirao", slug: "brasileirao", country: "Brazil" },
+  // ── Phase 1 expansion (2026-06-06) ────────────────────────────────────────
+  // 14 additional top-flight leagues (~+8,000 players). Many World Cup squads
+  // feature players from these leagues. API cost: ~20 calls each.
+  // European calendar (season 2025 = 2025/26):
+  { apiId: 144, season: 2025, name: "Jupiler Pro League", slug: "jupiler-pro-league", country: "Belgium" },
+  { apiId: 179, season: 2025, name: "Scottish Premiership", slug: "scottish-premiership", country: "Scotland" },
+  { apiId: 218, season: 2025, name: "Austrian Bundesliga", slug: "austrian-bundesliga", country: "Austria" },
+  { apiId: 207, season: 2025, name: "Swiss Super League", slug: "swiss-super-league", country: "Switzerland" },
+  { apiId: 119, season: 2025, name: "Danish Superliga", slug: "danish-superliga", country: "Denmark" },
+  { apiId: 197, season: 2025, name: "Greek Super League", slug: "greek-super-league", country: "Greece" },
+  { apiId: 106, season: 2025, name: "Ekstraklasa", slug: "ekstraklasa", country: "Poland" },
+  { apiId: 169, season: 2025, name: "Ukrainian Premier League", slug: "ukrainian-premier-league", country: "Ukraine" },
+  // Asia / Americas (calendar-year seasons):
+  { apiId: 235, season: 2025, name: "K League 1", slug: "k-league-1", country: "South Korea" },
+  { apiId: 98, season: 2026, name: "J1 League", slug: "j1-league", country: "Japan" },
+  { apiId: 103, season: 2026, name: "Eliteserien", slug: "eliteserien", country: "Norway" },
+  { apiId: 113, season: 2026, name: "Allsvenskan", slug: "allsvenskan", country: "Sweden" },
+  { apiId: 288, season: 2025, name: "Liga BetPlay", slug: "liga-betplay", country: "Colombia" },
+  { apiId: 239, season: 2025, name: "Chinese Super League", slug: "chinese-super-league", country: "China" },
 ];
 
 /** Subset synced for the launch. Trim or extend as rate budget allows. */
