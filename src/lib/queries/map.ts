@@ -20,6 +20,7 @@ export interface PlayerListItem {
   leagueSlug: string;
   val: number; // millions
   dWeek: number; // millions
+  spark: number[]; // recent weekly values (millions) for the trend sparkline
 }
 
 export interface PlayerRowDB {
@@ -42,6 +43,10 @@ export function toPlayerListItem(r: PlayerRowDB, now: Date = new Date()): Player
   const style = clubStyle(r.clubs?.slug ?? r.id);
   const valNow = liveValue(anchor, r.id, now);
   const valWeekAgo = liveValue(anchor, r.id, new Date(now.getTime() - 7 * DAY));
+  const spark: number[] = [];
+  for (let k = 7; k >= 0; k--) {
+    spark.push(Math.round((liveValue(anchor, r.id, new Date(now.getTime() - k * 7 * DAY)) / 1e6) * 10) / 10);
+  }
   return {
     id: r.id,
     slug: r.slug,
@@ -57,6 +62,7 @@ export function toPlayerListItem(r: PlayerRowDB, now: Date = new Date()): Player
     leagueSlug: r.clubs?.leagues?.slug ?? "",
     val: Math.round((valNow / 1e6) * 10) / 10,
     dWeek: Math.round(((valNow - valWeekAgo) / 1e6) * 10) / 10,
+    spark,
   };
 }
 

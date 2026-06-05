@@ -9,14 +9,15 @@ import { OnsideMark } from "@/components/ui/logo";
 import { createClient } from "@/lib/db/supabase-browser";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
+// Surface the real destinations (Clubs, Leagues) and drop the not-yet-live
+// Community / AI Coach dead ends. Watchlist lives on the user avatar.
 const NAV_ITEMS: { href: string; label: string; special?: boolean }[] = [
   { href: "/discover", label: "Discover" },
   { href: "/players", label: "Players" },
+  { href: "/clubs", label: "Clubs" },
+  { href: "/leagues", label: "Leagues" },
   { href: "/worldcup", label: "World Cup", special: true },
   { href: "/compare", label: "Compare" },
-  { href: "/community", label: "Community" },
-  { href: "/coach", label: "AI Coach" },
-  { href: "/watchlist", label: "Watchlist" },
 ];
 
 function Logo() {

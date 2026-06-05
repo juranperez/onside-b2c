@@ -5,6 +5,7 @@ import Link from "next/link";
 import { cn, fmtVal } from "@/lib/utils";
 import { LayoutGrid, List } from "lucide-react";
 import { Tabs, Card, Avatar, Delta } from "@/components/ui";
+import { Sparkline } from "@/components/ui/sparkline";
 import type { PlayerListItem } from "@/lib/queries/map";
 
 type SortKey = "val" | "rise" | "age";
@@ -110,6 +111,7 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
                       <div className="num display text-[24px] leading-none">{fmtVal(p.val)}</div>
                       <div className="text-[10.5px] text-mute-soft mt-1 num">{p.age ? `${p.age}y` : "—"}</div>
                     </div>
+                    <Sparkline points={p.spark} />
                   </div>
                 </div>
               </div>
@@ -139,7 +141,8 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
                 <span className="num text-[12px] text-right">{p.pos}</span>
                 <span className="num text-[12px] text-right">{p.age || "—"}</span>
                 <span className="num text-[13px] text-right font-semibold">{fmtVal(p.val)}</span>
-                <span className="text-right">
+                <span className="flex items-center justify-end gap-1.5">
+                  <Sparkline points={p.spark} width={36} />
                   <Delta value={p.dWeek} />
                 </span>
                 <span className="num text-[11px] text-right text-mute truncate">{p.league}</span>

@@ -5,6 +5,7 @@ import { fmtVal, fmtDelta } from "@/lib/format";
 import { Card, Avatar, Delta, Chip, SectionHead, Button } from "@/components/ui";
 import { JsonLd } from "@/components/seo/json-ld";
 import { WatchButton } from "@/components/players/WatchButton";
+import { ShareButton } from "@/components/ui/share-button";
 import { getPlayerBySlug, getSimilarPlayers } from "@/lib/queries";
 
 export const revalidate = 3600;
@@ -108,7 +109,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
               </div>
               <div className="mt-4 flex items-center gap-2 justify-end">
                 <WatchButton playerId={player.id} />
-                <Button kind="ghost" size="sm">Share</Button>
+                <ShareButton title={`${player.name} — Onside valuation ${fmtVal(player.value)}`} />
               </div>
             </div>
           </div>

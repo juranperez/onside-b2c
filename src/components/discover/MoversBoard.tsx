@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Card, Avatar, Delta } from "@/components/ui";
+import { Sparkline } from "@/components/ui/sparkline";
 import type { PlayerListItem } from "@/lib/queries/map";
 
 type Dir = "all" | "up" | "down";
@@ -81,7 +82,7 @@ export function MoversBoard({ movers }: { movers: PlayerListItem[] }) {
                 </div>
                 <div className="flex items-center justify-between mt-3">
                   <span className="num text-[18px] font-bold">€{p.val.toFixed(1)}M</span>
-                  <span className="text-[10px] text-mute-soft num">{p.pos}</span>
+                  <Sparkline points={p.spark} width={52} />
                 </div>
               </Card>
             </Link>

@@ -1,22 +1,18 @@
 import Link from "next/link";
 import { OnsideMark } from "@/components/ui/logo";
 
+// Only surface live destinations — no Coming-Soon dead ends (Transfers/Forums/Coach).
 const LINKS = {
   Product: [
+    { href: "/discover", label: "Discover" },
     { href: "/players", label: "Players" },
     { href: "/clubs", label: "Clubs" },
     { href: "/leagues", label: "Leagues" },
-    { href: "/transfers", label: "Transfers" },
-    { href: "/worldcup", label: "World Cup 2026" },
-  ],
-  Community: [
-    { href: "/community", label: "Forums" },
-    { href: "/coach", label: "AI Coach" },
     { href: "/compare", label: "Compare" },
+    { href: "/worldcup", label: "World Cup 2026" },
   ],
   Company: [
     { href: "/pricing", label: "Pricing" },
-    { href: "/methodology", label: "About" },
     { href: "/methodology", label: "Methodology" },
     { href: "/data-sources", label: "Data sources" },
     { href: "/privacy", label: "Privacy" },
@@ -28,7 +24,7 @@ export function Footer() {
   return (
     <footer className="border-t border-line bg-ink-950">
       <div className="max-w-[1440px] mx-auto px-6 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
               <OnsideMark size={18} />
