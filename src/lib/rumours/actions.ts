@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { adminDb } from "@/lib/db/admin";
 import { getSessionUser, createSupabaseServer } from "@/lib/db/supabase-server";
+import { getRumourById } from "@/lib/queries/rumours";
 
 // Single-owner curation for now. Set ADMIN_EMAIL in env to override.
 const OWNER = (process.env.ADMIN_EMAIL ?? "juranperez@gmail.com").toLowerCase();
@@ -71,8 +72,23 @@ export async function deleteRumour(id: string): Promise<void> {
 
 export async function setRumourStatus(id: string, status: "rumour" | "confirmed" | "dead"): Promise<void> {
   if (!(await isCurator())) return;
-  await adminDb().from("rumours").update({ status, last_update: new Date().toISOString() }).eq("id", id);
+  const now = new Date().toISOString();
+  const update: { status: string; last_update: string; resolved_confidence?: number; resolved_at?: string } = {
+    status,
+    last_update: now,
+  };
+  if (status === "confirmed" || status === "dead") {
+    // Snapshot the live Confidence % (still computed as an active rumour) so the
+    // Accuracy Report can grade how the score performed.
+    const r = await getRumourById(id).catch(() => null);
+    if (r && r.status === "rumour") {
+      update.resolved_confidence = r.confidence.pct;
+      update.resolved_at = now;
+    }
+  }
+  await adminDb().from("rumours").update(update).eq("id", id);
   revalidatePath("/transfers");
+  revalidatePath(`/transfers/${id}`);
 }
 
 // ── Community discussion ──────────────────────────────────────────────────

@@ -80,3 +80,53 @@ export async function getUndervaluedXI(): Promise<{ pos: string; players: ValueG
       .slice(0, FORMATION[pos]),
   }));
 }
+
+// ── Accuracy Report ────────────────────────────────────────────────────────
+
+export interface AccuracyBand {
+  band: "high" | "medium" | "low";
+  label: string;
+  total: number;
+  confirmed: number;
+  rate: number | null;
+}
+export interface AccuracyReport {
+  resolved: number;
+  confirmed: number;
+  dead: number;
+  hitRate: number | null;
+  highBandRate: number | null; // share of 70%+ rumours that were confirmed
+  bands: AccuracyBand[];
+}
+
+/** How the Confidence % performed — graded against rumours that have since resolved. */
+export async function getAccuracyReport(): Promise<AccuracyReport> {
+  const { data } = await readDb().from("rumours").select("status, resolved_confidence").not("resolved_at", "is", null);
+  const rows = (data ?? []) as { status: string; resolved_confidence: number | null }[];
+  const resolved = rows.length;
+  const confirmed = rows.filter((r) => r.status === "confirmed").length;
+  const dead = rows.filter((r) => r.status === "dead").length;
+  const bucket = (c: number | null) => (c == null ? null : c >= 70 ? "high" : c >= 40 ? "medium" : "low");
+
+  const bands = (["high", "medium", "low"] as const).map((b) => {
+    const inBand = rows.filter((r) => bucket(r.resolved_confidence) === b);
+    const conf = inBand.filter((r) => r.status === "confirmed").length;
+    return {
+      band: b,
+      label: b === "high" ? "70%+" : b === "medium" ? "40–69%" : "Below 40%",
+      total: inBand.length,
+      confirmed: conf,
+      rate: inBand.length ? Math.round((conf / inBand.length) * 100) : null,
+    };
+  });
+
+  const high = rows.filter((r) => (r.resolved_confidence ?? 0) >= 70);
+  return {
+    resolved,
+    confirmed,
+    dead,
+    hitRate: resolved ? Math.round((confirmed / resolved) * 100) : null,
+    highBandRate: high.length ? Math.round((high.filter((r) => r.status === "confirmed").length / high.length) * 100) : null,
+    bands,
+  };
+}

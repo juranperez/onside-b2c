@@ -600,6 +600,8 @@ export type Database = {
           player_id: string
           primary_source: string
           reported_fee_eur: number | null
+          resolved_at: string | null
+          resolved_confidence: number | null
           source_tier: number
           status: string
           summary: string
@@ -614,6 +616,8 @@ export type Database = {
           player_id: string
           primary_source: string
           reported_fee_eur?: number | null
+          resolved_at?: string | null
+          resolved_confidence?: number | null
           source_tier?: number
           status?: string
           summary: string
@@ -628,6 +632,8 @@ export type Database = {
           player_id?: string
           primary_source?: string
           reported_fee_eur?: number | null
+          resolved_at?: string | null
+          resolved_confidence?: number | null
           source_tier?: number
           status?: string
           summary?: string
