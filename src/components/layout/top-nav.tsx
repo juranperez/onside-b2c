@@ -16,6 +16,7 @@ const NAV_ITEMS: { href: string; label: string; special?: boolean }[] = [
   { href: "/players", label: "Players" },
   { href: "/clubs", label: "Clubs" },
   { href: "/leagues", label: "Leagues" },
+  { href: "/transfers", label: "Transfers" },
   { href: "/worldcup", label: "World Cup", special: true },
   { href: "/compare", label: "Compare" },
 ];

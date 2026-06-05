@@ -6,6 +6,8 @@ import { Card, Avatar, Delta, Chip, SectionHead, Button } from "@/components/ui"
 import { JsonLd } from "@/components/seo/json-ld";
 import { WatchButton } from "@/components/players/WatchButton";
 import { ShareButton } from "@/components/ui/share-button";
+import { RumourCard } from "@/components/transfers/rumour-card";
+import { getRumoursForPlayer } from "@/lib/queries/rumours";
 import { getPlayerBySlug, getSimilarPlayers } from "@/lib/queries";
 
 export const revalidate = 3600;
@@ -37,6 +39,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   }
 
   const similar = await getSimilarPlayers(player).catch(() => []);
+  const rumours = await getRumoursForPlayer(player.id).catch(() => []);
   const maxV = Math.max(...player.series.map((s) => s.v), 1);
   const minV = Math.min(...player.series.map((s) => s.v), 0);
   const range = maxV - minV || 1;
@@ -120,6 +123,17 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
       <div className="max-w-[1440px] mx-auto px-6 py-8">
         <div className="grid lg:grid-cols-[1fr_340px] gap-6">
           <div className="space-y-6">
+            {/* Transfer rumours involving this player */}
+            {rumours.length > 0 && (
+              <div>
+                <SectionHead eyebrow="Transfer room" title="Rumour status" />
+                <div className="space-y-3">
+                  {rumours.map((r) => (
+                    <RumourCard key={r.id} r={r} />
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Valuation chart */}
             <Card className="p-6">
               <SectionHead eyebrow="12-month history" title="Valuation trajectory" />

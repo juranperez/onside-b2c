@@ -549,6 +549,59 @@ export type Database = {
         }
         Relationships: []
       }
+      rumours: {
+        Row: {
+          corroborations: number
+          first_seen: string
+          id: string
+          last_update: string
+          player_id: string
+          primary_source: string
+          reported_fee_eur: number | null
+          source_tier: number
+          status: string
+          summary: string
+          to_club: string
+          url: string | null
+        }
+        Insert: {
+          corroborations?: number
+          first_seen?: string
+          id?: string
+          last_update?: string
+          player_id: string
+          primary_source: string
+          reported_fee_eur?: number | null
+          source_tier?: number
+          status?: string
+          summary: string
+          to_club: string
+          url?: string | null
+        }
+        Update: {
+          corroborations?: number
+          first_seen?: string
+          id?: string
+          last_update?: string
+          player_id?: string
+          primary_source?: string
+          reported_fee_eur?: number | null
+          source_tier?: number
+          status?: string
+          summary?: string
+          to_club?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rumours_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transfers: {
         Row: {
           confidence: number | null
