@@ -156,14 +156,20 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
             {/* Valuation chart */}
             <Card className="p-6">
               <SectionHead eyebrow="12-month history" title="Valuation trajectory" />
-              <div className="h-[200px] flex items-end gap-1 mt-2">
+              <div className="h-[200px] flex items-end gap-1.5 mt-2">
                 {player.series.map((point, i) => {
                   const height = ((point.v - minV) / range) * 160 + 24;
                   const isLast = i === player.series.length - 1;
                   return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                      <span className={cn("num text-[9px]", isLast ? "text-up font-semibold" : "text-mute-soft")}>{point.v.toFixed(0)}</span>
-                      <div className={cn("w-full rounded-t-sm", isLast ? "bg-up" : "bg-ink-700")} style={{ height }} />
+                    <div key={i} className="group flex-1 flex flex-col items-center gap-1.5">
+                      <span className={cn("num text-[9px] tabular-nums transition-colors", isLast ? "text-up font-semibold" : "text-mute group-hover:text-fg")}>{point.v.toFixed(0)}</span>
+                      <div
+                        className={cn(
+                          "w-full rounded-t-md transition-all",
+                          isLast ? "bg-gradient-to-t from-up-dim to-up shadow-[0_0_24px_-4px_var(--color-up-glow)]" : "bg-gradient-to-t from-ink-750 to-ink-600 group-hover:to-ink-500",
+                        )}
+                        style={{ height }}
+                      />
                       <span className="num text-[8px] text-mute-soft">{point.label}</span>
                     </div>
                   );

@@ -15,10 +15,10 @@ export function radarRows(radar: Record<string, number>) {
   return AXES.map((ax) => ({ label: ax.label, display: ax.fmt(radar[ax.key] ?? 0) }));
 }
 
-export function PerformanceRadar({ radar, size = 224 }: { radar: Record<string, number>; size?: number }) {
+export function PerformanceRadar({ radar, size = 248 }: { radar: Record<string, number>; size?: number }) {
   const cx = size / 2;
   const cy = size / 2;
-  const R = size / 2 - 36;
+  const R = size / 2 - 40;
   const pt = (i: number, n: number): [number, number] => {
     const a = (-90 + i * 60) * (Math.PI / 180);
     return [cx + R * n * Math.cos(a), cy + R * n * Math.sin(a)];
@@ -42,7 +42,7 @@ export function PerformanceRadar({ radar, size = 224 }: { radar: Record<string, 
         const [x, y] = pt(i, 1);
         return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="var(--color-line)" strokeWidth={1} opacity={0.25} />;
       })}
-      <polygon points={poly} fill="var(--color-up)" fillOpacity={0.16} stroke="var(--color-up)" strokeWidth={2} strokeLinejoin="round" />
+      <polygon points={poly} fill="var(--color-up)" fillOpacity={0.2} stroke="var(--color-up)" strokeWidth={2.5} strokeLinejoin="round" />
       {vals.map((n, i) => {
         const [x, y] = pt(i, n);
         return <circle key={i} cx={x} cy={y} r={2.6} fill="var(--color-up)" />;
