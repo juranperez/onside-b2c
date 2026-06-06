@@ -480,6 +480,8 @@ export type Database = {
           position: string | null
           shirt_no: number | null
           slug: string
+          sportmonks_id: string | null
+          sportmonks_synced_at: string | null
         }
         Insert: {
           age?: number | null
@@ -500,6 +502,8 @@ export type Database = {
           position?: string | null
           shirt_no?: number | null
           slug: string
+          sportmonks_id?: string | null
+          sportmonks_synced_at?: string | null
         }
         Update: {
           age?: number | null
@@ -520,6 +524,8 @@ export type Database = {
           position?: string | null
           shirt_no?: number | null
           slug?: string
+          sportmonks_id?: string | null
+          sportmonks_synced_at?: string | null
         }
         Relationships: [
           {
