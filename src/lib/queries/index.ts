@@ -1,6 +1,7 @@
 import "server-only";
 import { readDb } from "../db/server";
 import { clubStyle, monogram } from "../club-style";
+import { onsideForecast, type Forecast } from "../forecast/onside-forecast";
 import {
   toPlayerListItem,
   toPlayerProfile,
@@ -414,6 +415,7 @@ export interface WcFixture {
   away: { slug: string; name: string };
   scoreHome: number | null;
   scoreAway: number | null;
+  forecast: Forecast | null; // Onside Forecast (squad-value-led); null when teams unknown or played
 }
 
 /** The full World Cup 2026 schedule, chronological. Teams joined in JS (home/away → national_teams). */
@@ -425,21 +427,34 @@ export async function getWcFixtures(): Promise<WcFixture[]> {
       .select("id,kickoff,round,status,venue,city,home_id,away_id,score_home,score_away")
       .eq("competition", "World Cup 2026")
       .order("kickoff", { ascending: true }),
-    db.from("national_teams").select("slug,name"),
+    db.from("national_teams").select("slug,name,squad_value,fifa_rank"),
   ]);
   if (fxRes.error) throw new Error(fxRes.error.message);
-  const nameBySlug = new Map((ntRes.data ?? []).map((n) => [n.slug, n.name]));
-  const team = (slug: string | null) => ({ slug: slug ?? "", name: (slug && nameBySlug.get(slug)) || "TBD" });
-  return (fxRes.data ?? []).map((f) => ({
-    id: f.id,
-    kickoff: f.kickoff,
-    round: f.round,
-    status: (f.status as FixtureStatus) ?? "scheduled",
-    venue: f.venue,
-    city: f.city,
-    home: team(f.home_id),
-    away: team(f.away_id),
-    scoreHome: f.score_home,
-    scoreAway: f.score_away,
-  }));
+  const metaBySlug = new Map(
+    (ntRes.data ?? []).map((n) => [n.slug, { name: n.name, value: n.squad_value, rank: n.fifa_rank }] as const),
+  );
+  const team = (slug: string | null) => ({ slug: slug ?? "", name: (slug && metaBySlug.get(slug)?.name) || "TBD" });
+  return (fxRes.data ?? []).map((f) => {
+    const h = f.home_id ? metaBySlug.get(f.home_id) : null;
+    const a = f.away_id ? metaBySlug.get(f.away_id) : null;
+    const status = (f.status as FixtureStatus) ?? "scheduled";
+    // Forecast only for upcoming fixtures with both squads valued (neutral WC venues).
+    const forecast =
+      status !== "finished" && h?.value && a?.value
+        ? onsideForecast({ homeValueEur: Number(h.value), awayValueEur: Number(a.value), homeRank: h.rank, awayRank: a.rank, neutral: true })
+        : null;
+    return {
+      id: f.id,
+      kickoff: f.kickoff,
+      round: f.round,
+      status,
+      venue: f.venue,
+      city: f.city,
+      home: team(f.home_id),
+      away: team(f.away_id),
+      scoreHome: f.score_home,
+      scoreAway: f.score_away,
+      forecast,
+    };
+  });
 }

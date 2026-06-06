@@ -89,6 +89,18 @@ function MatchRow({ f }: { f: WcFixture }) {
           {f.venue}
           {f.city ? ` · ${f.city}` : ""}
         </div>
+        {/* Onside Forecast — squad-value win probability (our own; WC isn't on Sportmonks) */}
+        {f.forecast && (
+          <div className="col-span-full mt-2 flex items-center gap-2">
+            <span className="text-[8.5px] uppercase tracking-[0.14em] text-mute-soft num shrink-0">Onside&nbsp;Forecast</span>
+            <div className="flex-1 flex h-1.5 rounded-full overflow-hidden" title={`${f.home.name} ${f.forecast.home}% · Draw ${f.forecast.draw}% · ${f.away.name} ${f.forecast.away}%`}>
+              <div style={{ width: `${f.forecast.home}%` }} className="bg-acc" />
+              <div style={{ width: `${f.forecast.draw}%` }} className="bg-ink-600" />
+              <div style={{ width: `${f.forecast.away}%` }} className="bg-fg/40" />
+            </div>
+            <span className="num text-[9.5px] text-mute-soft shrink-0 tabular-nums">{f.forecast.home}·{f.forecast.draw}·{f.forecast.away}</span>
+          </div>
+        )}
       </div>
     </Link>
   );
