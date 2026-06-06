@@ -7,6 +7,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { WatchButton } from "@/components/players/WatchButton";
 import { ShareButton } from "@/components/ui/share-button";
 import { RumourCard } from "@/components/transfers/rumour-card";
+import { PerformanceRadar, radarRows } from "@/components/players/PerformanceRadar";
 import { getRumoursForPlayer } from "@/lib/queries/rumours";
 import { getPlayerBySlug, getSimilarPlayers } from "@/lib/queries";
 
@@ -134,6 +135,24 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                 </div>
               </div>
             )}
+            {/* Performance radar — real Sportmonks per-90 data */}
+            {player.radar && (
+              <Card className="p-6">
+                <SectionHead eyebrow="Performance profile" title="How they play" />
+                <div className="flex flex-col sm:flex-row items-center gap-6 mt-1">
+                  <PerformanceRadar radar={player.radar} />
+                  <dl className="grid grid-cols-2 gap-x-6 gap-y-3 flex-1 w-full">
+                    {radarRows(player.radar).map((row) => (
+                      <div key={row.label} className="flex items-baseline justify-between border-b border-line/60 pb-1.5">
+                        <dt className="text-[12px] text-mute">{row.label}</dt>
+                        <dd className="num text-[14px] font-semibold tabular-nums">{row.display}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+                <p className="text-[10px] text-mute-soft mt-4">Per-90 and percentages, this season &middot; real data via Sportmonks</p>
+              </Card>
+            )}
             {/* Valuation chart */}
             <Card className="p-6">
               <SectionHead eyebrow="12-month history" title="Valuation trajectory" />
@@ -183,7 +202,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                       <div className="flex items-center gap-2 mb-2">
                         <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} src={p.photoUrl} size={28} />
                         <div className="min-w-0">
-                          <div className="text-[12px] font-semibold truncate">{p.name}</div>
+                          <div className="text-[12px] font-semibold truncate">{p.displayName}</div>
                           <div className="text-[10px] text-mute truncate">{p.club}</div>
                         </div>
                       </div>
@@ -202,7 +221,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
               <div className="space-y-2.5 text-[12px]">
                 {[
                   ["Age", player.age != null ? `${player.age} years` : "—"],
-                  ["Position", player.position],
+                  ["Position", player.detailedPos ?? player.position],
                   ["Foot", player.foot ?? "—"],
                   ["Height", player.heightCm ? `${player.heightCm} cm` : "—"],
                   ["Nationality", player.nationality ?? "—"],

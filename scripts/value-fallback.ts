@@ -46,11 +46,11 @@ async function main() {
   for (const batch of chunk(unmatched, 300)) {
     const { data, error } = await db
       .from("players")
-      .select("id,position,age,contract_until, clubs(slug, leagues(slug)), player_stats(goals,assists,minutes,apps,season)")
+      .select("id,position,age,contract_until, clubs(slug, leagues(slug)), player_stats(goals,assists,xg,minutes,apps,season)")
       .in("id", batch);
     if (error) throw new Error(error.message);
     for (const p of data ?? []) {
-      const rows = (p as unknown as { player_stats: { goals: number | null; assists: number | null; minutes: number | null; apps: number | null; season: number }[] }).player_stats ?? [];
+      const rows = (p as unknown as { player_stats: { goals: number | null; assists: number | null; xg: number | null; minutes: number | null; apps: number | null; season: number }[] }).player_stats ?? [];
       const stat = rows.slice().sort((a, b) => b.season - a.season)[0];
       const clubs = (p as unknown as { clubs: { leagues: { slug: string } | null } | null }).clubs;
       const r = fallbackValuation({
@@ -59,6 +59,7 @@ async function main() {
         leagueSlug: clubs?.leagues?.slug ?? null,
         goals: stat?.goals ?? 0,
         assists: stat?.assists ?? 0,
+        xg: stat?.xg ?? 0,
         minutes: stat?.minutes ?? 0,
         matches: stat?.apps ?? 0,
         contractUntil: p.contract_until,

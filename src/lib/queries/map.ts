@@ -106,6 +106,7 @@ export interface PlayerProfile {
   bandHigh: number;
   pillars: { label: string; value: number }[];
   stats: { season: number; apps: number; minutes: number; goals: number; assists: number; rating: number | null; xg: number | null } | null;
+  radar: Record<string, number> | null; // Sportmonks advanced per-90/% for the performance radar
   series: { label: string; v: number }[]; // millions, ~12 monthly points
 }
 
@@ -132,7 +133,7 @@ export interface PlayerProfileRow {
     band_low: number;
     band_high: number;
   } | null;
-  player_stats: { season: number; apps: number | null; minutes: number | null; goals: number | null; assists: number | null; rating: number | null; xg: number | null }[];
+  player_stats: { season: number; apps: number | null; minutes: number | null; goals: number | null; assists: number | null; rating: number | null; xg: number | null; advanced: Record<string, number> | null }[];
 }
 
 const PILLAR_LABELS: Record<string, string> = {
@@ -161,6 +162,12 @@ export function toPlayerProfile(r: PlayerProfileRow, now: Date = new Date()): Pl
     .map(([k, label]) => ({ label, value: Math.round(scores[k]) }));
 
   const stat = (r.player_stats ?? []).slice().sort((a, b) => b.season - a.season)[0] ?? null;
+  const radar = stat?.advanced && typeof stat.advanced === "object" ? stat.advanced : null;
+
+  // Confidence band derived from the LIVE value + confidence (the stored band_low/high
+  // are static-to-anchor and degenerate; this tracks the value and widens as confidence drops).
+  const confidence = r.player_valuations?.confidence_pct ?? 0;
+  const bandSpread = (1 - Math.min(Math.max(confidence, 0), 100) / 100) * 0.25 + 0.04;
 
   // 12 monthly history points from the deterministic Pulse, anchored to the model value.
   const series: { label: string; v: number }[] = [];
@@ -194,9 +201,9 @@ export function toPlayerProfile(r: PlayerProfileRow, now: Date = new Date()): Pl
     value,
     dWeek,
     dMonth,
-    confidence: r.player_valuations?.confidence_pct ?? 0,
-    bandLow: r.player_valuations?.band_low ?? 0,
-    bandHigh: r.player_valuations?.band_high ?? 0,
+    confidence,
+    bandLow: Math.round(value * (1 - bandSpread)),
+    bandHigh: Math.round(value * (1 + bandSpread)),
     pillars,
     stats: stat
       ? {
@@ -209,6 +216,7 @@ export function toPlayerProfile(r: PlayerProfileRow, now: Date = new Date()): Pl
           xg: stat.xg,
         }
       : null,
+    radar,
     series,
   };
 }

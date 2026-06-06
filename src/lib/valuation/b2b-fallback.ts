@@ -17,6 +17,7 @@ export interface FallbackInput {
   leagueSlug: string | null;
   goals: number;
   assists: number;
+  xg?: number; // season-total real xG (Sportmonks); refines the performance index when present
   minutes: number;
   matches: number;
   contractUntil: number | null;
@@ -46,7 +47,7 @@ const LEAGUE_TIER: Record<string, number> = {
   brasileirao: 0.5, "saudi-pro-league": 0.5, "primera-division-arg": 0.5, "liga-mx": 0.5, mls: 0.5,
 };
 
-const REFS = { goalsPer90: 0.45, assistsPer90: 0.3, matchesPlayed: 30, minutesPlayed: 2500 };
+const REFS = { goalsPer90: 0.45, assistsPer90: 0.3, xgPer90: 0.42, matchesPlayed: 30, minutesPlayed: 2500 };
 const VALUATION_FLOOR_EUR = 100_000;
 
 export function ageFactor(age: number): number {
@@ -60,13 +61,14 @@ export function ageFactor(age: number): number {
   return Math.max(0.15, 0.42 - (age - 33) * 0.1);
 }
 
-function performanceIndex(detailed: string, goalsPer90: number, assistsPer90: number): number {
+function performanceIndex(detailed: string, goalsPer90: number, assistsPer90: number, xgPer90: number): number {
   const w = POSITION_WEIGHTS[detailed] ?? POSITION_WEIGHTS.CM;
-  // Only goals + assists are available from the B2C; xg/xa/shots/passing are absent,
-  // so the index is computed over the active components (mirrors the B2B filter).
+  // goals + assists always available; real xG (Sportmonks) folds in when present.
+  // Index is computed over the ACTIVE components (mirrors the B2B filter).
   const comps = [
     { val: goalsPer90 / REFS.goalsPer90, weight: w.goals },
     { val: assistsPer90 / REFS.assistsPer90, weight: w.assists },
+    { val: xgPer90 / REFS.xgPer90, weight: xgPer90 > 0 ? w.xg : 0 },
   ].filter((c) => c.weight > 0 && c.val > 0);
   if (comps.length === 0) return 0.7;
   const activeWeight = comps.reduce((s, c) => s + c.weight, 0);
@@ -115,7 +117,7 @@ export function fallbackValuation(input: FallbackInput): FallbackResult {
   const base = POSITION_BASE[detailed] ?? 12_000_000;
 
   const per90 = (v: number) => (input.minutes > 0 ? (v / input.minutes) * 90 : 0);
-  const perfIndex = performanceIndex(detailed, per90(input.goals), per90(input.assists));
+  const perfIndex = performanceIndex(detailed, per90(input.goals), per90(input.assists), per90(input.xg ?? 0));
   const volMult = volumeMultiplier(input.matches, input.minutes);
   const league = input.leagueSlug ? (LEAGUE_TIER[input.leagueSlug] ?? 0.5) : 0.5;
   const contract = contractFactor(input.contractUntil);
