@@ -5,23 +5,29 @@ import Link from "next/link";
 import { Card, Avatar, Tabs } from "@/components/ui";
 import type { StatLeader } from "@/lib/queries";
 
-type Metric = "goals" | "assists" | "rating";
+type Metric = "goals" | "assists" | "rating" | "xg";
+
+const METRIC_LABEL: Record<Metric, string> = { goals: "Goals", assists: "Assists", rating: "Rating", xg: "xG" };
 
 function fmtStat(metric: Metric, v: number): string {
-  return metric === "rating" ? v.toFixed(2) : Math.round(v).toString();
+  if (metric === "rating") return v.toFixed(2);
+  if (metric === "xg") return v.toFixed(1);
+  return Math.round(v).toString();
 }
 
 export function StatLeaderboards({
   goals,
   assists,
   rating,
+  xg,
 }: {
   goals: StatLeader[];
   assists: StatLeader[];
   rating: StatLeader[];
+  xg: StatLeader[];
 }) {
   const [metric, setMetric] = useState<Metric>("goals");
-  const lists: Record<Metric, StatLeader[]> = { goals, assists, rating };
+  const lists: Record<Metric, StatLeader[]> = { goals, assists, rating, xg };
   const rows = lists[metric];
 
   return (
@@ -33,6 +39,7 @@ export function StatLeaderboards({
           tabs={[
             { id: "goals", label: "Goals" },
             { id: "assists", label: "Assists" },
+            { id: "xg", label: "xG" },
             { id: "rating", label: "Rating" },
           ]}
         />
@@ -51,7 +58,7 @@ export function StatLeaderboards({
             <span>#</span>
             <span>Player</span>
             <span>Club</span>
-            <span className="text-right capitalize">{metric}</span>
+            <span className="text-right">{METRIC_LABEL[metric]}</span>
             <span className="text-right">Onside</span>
           </div>
           {rows.map((p, i) => (

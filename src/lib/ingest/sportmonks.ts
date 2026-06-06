@@ -67,8 +67,49 @@ export const STAT = {
   KEY_PASSES: 117,
   CHANCES_CREATED: 9706,
   BIG_CHANCES_CREATED: 580,
+  // rich set → advanced JSONB (per-90 + %) for the profile radar
+  DRIBBLE_ATTEMPTS: 108,
+  SUCCESSFUL_DRIBBLES: 109,
+  DUELS: 105,
+  DUELS_WON: 106,
+  AERIALS: 27274,
+  AERIALS_WON: 107,
+  INTERCEPTIONS: 100,
+  TACKLES: 78,
+  CLEARANCES: 101,
+  BALL_RECOVERY: 27271,
+  ACCURATE_PASSES: 116,
+  PASSES: 80,
   // NOTE: no true "Expected Assists (xA)" exists in this plan — xa stays null (no floor-as-data).
 } as const;
+
+// Raw per-fixture sums we accumulate, then convert to per-90 / % for the radar.
+export interface RawStatSums {
+  mins: number; xg: number; keyPasses: number; chances: number;
+  dribbleAtt: number; dribbleOk: number; duels: number; duelsWon: number;
+  aerials: number; aerialsWon: number; interceptions: number; tackles: number;
+  clearances: number; recoveries: number; accPasses: number; passes: number;
+}
+
+// Compute the radar payload (per-90 + percentages) from accumulated sums.
+export function advancedFromSums(s: RawStatSums): Record<string, number> {
+  const p90 = (v: number) => (s.mins > 0 ? Math.round((v / s.mins) * 90 * 100) / 100 : 0);
+  const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 100) : 0);
+  return {
+    mins: s.mins,
+    xg_p90: p90(s.xg),
+    chances_p90: p90(s.chances),
+    key_passes_p90: p90(s.keyPasses),
+    dribbles_p90: p90(s.dribbleOk),
+    dribble_success_pct: pct(s.dribbleOk, s.dribbleAtt),
+    duels_won_pct: pct(s.duelsWon, s.duels),
+    aerials_won_pct: pct(s.aerialsWon, s.aerials),
+    interceptions_p90: p90(s.interceptions),
+    tackles_p90: p90(s.tackles),
+    recoveries_p90: p90(s.recoveries || s.clearances),
+    pass_accuracy_pct: pct(s.accPasses, s.passes),
+  };
+}
 
 export function canonicalPosition(detailedId: number | null | undefined, coarseId: number | null | undefined): { detailed: string | null; coarse: "GK" | "DEF" | "MID" | "FWD" | null } {
   const detailed = (detailedId != null && DETAILED_POSITION[detailedId]) || (coarseId != null && DETAILED_POSITION[coarseId]) || null;

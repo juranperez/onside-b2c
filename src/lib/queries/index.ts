@@ -358,7 +358,7 @@ export interface StatLeader {
   valueM: number;
 }
 
-export async function getStatLeaders(metric: "goals" | "assists" | "rating", limit = 25): Promise<StatLeader[]> {
+export async function getStatLeaders(metric: "goals" | "assists" | "rating" | "xg", limit = 25): Promise<StatLeader[]> {
   const { data, error } = await readDb()
     .from("player_stats")
     .select(`${metric}, players!inner(slug,name,known_as,photo_url, clubs(slug,name), player_valuations(value_eur))`)

@@ -11,10 +11,11 @@ export const metadata: Metadata = {
 };
 
 export default async function StatsPage() {
-  const [goals, assists, rating] = await Promise.all([
+  const [goals, assists, rating, xg] = await Promise.all([
     getStatLeaders("goals", 25).catch(() => [] as StatLeader[]),
     getStatLeaders("assists", 25).catch(() => [] as StatLeader[]),
     getStatLeaders("rating", 25).catch(() => [] as StatLeader[]),
+    getStatLeaders("xg", 25).catch(() => [] as StatLeader[]),
   ]);
 
   return (
@@ -29,7 +30,7 @@ export default async function StatsPage() {
         </p>
       </div>
 
-      <StatLeaderboards goals={goals} assists={assists} rating={rating} />
+      <StatLeaderboards goals={goals} assists={assists} rating={rating} xg={xg} />
     </div>
   );
 }

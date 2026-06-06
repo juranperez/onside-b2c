@@ -254,6 +254,20 @@ function Comparison({ a, b }: { a: PlayerProfile; b: PlayerProfile }) {
           <StatRow label="Goals" a={a.stats?.goals ?? 0} b={b.stats?.goals ?? 0} />
           <StatRow label="Assists" a={a.stats?.assists ?? 0} b={b.stats?.assists ?? 0} />
           <StatRow label="Minutes" a={a.stats?.minutes ?? 0} b={b.stats?.minutes ?? 0} />
+          {/* xG — real Sportmonks data, 1dp */}
+          {(a.stats?.xg != null || b.stats?.xg != null) && (
+            <div className="border-b border-line pb-3">
+              <div className="text-[10px] text-mute-soft uppercase tracking-wider mb-2 text-center">Expected goals</div>
+              <div className="flex items-center justify-between px-2">
+                <span className={cn("num text-[16px] font-semibold text-acc", (a.stats?.xg ?? 0) > (b.stats?.xg ?? 0) && "underline")}>
+                  {a.stats?.xg != null ? a.stats.xg.toFixed(1) : "—"}
+                </span>
+                <span className={cn("num text-[16px] font-semibold text-acc", (b.stats?.xg ?? 0) > (a.stats?.xg ?? 0) && "underline")}>
+                  {b.stats?.xg != null ? b.stats.xg.toFixed(1) : "—"}
+                </span>
+              </div>
+            </div>
+          )}
           {/* Rating uses 2dp, so render it on its own (not via the integer StatRow). */}
           <div className="border-b border-line pb-3 last:border-0">
             <div className="text-[10px] text-mute-soft uppercase tracking-wider mb-2 text-center">Rating</div>

@@ -15,7 +15,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../src/lib/db/types";
-import { SPORTMONKS_BASE, SPORTMONKS_LEAGUE, STAT, canonicalPosition, fold } from "../src/lib/ingest/sportmonks";
+import { SPORTMONKS_BASE, SPORTMONKS_LEAGUE, STAT, canonicalPosition, advancedFromSums, fold, type RawStatSums } from "../src/lib/ingest/sportmonks";
 
 const TOKEN = process.env.SPORTMONKS_API_TOKEN;
 
@@ -40,7 +40,12 @@ async function sm<T = unknown>(path: string): Promise<T> {
   throw new Error(`Sportmonks rate-limited repeatedly on ${path}`);
 }
 
-interface Agg { xg: number; mins: number; pos: Map<number, number>; apps: number }
+interface Agg extends RawStatSums { pos: Map<number, number>; apps: number }
+const emptyAgg = (): Agg => ({
+  mins: 0, xg: 0, keyPasses: 0, chances: 0, dribbleAtt: 0, dribbleOk: 0, duels: 0, duelsWon: 0,
+  aerials: 0, aerialsWon: 0, interceptions: 0, tackles: 0, clearances: 0, recoveries: 0,
+  accPasses: 0, passes: 0, pos: new Map(), apps: 0,
+});
 
 async function main() {
   if (!TOKEN) { console.error("Missing SPORTMONKS_API_TOKEN in .env.local"); process.exit(1); }
@@ -112,12 +117,26 @@ async function main() {
         const b2c = matchPlayer(lp.player_id, lp.player_name ?? lp.player?.name ?? "", lp.player?.date_of_birth ?? null);
         if (!b2c) { unmatched++; continue; }
         matched++;
-        const a = agg.get(b2c) ?? { xg: 0, mins: 0, pos: new Map(), apps: 0 };
-        const detailMap = new Map((lp.details ?? []).map((d) => [d.type_id, d.data?.value]));
-        const xg = Number(detailMap.get(STAT.XG) ?? 0);
-        const mins = Number(detailMap.get(STAT.MINUTES) ?? 0);
-        a.xg += isFinite(xg) ? xg : 0;
-        a.mins += isFinite(mins) ? mins : 0;
+        const a = agg.get(b2c) ?? emptyAgg();
+        const dm = new Map((lp.details ?? []).map((d) => [d.type_id, d.data?.value]));
+        const num = (id: number) => { const v = Number(dm.get(id) ?? 0); return isFinite(v) ? v : 0; };
+        const mins = num(STAT.MINUTES);
+        a.mins += mins;
+        a.xg += num(STAT.XG);
+        a.keyPasses += num(STAT.KEY_PASSES);
+        a.chances += num(STAT.CHANCES_CREATED);
+        a.dribbleAtt += num(STAT.DRIBBLE_ATTEMPTS);
+        a.dribbleOk += num(STAT.SUCCESSFUL_DRIBBLES);
+        a.duels += num(STAT.DUELS);
+        a.duelsWon += num(STAT.DUELS_WON);
+        a.aerials += num(STAT.AERIALS);
+        a.aerialsWon += num(STAT.AERIALS_WON);
+        a.interceptions += num(STAT.INTERCEPTIONS);
+        a.tackles += num(STAT.TACKLES);
+        a.clearances += num(STAT.CLEARANCES);
+        a.recoveries += num(STAT.BALL_RECOVERY);
+        a.accPasses += num(STAT.ACCURATE_PASSES);
+        a.passes += num(STAT.PASSES);
         if (mins > 0) a.apps += 1;
         const pid = lp.player?.detailed_position_id ?? lp.detailed_position_id ?? lp.position_id;
         if (pid != null) a.pos.set(pid, (a.pos.get(pid) ?? 0) + 1);
@@ -144,9 +163,10 @@ async function main() {
       const { detailed } = canonicalPosition(bestPos, null);
       const xgRounded = Math.round(a.xg * 100) / 100;
 
-      // player_stats.xg (B2C has one row per player — current season)
+      // player_stats.xg + advanced radar payload (B2C has one row per player — current season)
+      const advanced = advancedFromSums(a);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: sErr, count } = await (db.from("player_stats") as any).update({ xg: xgRounded }, { count: "exact" }).eq("player_id", b2cId);
+      const { error: sErr, count } = await (db.from("player_stats") as any).update({ xg: xgRounded, advanced }, { count: "exact" }).eq("player_id", b2cId);
       if (!sErr && (count ?? 0) > 0) wroteXg++;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const upd: any = { sportmonks_id: b2cToSm.get(b2cId) ?? null, sportmonks_synced_at: now };
