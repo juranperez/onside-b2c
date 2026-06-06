@@ -10,9 +10,9 @@ import {
   type PlayerProfileRow,
 } from "./map";
 
-const PLAYER_EMBED = "id,slug,name,known_as,photo_url,position,age, clubs(slug,name,short_name, leagues(slug,name))";
+const PLAYER_EMBED = "id,slug,name,known_as,photo_url,position,detailed_pos,age, clubs(slug,name,short_name, leagues(slug,name))";
 const PROFILE_SELECT =
-  "id,slug,name,known_as,photo_url,position,detailed_pos,age,dob,nationality,height_cm,foot,shirt_no,contract_until, clubs(slug,name,short_name, leagues(slug,name)), player_valuations(value_eur,pillar_scores,confidence_pct,band_low,band_high), player_stats(season,apps,minutes,goals,assists,rating)";
+  "id,slug,name,known_as,photo_url,position,detailed_pos,age,dob,nationality,height_cm,foot,shirt_no,contract_until, clubs(slug,name,short_name, leagues(slug,name)), player_valuations(value_eur,pillar_scores,confidence_pct,band_low,band_high), player_stats(season,apps,minutes,goals,assists,rating,xg)";
 
 function reshape(r: { value_eur: number; players: unknown }): PlayerRowDB | null {
   const p = r.players as Omit<PlayerRowDB, "player_valuations"> | null;

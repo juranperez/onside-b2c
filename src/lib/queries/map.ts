@@ -11,7 +11,8 @@ export interface PlayerListItem {
   name: string;        // full legal name (for search/SEO)
   displayName: string; // fan-facing: "Kylian Mbappé" not "Kylian Mbappé Lottin"
   photoUrl: string | null;
-  pos: string;
+  pos: string;        // coarse: GK/DEF/MID/FWD (API-Football)
+  detailedPos: string | null; // LW/RW/CB/CDM/... (Sportmonks, null if not yet synced)
   age: number;
   club: string;
   clubSlug: string;
@@ -32,6 +33,7 @@ export interface PlayerRowDB {
   known_as: string | null;
   photo_url: string | null;
   position: string | null;
+  detailed_pos: string | null;
   age: number | null;
   clubs: {
     slug: string;
@@ -58,6 +60,7 @@ export function toPlayerListItem(r: PlayerRowDB, now: Date = new Date()): Player
     displayName: r.known_as ?? r.name,
     photoUrl: r.photo_url ?? null,
     pos: r.position ?? "—",
+    detailedPos: r.detailed_pos ?? null,
     age: r.age ?? 0,
     club: r.clubs?.name ?? "Free agent",
     clubSlug: r.clubs?.slug ?? "",
@@ -83,6 +86,7 @@ export interface PlayerProfile {
   firstName: string;
   lastName: string;
   position: string;
+  detailedPos: string | null; // LW/RW/CB/... (Sportmonks)
   age: number | null;
   nationality: string | null;
   heightCm: number | null;
@@ -101,7 +105,7 @@ export interface PlayerProfile {
   bandLow: number;
   bandHigh: number;
   pillars: { label: string; value: number }[];
-  stats: { season: number; apps: number; minutes: number; goals: number; assists: number; rating: number | null } | null;
+  stats: { season: number; apps: number; minutes: number; goals: number; assists: number; rating: number | null; xg: number | null } | null;
   series: { label: string; v: number }[]; // millions, ~12 monthly points
 }
 
@@ -112,6 +116,7 @@ export interface PlayerProfileRow {
   known_as: string | null;
   photo_url: string | null;
   position: string | null;
+  detailed_pos: string | null;
   age: number | null;
   dob: string | null;
   nationality: string | null;
@@ -127,7 +132,7 @@ export interface PlayerProfileRow {
     band_low: number;
     band_high: number;
   } | null;
-  player_stats: { season: number; apps: number | null; minutes: number | null; goals: number | null; assists: number | null; rating: number | null }[];
+  player_stats: { season: number; apps: number | null; minutes: number | null; goals: number | null; assists: number | null; rating: number | null; xg: number | null }[];
 }
 
 const PILLAR_LABELS: Record<string, string> = {
@@ -174,6 +179,7 @@ export function toPlayerProfile(r: PlayerProfileRow, now: Date = new Date()): Pl
     firstName,
     lastName,
     position: r.position ?? "—",
+    detailedPos: r.detailed_pos ?? null,
     age: r.age,
     nationality: r.nationality,
     heightCm: r.height_cm,
@@ -200,6 +206,7 @@ export function toPlayerProfile(r: PlayerProfileRow, now: Date = new Date()): Pl
           goals: stat.goals ?? 0,
           assists: stat.assists ?? 0,
           rating: stat.rating,
+          xg: stat.xg,
         }
       : null,
     series,

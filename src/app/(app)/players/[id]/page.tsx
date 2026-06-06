@@ -68,7 +68,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                 <div className="flex items-center gap-2 mb-1 text-[12px] text-mute">
                   {player.nationality && <span>{player.nationality}</span>}
                   <span className="text-mute-soft">&middot;</span>
-                  <span>{player.position}</span>
+                  <span>{player.detailedPos ?? player.position}</span>
                   {player.shirtNo ? (
                     <>
                       <span className="text-mute-soft">&middot;</span>
@@ -236,6 +236,22 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                     </div>
                   ))}
                 </div>
+                {player.stats.xg != null && (
+                  <>
+                    <div className="mt-3 flex items-center justify-between rounded-xl bg-ink-800 border border-acc/25 px-4 py-3">
+                      <div className="flex items-baseline gap-2">
+                        <span className="num text-[20px] font-semibold text-acc">{player.stats.xg.toFixed(1)}</span>
+                        <span className="text-[10px] text-mute-soft uppercase tracking-wider">Expected goals</span>
+                      </div>
+                      {(() => {
+                        const diff = player.stats.goals - player.stats.xg;
+                        const read = diff >= 2 ? { t: "Clinical finisher", c: "text-up" } : diff <= -2 ? { t: "Underperforming xG", c: "text-down" } : { t: "On expected", c: "text-mute" };
+                        return <span className={cn("text-[11px] font-medium num", read.c)}>{diff >= 0 ? "+" : ""}{diff.toFixed(1)} vs goals · {read.t}</span>;
+                      })()}
+                    </div>
+                    <p className="text-[10px] text-mute-soft mt-2">Expected goals via Sportmonks · current season</p>
+                  </>
+                )}
               </Card>
             )}
 

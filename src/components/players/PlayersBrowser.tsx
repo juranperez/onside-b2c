@@ -10,21 +10,40 @@ import type { PlayerListItem } from "@/lib/queries/map";
 
 type SortKey = "val" | "rise" | "age";
 
+// canonical detailed position → coarse bucket (mirrors the Sportmonks taxonomy)
+const COARSE_OF: Record<string, string> = {
+  GK: "GK", RB: "DEF", CB: "DEF", LB: "DEF",
+  CDM: "MID", CM: "MID", CAM: "MID", LM: "MID", RM: "MID",
+  LW: "FWD", RW: "FWD", SS: "FWD", ST: "FWD",
+};
+const DETAILED_BY_COARSE: Record<string, string[]> = {
+  FWD: ["LW", "ST", "RW", "SS"],
+  MID: ["CAM", "CM", "CDM", "LM", "RM"],
+  DEF: ["RB", "CB", "LB"],
+  GK: [],
+};
+
 export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; total: number }) {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [pos, setPos] = useState("all");
+  const [detail, setDetail] = useState(""); // detailed position (LW/RW/...) within the coarse bucket
   const [sort, setSort] = useState<SortKey>("val");
 
   const filtered = useMemo(() => {
     return players
-      .filter((p) => (pos === "all" ? true : p.pos === pos))
+      .filter((p) => {
+        if (detail) return p.detailedPos === detail;
+        if (pos === "all") return true;
+        // match coarse OR the coarse-of-detailed (so a "MID"-coded winger lands in FWD)
+        return p.pos === pos || (p.detailedPos != null && COARSE_OF[p.detailedPos] === pos);
+      })
       .sort((a, b) => {
         if (sort === "val") return b.val - a.val;
         if (sort === "rise") return b.dWeek - a.dWeek;
         return a.age - b.age;
       })
       .slice(0, 360);
-  }, [players, pos, sort]);
+  }, [players, pos, detail, sort]);
 
   const sortLabel = sort === "val" ? "value" : sort === "rise" ? "weekly rise" : "age";
 
@@ -42,7 +61,7 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
           <Tabs
             size="sm"
             value={pos}
-            onChange={setPos}
+            onChange={(v) => { setPos(v); setDetail(""); }}
             tabs={[
               { id: "all", label: "All" },
               { id: "FWD", label: "FWD" },
@@ -80,6 +99,26 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
         </div>
       </div>
 
+      {pos !== "all" && (DETAILED_BY_COARSE[pos]?.length ?? 0) > 0 && (
+        <div className="flex items-center gap-1.5 mb-5 flex-wrap">
+          <button
+            onClick={() => setDetail("")}
+            className={cn("px-2.5 h-7 rounded-full text-[11px] num border transition cursor-pointer", detail === "" ? "bg-acc/15 text-acc border-acc/30" : "bg-ink-850 text-mute border-line hover:text-fg")}
+          >
+            All {pos}
+          </button>
+          {DETAILED_BY_COARSE[pos].map((dp) => (
+            <button
+              key={dp}
+              onClick={() => setDetail(dp)}
+              className={cn("px-2.5 h-7 rounded-full text-[11px] num border transition cursor-pointer", detail === dp ? "bg-acc/15 text-acc border-acc/30" : "bg-ink-850 text-mute border-line hover:text-fg")}
+            >
+              {dp}
+            </button>
+          ))}
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <Card className="p-12 text-center text-mute">No players match this filter yet.</Card>
       ) : view === "grid" ? (
@@ -104,7 +143,7 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
                     >
                       {p.clubShort.slice(0, 1)}
                     </div>
-                    {p.club} &middot; {p.pos}
+                    {p.club} &middot; {p.detailedPos ?? p.pos}
                   </div>
                   <div className="mt-4 flex items-end justify-between">
                     <div>
@@ -138,7 +177,7 @@ export function PlayersBrowser({ players, total }: { players: PlayerListItem[]; 
                     <div className="text-[11px] text-mute truncate">{p.club}</div>
                   </div>
                 </div>
-                <span className="num text-[12px] text-right">{p.pos}</span>
+                <span className="num text-[12px] text-right">{p.detailedPos ?? p.pos}</span>
                 <span className="num text-[12px] text-right">{p.age || "—"}</span>
                 <span className="num text-[13px] text-right font-semibold">{fmtVal(p.val)}</span>
                 <span className="flex items-center justify-end gap-1.5">
