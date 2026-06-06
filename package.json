@@ -22,7 +22,8 @@
     "sync:wikidata-names": "node --env-file=.env.local --import tsx scripts/sync-wikidata-names.ts",
     "sync:player-photos": "node --env-file=.env.local --import tsx scripts/sync-player-photos.ts",
     "ingest:once": "node --env-file=.env.local --import tsx scripts/ingest-once.ts",
-    "crosswalk:sportmonks": "node --env-file=.env.local --import tsx scripts/crosswalk-sportmonks.ts"
+    "crosswalk:sportmonks": "node --env-file=.env.local --import tsx scripts/crosswalk-sportmonks.ts",
+    "sync:sportmonks": "node --env-file=.env.local --import tsx scripts/sync-sportmonks.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
