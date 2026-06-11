@@ -6,8 +6,8 @@ import { ConfidenceBadge } from "./confidence-badge";
 import { stageOf, stageTone } from "@/lib/rumours/stage";
 import type { RumourItem } from "@/lib/queries/rumours";
 
-function timeAgo(iso: string): string {
-  const mins = (Date.now() - new Date(iso).getTime()) / 60_000;
+function timeAgo(iso: string, now: number): string {
+  const mins = (now - new Date(iso).getTime()) / 60_000;
   if (mins < 60) return `${Math.max(1, Math.floor(mins))}m`;
   if (mins < 60 * 24) return `${Math.floor(mins / 60)}h`;
   const days = Math.floor(mins / (60 * 24));
@@ -23,8 +23,8 @@ function feeTone(feeM: number | null, valueM: number): { label: string; cls: str
 }
 
 /** One story on the Wire: who, where, how far along, how credible, priced against the model. */
-export function WireRow({ r, comments = 0 }: { r: RumourItem; comments?: number }) {
-  const ageH = (Date.now() - new Date(r.lastUpdate).getTime()) / 3_600_000;
+export function WireRow({ r, comments = 0, now }: { r: RumourItem; comments?: number; now: number }) {
+  const ageH = (now - new Date(r.lastUpdate).getTime()) / 3_600_000;
   const breaking = r.status === "rumour" && r.sourceTier <= 2 && ageH < 2;
   const stage = stageOf(r.summary, r.status);
   const verdict = feeTone(r.reportedFeeM, r.onsideValueM);
@@ -70,7 +70,7 @@ export function WireRow({ r, comments = 0 }: { r: RumourItem; comments?: number 
             <span className="truncate max-w-[160px]">{r.source}</span>
             {r.corroborations > 1 && <span className="num">+{r.corroborations - 1} sources</span>}
             {r.league && <span className="truncate max-w-[110px]">{r.league}</span>}
-            <span className="num">{timeAgo(r.lastUpdate)} ago</span>
+            <span className="num">{timeAgo(r.lastUpdate, now)} ago</span>
             <Link href={`/transfers/${r.id}`} className="inline-flex items-center gap-1 text-mute hover:text-acc transition ml-auto">
               <MessageSquare size={11} />
               <span className="num">{comments}</span>

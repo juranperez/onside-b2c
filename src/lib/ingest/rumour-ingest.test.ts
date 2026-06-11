@@ -22,6 +22,13 @@ describe("decideIngest", () => {
     expect(a).toMatchObject({ kind: "merge", promote: false });
   });
 
+  it("destination-less chatter prefers the PUBLISHED saga over a lingering '—' candidate", () => {
+    const published = rumour({ id: "pub", status: "rumour", to_club: "Manchester City" });
+    const dashCandidate = rumour({ id: "cand", status: "candidate", to_club: "—" });
+    const a = decideIngest({ toClub: "—", tier: 3, strength: "strong", byPair: dashCandidate, forPlayer: [published, dashCandidate] });
+    expect(a).toMatchObject({ kind: "merge", target: { id: "pub" } });
+  });
+
   it("destination-less chatter with multiple live sagas is skipped, never guessed", () => {
     const a = decideIngest({
       toClub: "—",

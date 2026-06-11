@@ -70,6 +70,7 @@ export default async function TransfersPage({
   const items = filterWire(all, filters);
 
   // Pulse — computed over the whole feed, not the filtered view.
+  const nowTs = new Date().getTime();
   const dayStart = new Date().setUTCHours(0, 0, 0, 0);
   const todaySpendM = all
     .filter((r) => new Date(r.lastUpdate).getTime() >= dayStart && r.reportedFeeM != null)
@@ -148,7 +149,7 @@ export default async function TransfersPage({
       ) : (
         <div className="space-y-2.5">
           {items.map((r) => (
-            <WireRow key={r.id} r={r} comments={comments.get(r.id) ?? 0} />
+            <WireRow key={r.id} r={r} comments={comments.get(r.id) ?? 0} now={nowTs} />
           ))}
         </div>
       )}

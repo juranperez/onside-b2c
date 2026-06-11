@@ -102,7 +102,8 @@ function resolveItem(feed: FeedSource, title: string): { source: string; tier: n
     if (fold(source) === "google news") return null; // self-referential feed row
     return { source, tier: tierFor(source), summary: title.slice(0, i).trim() };
   }
-  return { source: feed.name, tier: feed.tier, summary: title };
+  // Outlet feeds: rate the outlet itself (BBC/Guardian are tier 2, not the feed default).
+  return { source: feed.name, tier: Math.min(feed.tier, tierFor(feed.name)), summary: title };
 }
 
 // ---- Ingest decision (pure — unit-tested) -----------------------------------
@@ -141,10 +142,18 @@ export function decideIngest(args: {
 }): IngestAction {
   const { toClub, tier, strength } = args;
   let target = args.byPair;
-  if (!target && toClub === "—") {
-    const live = args.forPlayer.filter((r) => r.status !== "dead" && r.status !== "confirmed");
-    if (live.length === 1) target = live[0]; // destination-less chatter about a single live saga
-    else if (live.length > 1) return { kind: "skip", reason: "ambiguous-target" };
+  if (toClub === "—") {
+    // Destination-less chatter belongs to the player's PUBLISHED saga first —
+    // otherwise a lingering "—" candidate row absorbs updates the live rumour
+    // should be getting (the Anderson failure mode).
+    const published = args.forPlayer.filter((r) => r.status === "rumour");
+    if (published.length === 1) target = published[0];
+    else if (published.length > 1) return { kind: "skip", reason: "ambiguous-target" };
+    else if (!target) {
+      const live = args.forPlayer.filter((r) => r.status !== "dead" && r.status !== "confirmed");
+      if (live.length === 1) target = live[0];
+      else if (live.length > 1) return { kind: "skip", reason: "ambiguous-target" };
+    }
   }
   if (target) {
     if (target.status === "confirmed" || target.status === "dead") return { kind: "skip", reason: "saga-over" };

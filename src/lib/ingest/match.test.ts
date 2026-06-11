@@ -9,6 +9,11 @@ const PLAYERS = [
   { id: "alejandro", name_norm: "alejandro jimenez" },
   { id: "anderson", name_norm: "elliot anderson" },
   { id: "baleba", name_norm: "carlos noom quomah baleba" },
+  { id: "manhoef", name_norm: "million manhoef" },
+  { id: "under", name_norm: "cengiz under" },
+  { id: "waldo", name_norm: "waldo emilio madrid quezada" },
+  { id: "bkdavies", name_norm: "benjamin keith davies" },
+  { id: "brown", name_norm: "nathaniel brown" },
 ];
 
 const idx = buildPlayerIndex(PLAYERS);
@@ -49,5 +54,32 @@ describe("matchPlayer with byline stripping", () => {
   it("Anderson full-name match is strong", () => {
     const h = stripJournalists("Forest want British record for Elliot Anderson as Man City have bid rejected");
     expect(matchPlayer(h, idx)).toEqual({ playerId: "anderson", strength: "strong" });
+  });
+});
+
+describe("matchPlayer — generic-word and adjacency hardening (Jun 11 queue failures)", () => {
+  it("'20 million apart' never matches Million Manhoef", () => {
+    expect(matchPlayer(stripJournalists("Gordon moves closer to Bayern, the clubs are 20 million apart"), idx)).toBeNull();
+  });
+
+  it("'medical team under Flick' never matches Cengiz Ünder", () => {
+    expect(matchPlayer(stripJournalists("Barcelona's medical team under Hansi Flick set for sweeping changes"), idx)).toBeNull();
+  });
+
+  it("'Real Madrid open talks' never matches a player with Madrid in his legal name", () => {
+    expect(matchPlayer(stripJournalists("Real Madrid Open Talks With AIK For New Winger"), idx)).toBeNull();
+  });
+
+  it("non-adjacent token co-occurrence is not a strong match (Keith Wyness + Benjamin Nygren)", () => {
+    expect(matchPlayer(stripJournalists("Keith Wyness claims Benjamin Nygren is close to a move to Valencia"), idx)).toBeNull();
+  });
+
+  it("real full names still match strongly via adjacency", () => {
+    expect(matchPlayer(stripJournalists("Million Manhoef stars again for Stoke in transfer shop window"), idx)?.playerId).toBe("manhoef");
+    expect(matchPlayer(stripJournalists("Positive negotiations for Nathaniel Brown transfer"), idx)?.playerId).toBe("brown");
+  });
+
+  it("a lone generic surname is never a unique key", () => {
+    expect(matchPlayer(stripJournalists("Frankfurt's Brown attracting transfer interest"), idx)).toBeNull();
   });
 });

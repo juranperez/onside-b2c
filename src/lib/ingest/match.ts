@@ -30,6 +30,26 @@ const COMMON_FIRST = new Set([
   "eduardo", "fernando", "sergio", "diego", "andre", "antonio", "miguel", "gabriel",
   "victor", "vitor", "mario", "fabio", "ricardo", "roberto", "juan", "javier",
   "pablo", "hugo", "mateo", "daniel", "david", "angel", "alex", "kevin", "leon",
+  // Anglophone given names — same rule: fine in adjacency, never a sole key.
+  "keith", "ronald", "harry", "james", "jamie", "jordan", "mason", "marcus",
+  "ashley", "wayne", "scott", "craig", "dean", "ross", "kyle", "ryan", "aaron",
+  "jack", "john", "paul", "peter", "simon", "stephen", "steven", "michael",
+  "chris", "christian", "martin", "anthony", "joseph", "william", "george",
+  "benjamin", "nathaniel", "samuel", "jacob", "joshua", "matthew", "andrew",
+]);
+
+// Ordinary words and place/club names that occur inside players' legal names.
+// Real failures from the 2026-06-11 queue: "20 million apart" → Million Manhoef;
+// "medical team under Flick" → Cengiz Ünder; "Real Madrid" → …Madrid Quezada;
+// "French striker" → Harry French; "star power" → …God Power…; "green light" →
+// André Jay Green. Never a sole identifying key; full names still match via
+// adjacency ("Nathaniel Brown" is fine, a lone "brown" is not).
+const GENERIC_TOKEN = new Set([
+  "million", "billion", "power", "under", "over", "money", "record", "window",
+  "winter", "summer", "green", "white", "black", "brown", "young", "king", "star",
+  "law", "god", "french", "german", "english", "spanish", "dutch", "danish",
+  "north", "south", "east", "west", "madrid", "monaco", "sevilla", "santiago",
+  "milan", "roma", "porto", "leeds", "derby", "chelsea", "arsenal", "everton",
 ]);
 
 export function tokenize(s: string): string[] {
@@ -82,28 +102,33 @@ export type MatchStrength = "strong" | "unique";
 
 /** Resolve a headline to a single player id, or null if absent/ambiguous. */
 export function matchPlayer(headline: string, idx: PlayerIndex): { playerId: string; strength: MatchStrength } | null {
-  const toks = [...new Set(tokenize(headline))].filter((t) => t.length >= 4 && !NAME_STOP.has(t));
-  if (!toks.length) return null;
+  const ordered = tokenize(headline).filter((t) => t.length >= 4 && !NAME_STOP.has(t));
+  if (!ordered.length) return null;
 
-  const hits = new Map<string, number>(); // playerId -> # of distinct tokens matched
-  const uniqueDistinct = new Set<string>(); // players matched by a sole-owner token (len >= 5)
-  for (const t of toks) {
-    const owners = idx.owners.get(t);
-    if (!owners?.length) continue;
-    if (owners.length === 1 && t.length >= 5 && !COMMON_FIRST.has(t)) uniqueDistinct.add(owners[0]);
-    for (const pid of owners) hits.set(pid, (hits.get(pid) ?? 0) + 1);
+  // STRONG: two of one player's name tokens ADJACENT in the headline — how full
+  // names actually print ("Elliot Anderson", "Raul Jimenez"). Bag-of-words
+  // co-occurrence is not enough: "Keith Wyness claims Benjamin Nygren…" contains
+  // both tokens of "Benjamin Keith Davies" without being about him.
+  const strongIds = new Set<string>();
+  for (let i = 0; i < ordered.length - 1; i++) {
+    const a = idx.owners.get(ordered[i]);
+    const b = idx.owners.get(ordered[i + 1]);
+    if (!a?.length || !b?.length) continue;
+    const bSet = new Set(b);
+    for (const pid of a) if (bSet.has(pid)) strongIds.add(pid);
   }
-  if (!hits.size) return null;
+  if (strongIds.size === 1) return { playerId: [...strongIds][0], strength: "strong" };
+  if (strongIds.size > 1) return null; // two full-name matches → ambiguous
 
-  const ranked = [...hits.entries()].sort((a, b) => b[1] - a[1]);
-  const [topPid, topN] = ranked[0];
-  const runnerN = ranked[1]?.[1] ?? 0;
-
-  // Clear multi-token winner (first + last name co-occur, beats everyone else).
-  if (topN >= 2 && topN > runnerN) return { playerId: topPid, strength: "strong" };
-  if (topN >= 2) return null; // two players tied on ≥2 tokens → ambiguous
-
-  // Single-token hits only: accept iff exactly one uniquely-distinctive player.
+  // UNIQUE: exactly one player owns a distinctive token (len ≥ 5, not a common
+  // given name, not an ordinary word/place that hides inside legal names).
+  const uniqueDistinct = new Set<string>();
+  for (const t of new Set(ordered)) {
+    const owners = idx.owners.get(t);
+    if (owners?.length === 1 && t.length >= 5 && !COMMON_FIRST.has(t) && !GENERIC_TOKEN.has(t)) {
+      uniqueDistinct.add(owners[0]);
+    }
+  }
   if (uniqueDistinct.size === 1) return { playerId: [...uniqueDistinct][0], strength: "unique" };
   return null;
 }
