@@ -10,11 +10,16 @@ interface Source {
   href: string;
 }
 
+interface InlineLink {
+  text: string;
+  href: string;
+}
+
 interface Msg {
   role: "user" | "assistant";
   content: string;
   sources?: Source[];
-  links?: Source[];
+  links?: InlineLink[];
 }
 
 /**
@@ -22,7 +27,7 @@ interface Msg {
  * link into its page (saga, profile, club, nation). Longest names match first
  * so "Julián Álvarez" wins over a hypothetical shorter overlap.
  */
-function linkify(text: string, links: Source[] = []): React.ReactNode[] {
+function linkify(text: string, links: InlineLink[] = []): React.ReactNode[] {
   if (!links.length) return [text];
   const sorted = [...links].sort((a, b) => b.text.length - a.text.length);
   let nodes: React.ReactNode[] = [text];
@@ -91,10 +96,10 @@ export function AskChat({ suggestions }: { suggestions: string[] }) {
       }
 
       let sources: Source[] = [];
-      let links: Source[] = [];
+      let links: InlineLink[] = [];
       try {
         sources = JSON.parse(decodeURIComponent(res.headers.get("X-Ask-Sources") ?? "%5B%5D")) as Source[];
-        links = JSON.parse(decodeURIComponent(res.headers.get("X-Ask-Links") ?? "%5B%5D")) as Source[];
+        links = JSON.parse(decodeURIComponent(res.headers.get("X-Ask-Links") ?? "%5B%5D")) as InlineLink[];
       } catch {
         sources = [];
       }
