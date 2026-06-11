@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Search, ShieldCheck, X } from "lucide-react";
+import { Search, ShieldCheck, X, Bookmark, Banknote } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LeagueOpt {
@@ -18,7 +18,7 @@ const STATUSES = [
 ] as const;
 
 /** URL-driven filters: every combination is shareable and crawlable. */
-export function FilterRail({ leagues }: { leagues: LeagueOpt[] }) {
+export function FilterRail({ leagues, mineAvailable = false }: { leagues: LeagueOpt[]; mineAvailable?: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
   const [, startTransition] = useTransition();
@@ -47,7 +47,9 @@ export function FilterRail({ leagues }: { leagues: LeagueOpt[] }) {
   const status = params.get("status") ?? "";
   const league = params.get("league") ?? "";
   const credible = params.get("min") === "70";
-  const hasFilters = Boolean(status || league || credible || (params.get("club") ?? ""));
+  const mine = params.get("mine") === "1";
+  const feeSort = params.get("sort") === "fee";
+  const hasFilters = Boolean(status || league || credible || mine || feeSort || (params.get("club") ?? ""));
 
   return (
     <div className="space-y-2.5 mb-5">
@@ -64,6 +66,28 @@ export function FilterRail({ leagues }: { leagues: LeagueOpt[] }) {
             {s.label}
           </button>
         ))}
+
+        {mineAvailable && (
+          <button
+            onClick={() => setParam("mine", mine ? null : "1")}
+            className={cn(
+              "h-7 px-3 rounded-full text-[12px] font-medium transition cursor-pointer border inline-flex items-center gap-1.5",
+              mine ? "bg-acc text-ink-950 border-acc" : "bg-overlay/5 text-mute border-line hover:text-fg",
+            )}
+          >
+            <Bookmark size={12} /> My Market
+          </button>
+        )}
+
+        <button
+          onClick={() => setParam("sort", feeSort ? null : "fee")}
+          className={cn(
+            "h-7 px-3 rounded-full text-[12px] font-medium transition cursor-pointer border inline-flex items-center gap-1.5",
+            feeSort ? "bg-acc text-ink-950 border-acc" : "bg-overlay/5 text-mute border-line hover:text-fg",
+          )}
+        >
+          <Banknote size={12} /> Highest fee
+        </button>
 
         <button
           onClick={() => setParam("min", credible ? null : "70")}

@@ -6,6 +6,9 @@ import { Card, Button, LiveDot } from "@/components/ui";
 import { WireRow } from "@/components/transfers/wire-row";
 import { FilterRail } from "@/components/transfers/filter-rail";
 import { getRumours, getCommentCounts, filterWire, type RumourItem, type WireFilters } from "@/lib/queries/rumours";
+import { getFollowedRumourIds } from "@/lib/rumours/follow-actions";
+import { getSessionUser } from "@/lib/db/supabase-server";
+import { getWatchlist } from "@/lib/watchlist/actions";
 
 // Confidence carries a time-decay factor, so keep the feed fresh on every request.
 export const dynamic = "force-dynamic";
@@ -67,7 +70,19 @@ export default async function TransfersPage({
   } catch (e) {
     console.error("[transfers] data unavailable:", e);
   }
-  const items = filterWire(all, filters);
+
+  // Personalization: followed sagas + watchlist players power the My Market view.
+  const user = await getSessionUser().catch(() => null);
+  const followed = new Set(user ? await getFollowedRumourIds().catch(() => []) : []);
+  const watchedPlayerIds = new Set(user ? (await getWatchlist().catch(() => [])).map((p) => p.id) : []);
+
+  let items = filterWire(all, filters);
+  if (one(sp.mine) === "1" && user) {
+    items = items.filter((r) => followed.has(r.id) || watchedPlayerIds.has(r.player.id));
+  }
+  if (one(sp.sort) === "fee") {
+    items = [...items].sort((a, b) => (b.reportedFeeM ?? -1) - (a.reportedFeeM ?? -1));
+  }
 
   // Pulse — computed over the whole feed, not the filtered view.
   const nowTs = new Date().getTime();
@@ -128,7 +143,7 @@ export default async function TransfersPage({
       </Card>
 
       <Suspense>
-        <FilterRail leagues={leagues} />
+        <FilterRail leagues={leagues} mineAvailable={Boolean(user)} />
       </Suspense>
 
       {items.length === 0 ? (
@@ -147,7 +162,7 @@ export default async function TransfersPage({
       ) : (
         <div className="space-y-2.5">
           {items.map((r) => (
-            <WireRow key={r.id} r={r} comments={comments.get(r.id) ?? 0} now={nowTs} />
+            <WireRow key={r.id} r={r} comments={comments.get(r.id) ?? 0} now={nowTs} following={followed.has(r.id)} />
           ))}
         </div>
       )}

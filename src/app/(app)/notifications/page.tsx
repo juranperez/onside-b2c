@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Bell, TrendingUp, TrendingDown, Bookmark } from "lucide-react";
+import { Bell, TrendingUp, TrendingDown, Bookmark, BellRing } from "lucide-react";
 import { Card, Avatar, Delta, Button, SectionHead } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { getSessionUser } from "@/lib/db/supabase-server";
+import { createSupabaseServer, getSessionUser } from "@/lib/db/supabase-server";
 import { getWatchlist } from "@/lib/watchlist/actions";
 import { getMovers } from "@/lib/queries";
 import type { PlayerListItem } from "@/lib/queries/map";
@@ -42,9 +42,31 @@ function FeedRow({ p, note }: { p: PlayerListItem; note: string }) {
   );
 }
 
+interface DealAlert {
+  id: string;
+  createdAt: string | null;
+  rumourId: string | null;
+  note: string;
+}
+
+async function getDealAlerts(): Promise<DealAlert[]> {
+  const supabase = await createSupabaseServer();
+  const { data } = await supabase
+    .from("notifications")
+    .select("id,created_at,payload")
+    .eq("type", "rumour")
+    .order("created_at", { ascending: false })
+    .limit(15);
+  return (data ?? []).map((n) => {
+    const p = (n.payload ?? {}) as { rumourId?: string; note?: string };
+    return { id: n.id, createdAt: n.created_at, rumourId: p.rumourId ?? null, note: p.note ?? "Deal update" };
+  });
+}
+
 export default async function NotificationsPage() {
   const user = await getSessionUser().catch(() => null);
   const watch = user ? await getWatchlist().catch(() => []) : [];
+  const dealAlerts = user ? await getDealAlerts().catch(() => []) : [];
   const alerts = watch
     .filter((p) => Math.abs(p.dWeek) >= 0.5)
     .sort((a, b) => Math.abs(b.dWeek) - Math.abs(a.dWeek));
@@ -56,6 +78,32 @@ export default async function NotificationsPage() {
         <Bell size={18} className="text-acc" />
         <h1 className="display text-[28px]">Notifications</h1>
       </div>
+
+      {/* Tracked-deal developments */}
+      {user && dealAlerts.length > 0 && (
+        <div className="mb-8">
+          <SectionHead eyebrow="Deals you track" title="Saga updates" />
+          <Card className="overflow-hidden">
+            {dealAlerts.map((a) => (
+              <Link key={a.id} href={a.rumourId ? `/transfers/${a.rumourId}` : "/transfers"}>
+                <div className="flex items-center gap-3 px-4 py-3 hover:bg-overlay/[0.03] transition border-b border-line last:border-0 cursor-pointer">
+                  <div className="w-8 h-8 rounded-full grid place-items-center shrink-0 bg-acc/12 text-acc">
+                    <BellRing size={14} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] truncate">{a.note}</div>
+                    {a.createdAt && (
+                      <div className="text-[11px] text-mute-soft num mt-0.5">
+                        {new Date(a.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </Card>
+        </div>
+      )}
 
       {/* Watchlist value alerts */}
       {user ? (

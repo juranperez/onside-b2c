@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../db/types";
 import { fold, buildPlayerIndex, buildClubIndex, matchPlayer, matchDestClub, stripJournalists, type MatchStrength } from "./match";
+import { notifyFollowers } from "../rumours/notify";
 
 export interface FeedSource {
   name: string; // fallback source label
@@ -306,6 +307,10 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
           t.corroborations += 1;
           t.source_tier = bestTier;
           if (action.promote) t.status = "rumour";
+          // Followers hear about real developments (fresher credible report or going live) — not raw corroboration ticks.
+          if (fresherCredible || action.promote) {
+            await notifyFollowers(db, t.id, `New development: ${resolved.summary.slice(0, 120)}`, { kind: action.promote ? "live" : "update" });
+          }
           if (it.link) {
             seenUrls.add(it.link);
             await db.from("rumour_sources").upsert(

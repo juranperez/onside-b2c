@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../db/types";
+import { notifyFollowers } from "../rumours/notify";
 
 /**
  * Official confirmed transfers from Sportmonks (/transfers/latest — entitled on
@@ -153,6 +154,7 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
       if (!error) {
         out.rumoursConfirmed++;
         rumourId = match.id;
+        await notifyFollowers(db, match.id, summary, { kind: "confirmed" });
       }
     } else {
       const { data: created, error } = await db
@@ -182,7 +184,10 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
     const competing = (existing ?? []).filter((r) => r.status === "rumour" && fold(r.to_club) !== fold(toName));
     for (const c of competing) {
       const { error } = await db.from("rumours").update({ status: "dead", last_update: now, resolved_at: now }).eq("id", c.id);
-      if (!error) out.competingKilled++;
+      if (!error) {
+        out.competingKilled++;
+        await notifyFollowers(db, c.id, `Saga over — ${display} joined ${toName} instead`, { kind: "dead" });
+      }
     }
 
     if (rumourId) {

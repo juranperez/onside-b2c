@@ -3,6 +3,7 @@ import { ArrowRight, MessageSquare, BadgeCheck, XCircle, Zap } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { Avatar, Chip } from "@/components/ui";
 import { ConfidenceBadge } from "./confidence-badge";
+import { TrackDealButton } from "./TrackDealButton";
 import { stageOf, stageTone } from "@/lib/rumours/stage";
 import type { RumourItem } from "@/lib/queries/rumours";
 
@@ -23,7 +24,7 @@ function feeTone(feeM: number | null, valueM: number): { label: string; cls: str
 }
 
 /** One story on the Wire: who, where, how far along, how credible, priced against the model. */
-export function WireRow({ r, comments = 0, now }: { r: RumourItem; comments?: number; now: number }) {
+export function WireRow({ r, comments = 0, now, following = false }: { r: RumourItem; comments?: number; now: number; following?: boolean }) {
   const ageH = (now - new Date(r.lastUpdate).getTime()) / 3_600_000;
   const breaking = r.status === "rumour" && r.sourceTier <= 2 && ageH < 2;
   const stage = stageOf(r.summary, r.status);
@@ -71,10 +72,13 @@ export function WireRow({ r, comments = 0, now }: { r: RumourItem; comments?: nu
             {r.corroborations > 1 && <span className="num">+{r.corroborations - 1} sources</span>}
             {r.league && <span className="truncate max-w-[110px]">{r.league}</span>}
             <span className="num">{timeAgo(r.lastUpdate, now)} ago</span>
-            <Link href={`/transfers/${r.id}`} className="inline-flex items-center gap-1 text-mute hover:text-acc transition ml-auto">
-              <MessageSquare size={11} />
-              <span className="num">{comments}</span>
-            </Link>
+            <span className="ml-auto inline-flex items-center gap-3">
+              {r.status === "rumour" && <TrackDealButton rumourId={r.id} initialFollowing={following} />}
+              <Link href={`/transfers/${r.id}`} className="inline-flex items-center gap-1 text-mute hover:text-acc transition">
+                <MessageSquare size={11} />
+                <span className="num">{comments}</span>
+              </Link>
+            </span>
           </div>
         </div>
 
