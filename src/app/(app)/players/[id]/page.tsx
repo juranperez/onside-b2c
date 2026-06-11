@@ -161,7 +161,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                     ))}
                   </dl>
                 </div>
-                <p className="text-[10px] text-mute-soft mt-4">Per-90 and percentages, this season &middot; real data via Sportmonks</p>
+                <p className="text-[10px] text-mute-soft mt-4">Per-90 and percentages, this season &middot; Onside data engine</p>
               </Card>
             )}
             {/* Valuation chart */}
@@ -285,7 +285,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                         return <span className={cn("text-[11px] font-medium num", read.c)}>{diff >= 0 ? "+" : ""}{diff.toFixed(1)} vs goals · {read.t}</span>;
                       })()}
                     </div>
-                    <p className="text-[10px] text-mute-soft mt-2">Expected goals via Sportmonks · current season</p>
+                    <p className="text-[10px] text-mute-soft mt-2">Expected goals · Onside data engine · current season</p>
                   </>
                 )}
               </Card>

@@ -92,20 +92,18 @@ export default async function TransfersPage({
   return (
     <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-8">
       {/* Compact hero */}
-      <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <Radio size={14} className="text-acc" />
-            <span className="text-[11px] uppercase tracking-[0.18em] text-acc num font-semibold">The Wire</span>
-            <LiveDot />
-          </div>
-          <h1 className="display text-[clamp(24px,3.5vw,34px)] tracking-tight leading-[1.05]">
-            Every rumour, rated. <span className="font-serif italic text-acc">Live.</span>
-          </h1>
+      <div className="mb-5">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Radio size={14} className="text-acc" />
+          <span className="text-[11px] uppercase tracking-[0.18em] text-acc num font-semibold">The Wire</span>
+          <LiveDot />
         </div>
-        <p className="text-[12px] text-mute max-w-[340px] leading-relaxed hidden md:block">
-          Stage-tracked stories with the Onside Confidence % — source quality, corroboration, contract leverage, and
-          whether the fee lines up with our live valuation.
+        <h1 className="display text-[clamp(24px,3.5vw,34px)] tracking-tight leading-[1.05]">
+          Every rumour, rated. <span className="font-serif italic text-acc">Live.</span>
+        </h1>
+        <p className="text-[12.5px] text-mute mt-2 max-w-[620px] leading-relaxed">
+          Stage-tracked stories scored by the Onside Confidence % — source quality, corroboration, contract leverage,
+          and whether the fee lines up with our live valuation.
         </p>
       </div>
 

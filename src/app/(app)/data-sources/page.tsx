@@ -23,6 +23,11 @@ const SOURCES: Source[] = [
     body: "Our primary feed, licensed commercially. It powers player and club statistics, fixtures and results, squad data, and the real 2026 World Cup draw. This is the backbone the valuation model reads from.",
   },
   {
+    name: "Advanced performance data",
+    tag: "Licensed · commercial",
+    body: "A commercial-grade professional feed powers our advanced layer — expected goals, granular positions, match events and lineups, league tables, injury status, and official transfer records. Fully licensed for commercial use; we keep the provider unnamed as part of our data strategy.",
+  },
+  {
     name: "football-data.org",
     tag: "Licensed feed",
     href: "https://www.football-data.org",
