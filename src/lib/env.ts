@@ -15,6 +15,9 @@ const serverSchema = z.object({
   ASA_BASE_URL: z.string().url().default("https://app.americansocceranalysis.com/api/v1"),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   SENTRY_DSN: z.string().optional(),
+  // Ask Onside LLM cascade — both optional; /api/ask degrades to 503 when absent.
+  GROQ_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
 });
 
 export type PublicEnv = z.infer<typeof publicSchema>;

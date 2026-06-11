@@ -4,14 +4,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Search, Bell, Menu, X } from "lucide-react";
+import { Search, Bell, Menu, X, Sparkles } from "lucide-react";
 import { OnsideMark } from "@/components/ui/logo";
 import { createClient } from "@/lib/db/supabase-browser";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 // Surface the real destinations (Clubs, Leagues) and drop the not-yet-live
-// Community / AI Coach dead ends. Watchlist lives on the user avatar.
-const NAV_ITEMS: { href: string; label: string; special?: boolean }[] = [
+// Community dead ends. Watchlist lives on the user avatar.
+const NAV_ITEMS: { href: string; label: string; special?: boolean; ai?: boolean }[] = [
   { href: "/discover", label: "Discover" },
   { href: "/players", label: "Players" },
   { href: "/clubs", label: "Clubs" },
@@ -19,6 +19,7 @@ const NAV_ITEMS: { href: string; label: string; special?: boolean }[] = [
   { href: "/transfers", label: "Transfers" },
   { href: "/insights", label: "Insights" },
   { href: "/worldcup", label: "World Cup", special: true },
+  { href: "/ask", label: "Ask", ai: true },
   { href: "/compare", label: "Compare" },
 ];
 
@@ -70,7 +71,7 @@ export function TopNav() {
                     href={item.href}
                     className={cn(
                       "px-3 py-1.5 rounded-lg text-[13px] font-medium transition inline-flex items-center gap-1.5",
-                      item.special
+                      item.special || item.ai
                         ? active
                           ? "text-acc bg-acc/10"
                           : "text-acc hover:bg-acc/10"
@@ -79,6 +80,7 @@ export function TopNav() {
                           : "text-mute hover:text-fg hover:bg-overlay/[0.03]"
                     )}
                   >
+                    {item.ai && <Sparkles size={12} className="shrink-0" />}
                     {item.label}
                     {item.special && (
                       <span className="text-[9px] font-bold leading-none rounded bg-acc text-ink-950 px-1 py-[3px] num">26</span>
