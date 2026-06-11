@@ -14,6 +14,7 @@ export interface RumourItem {
   reportedFeeM: number | null; // millions
   onsideValueM: number; // millions (live)
   firstSeen: string;
+  lastUpdate: string;
   url: string | null;
   player: {
     id: string;
@@ -26,11 +27,13 @@ export interface RumourItem {
     clubColor: string;
     clubShort: string;
   };
+  league: string | null; // player's current league
+  leagueSlug: string | null;
   confidence: ConfidenceResult;
 }
 
 const RUMOUR_SELECT =
-  "id,to_club,reported_fee_eur,status,summary,primary_source,source_tier,corroborations,first_seen,url, players(id,slug,name,known_as,photo_url,position,contract_until, clubs(name,short_name,slug), player_valuations(value_eur))";
+  "id,to_club,reported_fee_eur,status,summary,primary_source,source_tier,corroborations,first_seen,last_update,url, players(id,slug,name,known_as,photo_url,position,contract_until, clubs(name,short_name,slug, leagues(name,slug)), player_valuations(value_eur))";
 
 interface RumourRow {
   id: string;
@@ -42,6 +45,7 @@ interface RumourRow {
   source_tier: number;
   corroborations: number;
   first_seen: string;
+  last_update: string | null;
   url: string | null;
   players: {
     id: string;
@@ -51,7 +55,7 @@ interface RumourRow {
     photo_url: string | null;
     position: string | null;
     contract_until: number | null;
-    clubs: { name: string; short_name: string | null; slug: string } | null;
+    clubs: { name: string; short_name: string | null; slug: string; leagues: { name: string; slug: string } | null } | null;
     player_valuations: { value_eur: number } | null;
   } | null;
 }
@@ -83,7 +87,10 @@ function toItem(r: RumourRow, now: Date): RumourItem | null {
     reportedFeeM: r.reported_fee_eur != null ? Math.round(r.reported_fee_eur / 1e6) : null,
     onsideValueM: Math.round(value / 1e6),
     firstSeen: r.first_seen,
+    lastUpdate: r.last_update ?? r.first_seen,
     url: r.url,
+    league: r.players?.clubs?.leagues?.name ?? null,
+    leagueSlug: r.players?.clubs?.leagues?.slug ?? null,
     player: {
       id: p.id,
       slug: p.slug,
@@ -97,6 +104,43 @@ function toItem(r: RumourRow, now: Date): RumourItem | null {
     },
     confidence: conf,
   };
+}
+
+export interface WireFilters {
+  status?: "rumour" | "confirmed" | "dead";
+  league?: string; // league slug
+  club?: string; // free text — matches the player's club OR the destination
+  credibleOnly?: boolean; // confidence ≥ 70 (confirmed always passes)
+}
+
+const foldLite = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+/** Pure filter for the Wire — applied post-compute because confidence is read-time. */
+export function filterWire(items: RumourItem[], filters: WireFilters): RumourItem[] {
+  return items.filter((r) => {
+    if (filters.status && r.status !== filters.status) return false;
+    if (filters.league && r.leagueSlug !== filters.league) return false;
+    if (filters.club) {
+      const needle = foldLite(filters.club);
+      const hay = `${foldLite(r.player.fromClub)} ${foldLite(r.toClub)}`;
+      if (!hay.includes(needle)) return false;
+    }
+    if (filters.credibleOnly && r.status === "rumour" && r.confidence.pct < 70) return false;
+    return true;
+  });
+}
+
+/** The Wire: newest-first feed with URL-driven filters. */
+export async function getWire(filters: WireFilters = {}, limit = 100): Promise<RumourItem[]> {
+  return filterWire(await getRumours(limit), filters);
+}
+
+/** Comment counts per rumour id — one cheap scan while volumes are small. */
+export async function getCommentCounts(): Promise<Map<string, number>> {
+  const { data } = await readDb().from("rumour_comments").select("rumour_id").limit(5000);
+  const counts = new Map<string, number>();
+  for (const c of data ?? []) counts.set(c.rumour_id, (counts.get(c.rumour_id) ?? 0) + 1);
+  return counts;
 }
 
 /** Live rumour feed, newest first. Excludes unreviewed ingestion candidates. */
