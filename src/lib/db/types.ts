@@ -296,6 +296,7 @@ export type Database = {
           fetched_at: string
           ga: number | null
           gf: number | null
+          group_name: string | null
           league_id: string
           lost: number | null
           played: number | null
@@ -310,6 +311,7 @@ export type Database = {
           fetched_at?: string
           ga?: number | null
           gf?: number | null
+          group_name?: string | null
           league_id: string
           lost?: number | null
           played?: number | null
@@ -324,6 +326,7 @@ export type Database = {
           fetched_at?: string
           ga?: number | null
           gf?: number | null
+          group_name?: string | null
           league_id?: string
           lost?: number | null
           played?: number | null

@@ -392,6 +392,7 @@ export async function getStatLeaders(metric: "goals" | "assists" | "rating" | "x
 
 export interface StandingRow {
   position: number;
+  group: string | null;
   clubSlug: string | null;
   clubName: string;
   played: number | null;
@@ -410,13 +411,15 @@ export async function getLeagueStandings(leagueSlug: string): Promise<StandingRo
   if (!lg) return [];
   const { data } = await db
     .from("league_standings")
-    .select("position,club_id,club_name,played,won,draw,lost,gf,ga,points, clubs(slug,squad_value)")
+    .select("position,group_name,club_id,club_name,played,won,draw,lost,gf,ga,points, clubs(slug,squad_value)")
     .eq("league_id", lg.id)
+    .order("group_name", { ascending: true, nullsFirst: true })
     .order("position", { ascending: true });
   return (data ?? []).map((r) => {
     const c = r.clubs as unknown as { slug: string; squad_value: number | null } | null;
     return {
       position: r.position,
+      group: r.group_name,
       clubSlug: c?.slug ?? null,
       clubName: r.club_name,
       played: r.played,
@@ -480,6 +483,51 @@ export async function getLeagueTopScorers(leagueSlug: string, limit = 10): Promi
       clubColor: style.color,
     };
   });
+}
+
+// ─────────────────────────── Mover reasons ───────────────────────────
+
+export interface MoverReason {
+  text: string;
+  kind: "rumour" | "confirmed" | "injury" | "worldcup" | "model";
+}
+
+/**
+ * Honest context for why a value might be moving — only REAL signals
+ * (live rumours, done deals, injuries, World Cup duty); everything else
+ * is labelled as model re-pricing, never a fabricated narrative.
+ */
+export async function getMoverReasons(playerIds: string[]): Promise<Record<string, MoverReason>> {
+  const out: Record<string, MoverReason> = {};
+  if (!playerIds.length) return out;
+  const db = readDb();
+  const today = new Date().toISOString().slice(0, 10);
+  const [rumours, injuries, wc] = await Promise.all([
+    db
+      .from("rumours")
+      .select("player_id,to_club,status,last_update")
+      .in("player_id", playerIds)
+      .neq("status", "candidate")
+      .order("last_update", { ascending: false }),
+    db.from("player_injuries").select("player_id").in("player_id", playerIds).or(`end_date.is.null,end_date.gte.${today}`),
+    db.from("national_team_squads").select("player_id").in("player_id", playerIds),
+  ]);
+
+  const injured = new Set((injuries.data ?? []).map((r) => r.player_id));
+  const atWc = new Set((wc.data ?? []).map((r) => r.player_id));
+
+  for (const r of rumours.data ?? []) {
+    if (out[r.player_id]) continue; // newest-first — first wins
+    if (r.status === "confirmed") out[r.player_id] = { text: `Done deal → ${r.to_club}`, kind: "confirmed" };
+    else if (r.status === "rumour") out[r.player_id] = { text: `Transfer talk → ${r.to_club === "—" ? "exit" : r.to_club}`, kind: "rumour" };
+  }
+  for (const id of playerIds) {
+    if (out[id]) continue;
+    if (injured.has(id)) out[id] = { text: "Sidelined — injury", kind: "injury" };
+    else if (atWc.has(id)) out[id] = { text: "On World Cup duty", kind: "worldcup" };
+    else out[id] = { text: "Model re-pricing", kind: "model" };
+  }
+  return out;
 }
 
 // ─────────────────────────── Club fixtures ───────────────────────────
@@ -580,6 +628,7 @@ export interface WcFixture {
   city: string | null;
   home: { slug: string; name: string };
   away: { slug: string; name: string };
+  group: string | null; // group letter during the group stage
   scoreHome: number | null;
   scoreAway: number | null;
   forecast: Forecast | null; // Onside Forecast (squad-value-led); null when teams unknown or played
@@ -594,11 +643,11 @@ export async function getWcFixtures(): Promise<WcFixture[]> {
       .select("id,kickoff,round,status,venue,city,home_id,away_id,score_home,score_away")
       .eq("competition", "World Cup 2026")
       .order("kickoff", { ascending: true }),
-    db.from("national_teams").select("slug,name,squad_value,fifa_rank"),
+    db.from("national_teams").select("slug,name,squad_value,fifa_rank,group_letter"),
   ]);
   if (fxRes.error) throw new Error(fxRes.error.message);
   const metaBySlug = new Map(
-    (ntRes.data ?? []).map((n) => [n.slug, { name: n.name, value: n.squad_value, rank: n.fifa_rank }] as const),
+    (ntRes.data ?? []).map((n) => [n.slug, { name: n.name, value: n.squad_value, rank: n.fifa_rank, group: n.group_letter }] as const),
   );
   const team = (slug: string | null) => ({ slug: slug ?? "", name: (slug && metaBySlug.get(slug)?.name) || "TBD" });
   return (fxRes.data ?? []).map((f) => {
@@ -619,6 +668,7 @@ export async function getWcFixtures(): Promise<WcFixture[]> {
       city: f.city,
       home: team(f.home_id),
       away: team(f.away_id),
+      group: (f.round ?? "").includes("Group") ? (h?.group ?? a?.group ?? null) : null,
       scoreHome: f.score_home,
       scoreAway: f.score_away,
       forecast,

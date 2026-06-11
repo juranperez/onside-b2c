@@ -6,15 +6,24 @@ import { cn } from "@/lib/utils";
 import { Card, Avatar, Delta } from "@/components/ui";
 import { Sparkline } from "@/components/ui/sparkline";
 import type { PlayerListItem } from "@/lib/queries/map";
+import type { MoverReason } from "@/lib/queries";
 
 type Dir = "all" | "up" | "down";
+
+const REASON_STYLE: Record<MoverReason["kind"], string> = {
+  rumour: "bg-acc/10 text-acc border-acc/25",
+  confirmed: "bg-up/10 text-up border-up/25",
+  injury: "bg-down/10 text-down border-down/25",
+  worldcup: "bg-up/10 text-up border-up/25",
+  model: "bg-overlay/5 text-mute-soft border-line",
+};
 
 /**
  * Client child for the "Biggest movers · last 24h" board.
  * Receives the already-fetched movers from the Server Component and lets the
  * reader flip between All / Up / Down without another round-trip.
  */
-export function MoversBoard({ movers }: { movers: PlayerListItem[] }) {
+export function MoversBoard({ movers, reasons = {} }: { movers: PlayerListItem[]; reasons?: Record<string, MoverReason> }) {
   const [dir, setDir] = useState<Dir>("all");
 
   const shown = useMemo(() => {
@@ -84,6 +93,19 @@ export function MoversBoard({ movers }: { movers: PlayerListItem[] }) {
                   <span className="num text-[18px] font-bold">€{p.val.toFixed(1)}M</span>
                   <Sparkline points={p.spark} width={52} />
                 </div>
+                {reasons[p.id] && (
+                  <div className="mt-2.5">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium truncate max-w-full",
+                        REASON_STYLE[reasons[p.id].kind],
+                      )}
+                      title={reasons[p.id].kind === "model" ? "No external catalyst — the model is re-pricing within its confidence band." : undefined}
+                    >
+                      {reasons[p.id].text}
+                    </span>
+                  </div>
+                )}
               </Card>
             </Link>
           ))}

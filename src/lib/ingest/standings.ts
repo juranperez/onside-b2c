@@ -17,6 +17,7 @@ interface SmStandingRow {
   position: number | null;
   points: number | null;
   participant?: { name?: string | null } | null;
+  group?: { name?: string | null } | null; // conference/group leagues (MLS East/West)
   details?: SmDetail[] | null;
 }
 
@@ -57,7 +58,7 @@ export async function syncStandings(db: SupabaseClient<Database>): Promise<Stand
       const sid = lj.data?.currentseason?.id ?? lj.data?.currentSeason?.id;
       if (!sid) continue;
 
-      const sr = await fetch(`${SPORTMONKS_BASE}/standings/seasons/${sid}?include=participant;details.type`, auth);
+      const sr = await fetch(`${SPORTMONKS_BASE}/standings/seasons/${sid}?include=participant;details.type;group`, auth);
       if (!sr.ok) continue;
       const sj = (await sr.json()) as { data?: SmStandingRow[] };
       const rows: TablesInsert<"league_standings">[] = [];
@@ -70,6 +71,7 @@ export async function syncStandings(db: SupabaseClient<Database>): Promise<Stand
           position: r.position,
           club_id: clubId,
           club_name: r.participant.name,
+          group_name: r.group?.name ?? null,
           played: detail(r, "overall matches"),
           won: detail(r, "overall won"),
           draw: detail(r, "overall draw"),

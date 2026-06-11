@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Sparkles, TrendingUp, Trophy } from "lucide-react";
 import { Card, Avatar, Delta, Button, LiveDot } from "@/components/ui";
 import { MoversBoard } from "@/components/discover/MoversBoard";
-import { getMovers, getTopPlayers, getCounts } from "@/lib/queries";
+import { getMovers, getTopPlayers, getCounts, getMoverReasons } from "@/lib/queries";
 import type { PlayerListItem } from "@/lib/queries/map";
 
 export const revalidate = 1800;
@@ -28,6 +28,9 @@ export default async function DiscoverPage() {
   } catch (e) {
     console.error("[discover] data unavailable at render:", e);
   }
+
+  // Why each mover is moving — real signals only (rumours, deals, injuries, WC duty).
+  const reasons = await getMoverReasons(movers.map((p) => p.id)).catch(() => ({}));
 
   // "Players you should know" — top players, minus anyone already on the movers board.
   const moverIds = new Set(movers.slice(0, 4).map((p) => p.id));
@@ -72,7 +75,7 @@ export default async function DiscoverPage() {
       </div>
 
       {/* Biggest movers — client child handles the All/Up/Down toggle */}
-      <MoversBoard movers={movers} />
+      <MoversBoard movers={movers} reasons={reasons} />
 
       <div className="grid lg:grid-cols-[1fr_340px] gap-6">
         <div className="space-y-8">

@@ -8,6 +8,7 @@ import { Search, Bell, Menu, X, Sparkles } from "lucide-react";
 import { OnsideMark } from "@/components/ui/logo";
 import { createClient } from "@/lib/db/supabase-browser";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { CmdK } from "./CmdK";
 
 // Surface the real destinations (Clubs, Leagues) and drop the not-yet-live
 // Community dead ends. Watchlist lives on the user avatar.
@@ -105,7 +106,9 @@ export function TopNav() {
                 aria-label="Search players, clubs and leagues"
                 className="w-full bg-transparent outline-none text-[12px] text-fg placeholder:text-mute-soft"
               />
+              <kbd className="text-[9px] num text-mute-soft border border-line rounded px-1 py-0.5 shrink-0">⌘K</kbd>
             </form>
+            <CmdK />
             <ThemeToggle />
             <Link
               href="/notifications"

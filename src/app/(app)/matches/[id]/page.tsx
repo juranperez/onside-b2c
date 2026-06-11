@@ -4,6 +4,8 @@ import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, Chip } from "@/components/ui";
 import { readDb } from "@/lib/db/server";
+import { getWcFixtures, type WcFixture } from "@/lib/queries";
+import { nationFlagSrc, nationCode } from "@/components/worldcup/nation-code";
 
 // Match centre v1 (build #5 foundation): our stored fixture row + Sportmonks
 // detail (events, lineups) fetched server-side. 5-minute revalidate now; the
@@ -63,8 +65,42 @@ async function getFixture(id: string) {
   return data;
 }
 
+async function getWcMatch(id: string): Promise<WcFixture | null> {
+  if (!id.startsWith("wc2026-")) return null;
+  const all = await getWcFixtures().catch(() => [] as WcFixture[]);
+  return all.find((f) => f.id === id) ?? null;
+}
+
+function WcTeam({ slug, name, align }: { slug: string; name: string; align: "left" | "right" }) {
+  const src = nationFlagSrc(slug);
+  return (
+    <Link
+      href={`/worldcup/teams/${slug}`}
+      className={cn("flex-1 flex items-center gap-3 group", align === "right" ? "justify-end" : "justify-start", align === "right" ? "flex-row" : "flex-row-reverse")}
+    >
+      <span className={cn("text-[16px] md:text-[20px] font-bold tracking-tight group-hover:text-acc transition", align === "right" ? "text-right" : "text-left")}>
+        {name}
+      </span>
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt={name} width={34} height={34} className="rounded-full ring-1 ring-line/60 shrink-0" style={{ width: 34, height: 34 }} />
+      ) : (
+        <span className="num text-[12px] text-mute-soft">{nationCode(slug, name)}</span>
+      )}
+    </Link>
+  );
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
+  const wc = await getWcMatch(id);
+  if (wc) {
+    const score = wc.status !== "scheduled" && wc.scoreHome != null ? ` ${wc.scoreHome}–${wc.scoreAway}` : " vs";
+    return {
+      title: `${wc.home.name}${score} ${wc.away.name} — World Cup 2026 | Onside`,
+      description: `${wc.home.name} v ${wc.away.name}${wc.group ? `, Group ${wc.group}` : ""} — score, kickoff and the Onside Forecast.`,
+    };
+  }
   const f = await getFixture(id).catch(() => null);
   if (!f) return { title: "Match — Onside" };
   const score = f.status === "finished" && f.score_home != null ? ` ${f.score_home}–${f.score_away}` : "";
@@ -86,6 +122,83 @@ const EVENT_ICON: Record<string, string> = {
 
 export default async function MatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  // World Cup fixtures get their own layout: nations, group context, the Onside Forecast.
+  const wc = await getWcMatch(id);
+  if (wc) {
+    const kickoff = wc.kickoff
+      ? new Date(wc.kickoff).toLocaleString("en-US", { weekday: "long", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + " ET"
+      : "TBD";
+    return (
+      <div className="max-w-[760px] mx-auto px-4 md:px-6 py-8">
+        <Link href="/worldcup/schedule" className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-fg transition mb-6">
+          <ArrowLeft size={14} /> World Cup schedule
+        </Link>
+
+        <Card className="p-6 md:p-8 mb-5">
+          <div className="text-center text-[11px] text-mute uppercase tracking-wider num mb-5">
+            {wc.group ? `Group ${wc.group} · ` : ""}
+            {wc.round?.replace("Group Stage - ", "Matchday ") ?? "World Cup 2026"} · {kickoff}
+          </div>
+          <div className="flex items-center justify-center gap-4 md:gap-6">
+            <WcTeam slug={wc.home.slug} name={wc.home.name} align="right" />
+            <div className="shrink-0 px-2">
+              {wc.scoreHome != null && wc.scoreAway != null && wc.status !== "scheduled" ? (
+                <span className={cn("display num text-[38px] md:text-[48px] tracking-tight", wc.status === "live" && "text-up")}>
+                  {wc.scoreHome}–{wc.scoreAway}
+                </span>
+              ) : (
+                <span className="display num text-[24px] text-mute-soft">vs</span>
+              )}
+            </div>
+            <WcTeam slug={wc.away.slug} name={wc.away.name} align="left" />
+          </div>
+          <div className="mt-4 text-center">
+            <Chip tone={wc.status === "live" ? "acc" : wc.status === "finished" ? "neutral" : "solid"} className="uppercase">
+              {wc.status === "scheduled" ? "upcoming" : wc.status}
+            </Chip>
+            {wc.venue && (
+              <div className="text-[12px] text-mute mt-3">
+                {wc.venue}
+                {wc.city ? ` · ${wc.city}` : ""}
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {wc.forecast && (
+          <Card className="p-6">
+            <div className="flex items-center gap-1.5 mb-1 text-[10px] uppercase tracking-[0.14em] font-bold num text-acc">
+              <span className="w-1.5 h-1.5 rounded-full bg-acc" /> Onside Forecast
+            </div>
+            <p className="text-[12px] text-mute mb-4 leading-relaxed">
+              Win probability from our squad-value model, anchored by FIFA rank — entertainment, not betting advice.
+            </p>
+            <div className="grid grid-cols-3 text-center mb-2">
+              <div>
+                <div className="display num text-[26px]">{wc.forecast.home}%</div>
+                <div className="text-[11px] text-mute">{wc.home.name}</div>
+              </div>
+              <div>
+                <div className="display num text-[26px] text-mute">{wc.forecast.draw}%</div>
+                <div className="text-[11px] text-mute-soft">Draw</div>
+              </div>
+              <div>
+                <div className="display num text-[26px]">{wc.forecast.away}%</div>
+                <div className="text-[11px] text-mute">{wc.away.name}</div>
+              </div>
+            </div>
+            <div className="flex h-2.5 rounded-full overflow-hidden bg-ink-700">
+              <div style={{ width: `${wc.forecast.home}%` }} className="bg-acc" />
+              <div style={{ width: `${wc.forecast.draw}%` }} className="bg-ink-600" />
+              <div style={{ width: `${wc.forecast.away}%` }} className="bg-fg/70" />
+            </div>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
   const f = await getFixture(id).catch(() => null);
 
   if (!f) {

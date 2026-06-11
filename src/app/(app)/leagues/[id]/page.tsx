@@ -121,7 +121,8 @@ export default async function LeagueDetailPage({ params }: { params: Promise<{ i
             <span className="text-right">Pts</span>
             <span className="text-right">vs budget</span>
           </div>
-          {standings.map((row) => {
+          {standings.map((row, i) => {
+            const newGroup = row.group && (i === 0 || standings[i - 1].group !== row.group);
             const vr = valueRank.get(row.clubName);
             const delta = vr != null ? vr - row.position : null; // + = outperforming the money
             const inner = (
@@ -151,12 +152,20 @@ export default async function LeagueDetailPage({ params }: { params: Promise<{ i
                 </span>
               </div>
             );
-            return row.clubSlug ? (
-              <Link key={row.clubName} href={`/clubs/${row.clubSlug}`} className="block cursor-pointer">
+            const wrapped = row.clubSlug ? (
+              <Link href={`/clubs/${row.clubSlug}`} className="block cursor-pointer">
                 {inner}
               </Link>
             ) : (
-              <div key={row.clubName}>{inner}</div>
+              inner
+            );
+            return (
+              <div key={`${row.group ?? ""}-${row.clubName}`}>
+                {newGroup && (
+                  <div className="px-4 py-2 bg-ink-900 border-b border-line text-[11px] font-semibold text-acc">{row.group}</div>
+                )}
+                {wrapped}
+              </div>
             );
           })}
         </Card>
