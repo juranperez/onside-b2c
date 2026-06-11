@@ -365,6 +365,7 @@ export type Database = {
       }
       player_stats: {
         Row: {
+          advanced: Json | null
           apps: number | null
           assists: number | null
           assists_p90: number | null
@@ -380,6 +381,7 @@ export type Database = {
           xg: number | null
         }
         Insert: {
+          advanced?: Json | null
           apps?: number | null
           assists?: number | null
           assists_p90?: number | null
@@ -395,6 +397,7 @@ export type Database = {
           xg?: number | null
         }
         Update: {
+          advanced?: Json | null
           apps?: number | null
           assists?: number | null
           assists_p90?: number | null
@@ -588,17 +591,49 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "rumour_comments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "rumour_comments_rumour_id_fkey"
             columns: ["rumour_id"]
             isOneToOne: false
             referencedRelation: "rumours"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      rumour_sources: {
+        Row: {
+          rumour_id: string
+          seen_at: string
+          source: string | null
+          tier: number | null
+          url: string
+        }
+        Insert: {
+          rumour_id: string
+          seen_at?: string
+          source?: string | null
+          tier?: number | null
+          url: string
+        }
+        Update: {
+          rumour_id?: string
+          seen_at?: string
+          source?: string | null
+          tier?: number | null
+          url?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "rumour_comments_profile_id_fkey"
-            columns: ["profile_id"]
+            foreignKeyName: "rumour_sources_rumour_id_fkey"
+            columns: ["rumour_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "rumours"
             referencedColumns: ["id"]
           },
         ]

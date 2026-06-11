@@ -211,6 +211,16 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
     .select("id,url,player_id,status,to_club,corroborations,source_tier,reported_fee_eur")
     .limit(5000);
   const seenUrls = new Set<string>();
+  // Durable per-article dedup — every url that ever fed a rumour, not just the primary.
+  {
+    const PAGE = 1000;
+    for (let from = 0; from < 50_000; from += PAGE) {
+      const { data, error } = await db.from("rumour_sources").select("url").range(from, from + PAGE - 1);
+      if (error || !data?.length) break;
+      for (const r of data) seenUrls.add(r.url);
+      if (data.length < PAGE) break;
+    }
+  }
   const confirmedPlayers = new Set<string>();
   const byPair = new Map<string, ExistingRumour>();
   const forPlayer = new Map<string, ExistingRumour[]>();
@@ -296,7 +306,13 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
           t.corroborations += 1;
           t.source_tier = bestTier;
           if (action.promote) t.status = "rumour";
-          if (it.link) seenUrls.add(it.link);
+          if (it.link) {
+            seenUrls.add(it.link);
+            await db.from("rumour_sources").upsert(
+              { url: it.link, rumour_id: t.id, source: resolved.source.slice(0, 80), tier: resolved.tier },
+              { onConflict: "url", ignoreDuplicates: true },
+            );
+          }
         }
         continue;
       }
@@ -323,7 +339,15 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
         result.inserted++;
         if (action.kind === "publish") result.autoPublished++;
         if (resolved.tier === 1) result.tier1++;
-        if (it.link) seenUrls.add(it.link);
+        if (it.link) {
+          seenUrls.add(it.link);
+          if (created?.id) {
+            await db.from("rumour_sources").upsert(
+              { url: it.link, rumour_id: created.id, source: resolved.source.slice(0, 80), tier: resolved.tier },
+              { onConflict: "url", ignoreDuplicates: true },
+            );
+          }
+        }
         const row: ExistingRumour = {
           id: created?.id ?? "new",
           status,

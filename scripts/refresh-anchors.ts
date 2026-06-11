@@ -31,6 +31,8 @@ const OVERRIDES: { t: string[]; c: string; m: number }[] = [
   { t: ["lobotka"], c: "Napoli", m: 35 },
   { t: ["grimaldo"], c: "Bayer Leverkusen", m: 24 },
   { t: ["osimhen"], c: "Galatasaray", m: 90 },
+  // 2026-06-11 additions — rumour-visible stale anchors (TM values via public reporting).
+  { t: ["elliot", "anderson"], c: "Nottingham", m: 75 },
 ];
 
 const MODEL = "tm-refresh-2026-06";
@@ -66,9 +68,18 @@ async function main() {
     from += PAGE;
   }
 
+  // Accent/format-insensitive club containment — exact equality silently skipped
+  // entries when the DB said "Atlético de Madrid" and the list said "Atletico Madrid"
+  // (which is how Álvarez stayed on the €20M fallback for a week).
+  const foldClub = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
   let done = 0;
   for (const o of OVERRIDES) {
-    const cands = all.filter((r) => r.club === o.c && o.t.every((tok) => r.nn.includes(tok)));
+    const oc = foldClub(o.c);
+    const cands = all.filter((r) => {
+      const rc = foldClub(r.club);
+      return (rc.includes(oc) || (rc.length >= 4 && oc.includes(rc))) && o.t.every((tok) => r.nn.includes(tok));
+    });
     if (!cands.length) {
       console.warn(`· no match: ${o.t.join("+")} @ ${o.c}`);
       continue;

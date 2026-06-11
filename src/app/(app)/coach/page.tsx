@@ -1,21 +1,7 @@
-import type { Metadata } from "next";
-import { Sparkles } from "lucide-react";
-import { ComingSoon } from "@/components/ui";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "AI Coach — Onside",
-  description: "Ask anything about players, transfers and tactics. The Onside AI Coach is coming soon.",
-};
-
+// The "AI Coach" shipped as Ask Onside (/ask). This legacy route — still reachable
+// from old links and footers — forwards there instead of dead-ending on a teaser.
 export default function CoachPage() {
-  return (
-    <ComingSoon
-      icon={<Sparkles size={20} className="text-acc" />}
-      eyebrow="AI Coach · Pro"
-      title="AI Coach"
-      line="Ask anything about players, transfers and tactics — the AI Coach is coming soon."
-      cta={{ label: "Browse players", href: "/players" }}
-      note="Included with Onside Pro at launch."
-    />
-  );
+  redirect("/ask");
 }

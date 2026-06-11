@@ -18,6 +18,8 @@ const serverSchema = z.object({
   // Ask Onside LLM cascade — both optional; /api/ask degrades to 503 when absent.
   GROQ_API_KEY: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
+  // Sportmonks (xG/positions sync + official transfers cron).
+  SPORTMONKS_API_TOKEN: z.string().optional(),
 });
 
 export type PublicEnv = z.infer<typeof publicSchema>;

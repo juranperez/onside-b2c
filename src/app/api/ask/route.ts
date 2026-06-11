@@ -35,24 +35,23 @@ function systemPrompt(contextBlock: string): string {
 }
 
 export async function POST(req: Request) {
-  // Burst guard by IP first — cheapest check.
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-  const ipGate = rateLimit(`ask:ip:${ip}`, 20, 60_000);
-  if (!ipGate.ok) {
-    return NextResponse.json({ error: "rate-limited", retryAfterSec: ipGate.retryAfterSec }, { status: 429 });
-  }
-
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "sign-in-required" }, { status: 401 });
   }
 
-  // Per-user quotas: short window for bursts, daily cap for cost control.
-  const minuteGate = rateLimit(`ask:u:${user.id}:m`, 6, 60_000);
-  const dayGate = rateLimit(`ask:u:${user.id}:d`, 40, 86_400_000);
-  const gate = !minuteGate.ok ? minuteGate : dayGate;
-  if (!gate.ok) {
-    return NextResponse.json({ error: "rate-limited", retryAfterSec: gate.retryAfterSec }, { status: 429 });
+  // The owner account is never throttled (same convention as /transfers/manage).
+  const isOwner = user.email === (process.env.ADMIN_EMAIL ?? "juranperez@gmail.com");
+  if (!isOwner) {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+    const ipGate = rateLimit(`ask:ip:${ip}`, 20, 60_000);
+    // Per-user quotas: short window for bursts, daily cap for cost control.
+    const minuteGate = rateLimit(`ask:u:${user.id}:m`, 6, 60_000);
+    const dayGate = rateLimit(`ask:u:${user.id}:d`, 40, 86_400_000);
+    const gate = !ipGate.ok ? ipGate : !minuteGate.ok ? minuteGate : dayGate;
+    if (!gate.ok) {
+      return NextResponse.json({ error: "rate-limited", retryAfterSec: gate.retryAfterSec }, { status: 429 });
+    }
   }
 
   let parsed: z.infer<typeof bodySchema>;
