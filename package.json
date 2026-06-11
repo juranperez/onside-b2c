@@ -29,7 +29,7 @@
     "sync:standings": "node --env-file=.env.local --import tsx scripts/sync-standings.ts",
     "sync:club-fixtures": "node --env-file=.env.local --import tsx scripts/sync-club-fixtures.ts",
     "backfill:history": "node --env-file=.env.local --import tsx scripts/backfill-history.ts",
-    "send:digest": "node --env-file=.env.local --import tsx scripts/send-digest.ts"
+    "send:digest": "node --conditions react-server --env-file=.env.local --import tsx scripts/send-digest.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
@@ -52,6 +52,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
+    "server-only": "^0.0.1",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
     "typescript": "^5",

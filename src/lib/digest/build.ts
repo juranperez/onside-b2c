@@ -1,6 +1,6 @@
-import { getMovers, getCounts } from "@/lib/queries";
-import { getRumours, type RumourItem } from "@/lib/queries/rumours";
-import type { PlayerListItem } from "@/lib/queries/map";
+import { getMovers, getCounts } from "../queries";
+import { getRumours, type RumourItem } from "../queries/rumours";
+import type { PlayerListItem } from "../queries/map";
 
 export interface DigestData {
   risers: PlayerListItem[];
@@ -27,7 +27,7 @@ export async function buildDigest(): Promise<DigestData> {
 /** Minimal HTML email body for "The Board" (used by the send cron once SMTP is wired). */
 export function buildDigestHtml(d: DigestData, baseUrl = "https://onsidemarket.com"): string {
   const row = (p: PlayerListItem) =>
-    `<tr><td style="padding:6px 0;color:#e5e5e5;font:14px sans-serif"><a href="${baseUrl}/players/${p.slug}" style="color:#fff;text-decoration:none">${p.name}</a></td>` +
+    `<tr><td style="padding:6px 0;color:#e5e5e5;font:14px sans-serif"><a href="${baseUrl}/players/${p.slug}" style="color:#fff;text-decoration:none">${p.displayName}</a></td>` +
     `<td style="padding:6px 0;text-align:right;font:600 14px monospace;color:${p.dWeek >= 0 ? "#00E599" : "#FF4D63"}">${p.dWeek >= 0 ? "+" : ""}€${p.dWeek.toFixed(1)}M</td></tr>`;
   const rum = (r: RumourItem) =>
     `<tr><td style="padding:6px 0;color:#e5e5e5;font:14px sans-serif">${r.player.name} → ${r.toClub}</td>` +
