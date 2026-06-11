@@ -359,10 +359,16 @@ export interface StatLeader {
   valueM: number;
 }
 
+/** Football season starting-year for "this season" filters (July rollover). */
+export function currentSeasonYear(now = new Date()): number {
+  return now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
+}
+
 export async function getStatLeaders(metric: "goals" | "assists" | "rating" | "xg", limit = 25): Promise<StatLeader[]> {
   const { data, error } = await readDb()
     .from("player_stats")
     .select(`${metric}, players!inner(slug,name,known_as,photo_url, clubs(slug,name), player_valuations(value_eur))`)
+    .eq("season", currentSeasonYear()) // historical rows exist now — leaderboards are this-season only
     .not(metric, "is", null)
     .order(metric, { ascending: false })
     .limit(limit);
@@ -454,6 +460,7 @@ export async function getLeagueTopScorers(leagueSlug: string, limit = 10): Promi
     .from("player_stats")
     .select("goals,assists, players!inner(slug,name,known_as,photo_url, player_valuations(value_eur), clubs!inner(name,slug,league_id))")
     .eq("players.clubs.league_id", lg.id)
+    .eq("season", currentSeasonYear()) // historical rows exist now — one row per player
     .not("goals", "is", null)
     .order("goals", { ascending: false })
     .limit(limit);
