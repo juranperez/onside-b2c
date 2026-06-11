@@ -363,6 +363,41 @@ export type Database = {
           },
         ]
       }
+      player_injuries: {
+        Row: {
+          category: string
+          end_date: string | null
+          fetched_at: string
+          player_id: string
+          source: string
+          start_date: string | null
+        }
+        Insert: {
+          category?: string
+          end_date?: string | null
+          fetched_at?: string
+          player_id: string
+          source?: string
+          start_date?: string | null
+        }
+        Update: {
+          category?: string
+          end_date?: string | null
+          fetched_at?: string
+          player_id?: string
+          source?: string
+          start_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_injuries_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       player_stats: {
         Row: {
           advanced: Json | null

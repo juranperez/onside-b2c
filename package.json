@@ -24,7 +24,8 @@
     "ingest:once": "node --env-file=.env.local --import tsx scripts/ingest-once.ts",
     "crosswalk:sportmonks": "node --env-file=.env.local --import tsx scripts/crosswalk-sportmonks.ts",
     "sync:sportmonks": "node --env-file=.env.local --import tsx scripts/sync-sportmonks.ts",
-    "sync:transfers": "node --env-file=.env.local --import tsx scripts/sync-transfers.ts"
+    "sync:transfers": "node --env-file=.env.local --import tsx scripts/sync-transfers.ts",
+    "sync:injuries": "node --env-file=.env.local --import tsx scripts/sync-injuries.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

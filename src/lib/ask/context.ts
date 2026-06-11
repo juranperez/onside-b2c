@@ -3,7 +3,7 @@ import "server-only";
 import { readDb } from "@/lib/db/server";
 import { toPlayerListItem, type PlayerListItem, type PlayerRowDB } from "@/lib/queries/map";
 import { getTopPlayers, getMovers, getWcFixtures, type WcFixture } from "@/lib/queries";
-import { getRumoursForPlayer } from "@/lib/queries/rumours";
+import { getRumours, getRumoursForPlayer } from "@/lib/queries/rumours";
 import { extractShingles, classifyIntent } from "./shingles";
 
 /** A link chip shown under the answer so users can click through to the data. */
@@ -138,6 +138,24 @@ export async function buildAskContext(question: string): Promise<AskContext> {
         .join("\n")}`,
     );
     for (const n of nations) sources.push({ label: n.name, href: `/worldcup/teams/${n.slug}` });
+  }
+
+  // Generic rumour questions ("any rumours worth believing?") — no player named,
+  // so attach the top of the live Wire instead of answering empty-handed.
+  if (intent.rumours && !players.length) {
+    const top = await safe(getRumours(40), []);
+    const lines = top
+      .filter((r) => r.status === "rumour")
+      .sort((a, b) => b.confidence.pct - a.confidence.pct)
+      .slice(0, 6)
+      .map(
+        (r) =>
+          `- ${r.player.name}: ${r.player.fromClub} → ${r.toClub} — ${r.summary.slice(0, 110)} | Onside Confidence ${r.confidence.pct}%${r.reportedFeeM ? ` | reported €${r.reportedFeeM}M vs Onside ${fmtM(r.onsideValueM)}` : ""}`,
+      );
+    if (lines.length) {
+      sections.push(`TOP LIVE TRANSFER RUMOURS (by Onside Confidence %):\n${lines.join("\n")}`);
+      sources.push({ label: "The Wire", href: "/transfers" });
+    }
   }
 
   // Rumours for matched players (top 2 players, 2 rumours each).

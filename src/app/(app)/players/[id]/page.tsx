@@ -9,7 +9,7 @@ import { ShareButton } from "@/components/ui/share-button";
 import { RumourCard } from "@/components/transfers/rumour-card";
 import { PerformanceRadar, radarRows } from "@/components/players/PerformanceRadar";
 import { getRumoursForPlayer } from "@/lib/queries/rumours";
-import { getPlayerBySlug, getSimilarPlayers } from "@/lib/queries";
+import { getPlayerBySlug, getSimilarPlayers, getActiveInjury } from "@/lib/queries";
 
 export const revalidate = 3600;
 
@@ -41,6 +41,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
   const similar = await getSimilarPlayers(player).catch(() => []);
   const rumours = await getRumoursForPlayer(player.id).catch(() => []);
+  const injury = await getActiveInjury(player.id).catch(() => null);
   const maxV = Math.max(...player.series.map((s) => s.v), 1);
   const minV = Math.min(...player.series.map((s) => s.v), 0);
   const range = maxV - minV || 1;
@@ -76,6 +77,16 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                       <span className="num">#{player.shirtNo}</span>
                     </>
                   ) : null}
+                  {injury && (
+                    <>
+                      <span className="text-mute-soft">&middot;</span>
+                      <Chip tone="down" className="!py-0.5">
+                        Injured
+                        {injury.category && injury.category !== "injury" && injury.category !== "unknown" ? ` · ${injury.category}` : ""}
+                        {injury.endDate ? ` · out until ${injury.endDate}` : ""}
+                      </Chip>
+                    </>
+                  )}
                   {player.contractUntil ? (
                     <>
                       <span className="text-mute-soft">&middot;</span>

@@ -388,6 +388,28 @@ export async function getStatLeaders(metric: "goals" | "assists" | "rating" | "x
   });
 }
 
+// ─────────────────────────── Injuries ───────────────────────────
+
+export interface ActiveInjury {
+  category: string;
+  startDate: string | null;
+  endDate: string | null;
+}
+
+/** The player's current sidelined spell, if any (Sportmonks, refreshed daily). */
+export async function getActiveInjury(playerId: string): Promise<ActiveInjury | null> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await readDb()
+    .from("player_injuries")
+    .select("category,start_date,end_date")
+    .eq("player_id", playerId)
+    .or(`end_date.is.null,end_date.gte.${today}`)
+    .order("start_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ? { category: data.category, startDate: data.start_date, endDate: data.end_date } : null;
+}
+
 // ─────────────────────────── Coverage ───────────────────────────
 
 export async function getCounts(): Promise<{ players: number; clubs: number; leagues: number }> {

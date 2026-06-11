@@ -6,6 +6,8 @@
 
 const STOPWORDS = new Set([
   "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+  "any", "all", "some", "few", "lot", "lots", "every", "each", "both", "other", "others",
+  "believing", "believe", "worth", "really", "actually", "going", "happening",
   "who", "what", "when", "where", "why", "how", "which", "whose",
   "do", "does", "did", "can", "could", "should", "would", "will", "shall",
   "i", "you", "he", "she", "it", "we", "they", "me", "him", "her", "them", "my", "your", "his", "their", "our",
@@ -58,7 +60,9 @@ export function extractShingles(question: string, cap = 8): string[] {
   };
 
   for (let i = 0; i < words.length - 1; i++) push(`${words[i]} ${words[i + 1]}`); // bigrams first — most specific
-  for (const w of words) push(w);
+  // Single words need length ≥ 4: a 3-char fragment like "any" substring-matches
+  // half the database (Jovany, Tidjany, Alanyaspor…).
+  for (const w of words) if (w.length >= 4) push(w);
   return out.slice(0, cap);
 }
 
