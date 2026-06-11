@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/sync?league=premier-league", "schedule": "0 5 * * 0" },
-    { "path": "/api/cron/sync-fixtures", "schedule": "0 6 * * *" }
+    { "path": "/api/cron/sync-fixtures", "schedule": "*/5 * * * *" },
+    { "path": "/api/cron/ingest-rumours", "schedule": "*/30 * * * *" }
   ]
 }
