@@ -48,15 +48,20 @@ describe("fullName", () => {
 });
 
 describe("knownAs", () => {
-  it("returns firstname + first meaningful lastname token", () => {
-    // Cody Mathès Gakpo: firstname="Cody Mathès", lastname="Gakpo" → "Cody Mathès Gakpo"
-    // (lastname is single-word so knownAs = fullName here)
-    expect(knownAs(gakpo.player)).toBe("Cody Mathès Gakpo");
+  it("expands the API short name against the firstname (the authoritative display form)", () => {
+    // name="C. Gakpo", firstname="Cody Mathès" → "Cody Gakpo"
+    expect(knownAs(gakpo.player)).toBe("Cody Gakpo");
   });
 
-  it("returns just the name for single-name players (no firstname/lastname)", () => {
-    // Alisson: firstname="Alisson", lastname="Becker" → "Alisson Becker"
-    expect(knownAs(alisson.player)).toBe("Alisson Becker");
+  it("keeps an already-full API name as-is (mononyms like Alisson, Pedri)", () => {
+    // name="Alisson" carries no initial — it IS the display name
+    expect(knownAs(alisson.player)).toBe("Alisson");
+  });
+
+  it("survives surname-mid-name conventions via the short name", () => {
+    // The regression class: lastname="Braut Haaland" puts the surname LAST,
+    // "Mbappé Lottin" puts it FIRST — only the short name disambiguates.
+    expect(knownAs({ id: 3, name: "E. Haaland", firstname: "Erling", lastname: "Braut Haaland" })).toBe("Erling Haaland");
   });
 
   it("skips particles in lastname", () => {

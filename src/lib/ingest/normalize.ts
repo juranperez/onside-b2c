@@ -84,8 +84,23 @@ const NAME_PARTICLES = new Set([
 export function knownAs(p: RawPlayer["player"]): string {
   const first = p.firstname?.trim() ?? "";
   const last = p.lastname?.trim() ?? "";
+  const short = p.name?.trim() ?? "";
 
-  if (!first && !last) return p.name?.trim() ?? "";
+  // API-Football's `name` is the authoritative DISPLAY form ("K. Mbappé",
+  // "E. Haaland", or already-full like "Pedri"). Expanding its initial against
+  // firstname is the only rule that survives every naming convention — the
+  // surname is NOT positionally derivable (lastname is "Braut Haaland" for
+  // Haaland but "Mbappé Lottin" for Mbappé: opposite slots).
+  const initial = short.match(/^([A-ZÀ-Þ])\.\s+(.+)$/u);
+  if (initial && first) {
+    const firstWord = first.split(/\s+/)[0];
+    if (firstWord.toLocaleUpperCase().startsWith(initial[1].toLocaleUpperCase())) {
+      return `${firstWord} ${initial[2]}`;
+    }
+  }
+  if (short && !short.includes(".")) return short; // already a display name
+
+  if (!first && !last) return short;
   if (!last) return first;
   if (!first) return last.split(/\s+/)[0]; // single-name player
 
