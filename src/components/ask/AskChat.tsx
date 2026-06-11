@@ -14,6 +14,36 @@ interface Msg {
   role: "user" | "assistant";
   content: string;
   sources?: Source[];
+  links?: Source[];
+}
+
+/**
+ * The rabbit-hole renderer: every entity name the answer mentions becomes a
+ * link into its page (saga, profile, club, nation). Longest names match first
+ * so "Julián Álvarez" wins over a hypothetical shorter overlap.
+ */
+function linkify(text: string, links: Source[] = []): React.ReactNode[] {
+  if (!links.length) return [text];
+  const sorted = [...links].sort((a, b) => b.text.length - a.text.length);
+  let nodes: React.ReactNode[] = [text];
+  for (const l of sorted) {
+    nodes = nodes.flatMap((node, ni) => {
+      if (typeof node !== "string" || !node.includes(l.text)) return [node];
+      const parts = node.split(l.text);
+      const out: React.ReactNode[] = [];
+      parts.forEach((p, i) => {
+        if (i > 0)
+          out.push(
+            <Link key={`${l.href}-${ni}-${i}`} href={l.href} className="text-acc hover:underline underline-offset-2">
+              {l.text}
+            </Link>,
+          );
+        if (p) out.push(p);
+      });
+      return out;
+    });
+  }
+  return nodes;
 }
 
 const ERROR_COPY: Record<string, string> = {
@@ -61,8 +91,10 @@ export function AskChat({ suggestions }: { suggestions: string[] }) {
       }
 
       let sources: Source[] = [];
+      let links: Source[] = [];
       try {
         sources = JSON.parse(decodeURIComponent(res.headers.get("X-Ask-Sources") ?? "%5B%5D")) as Source[];
+        links = JSON.parse(decodeURIComponent(res.headers.get("X-Ask-Links") ?? "%5B%5D")) as Source[];
       } catch {
         sources = [];
       }
@@ -76,7 +108,7 @@ export function AskChat({ suggestions }: { suggestions: string[] }) {
         acc += decoder.decode(value, { stream: true });
         // Models drift into markdown despite instructions — render plain.
         const snapshot = acc.replace(/\*\*/g, "").replace(/^#+\s/gm, "");
-        setMessages([...history, { role: "assistant", content: snapshot, sources }]);
+        setMessages([...history, { role: "assistant", content: snapshot, sources, links }]);
       }
       if (!acc.trim()) {
         setMessages([...history, { role: "assistant", content: ERROR_COPY.default }]);
@@ -123,7 +155,9 @@ export function AskChat({ suggestions }: { suggestions: string[] }) {
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-mute">Onside AI</span>
                 </div>
                 <div className="text-[13.5px] leading-relaxed whitespace-pre-wrap">
-                  {m.content || (
+                  {m.content ? (
+                    linkify(m.content, m.links)
+                  ) : (
                     <span className="inline-flex items-center gap-2 text-mute">
                       <LoaderCircle size={13} className="animate-spin" /> reading the data…
                     </span>

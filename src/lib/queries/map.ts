@@ -106,6 +106,8 @@ export interface PlayerProfile {
   bandHigh: number;
   pillars: { label: string; value: number }[];
   stats: { season: number; apps: number; minutes: number; goals: number; assists: number; rating: number | null; xg: number | null } | null;
+  /** All seasons newest-first (historical backfill + current) — powers the Seasons tab. */
+  seasonHistory: { season: number; apps: number; minutes: number; goals: number; assists: number; rating: number | null; xg: number | null }[];
   radar: Record<string, number> | null; // Sportmonks advanced per-90/% for the performance radar
   series: { label: string; v: number }[]; // millions, ~12 monthly points
 }
@@ -216,6 +218,18 @@ export function toPlayerProfile(r: PlayerProfileRow, now: Date = new Date()): Pl
           xg: stat.xg,
         }
       : null,
+    seasonHistory: (r.player_stats ?? [])
+      .slice()
+      .sort((a, b) => b.season - a.season)
+      .map((s) => ({
+        season: s.season,
+        apps: s.apps ?? 0,
+        minutes: s.minutes ?? 0,
+        goals: s.goals ?? 0,
+        assists: s.assists ?? 0,
+        rating: s.rating,
+        xg: s.xg,
+      })),
     radar,
     series,
   };

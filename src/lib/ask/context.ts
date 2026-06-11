@@ -12,9 +12,16 @@ export interface AskSource {
   href: string;
 }
 
+/** Inline linkification map: when the answer mentions `text`, the client wraps it in a link. */
+export interface AskLink {
+  text: string;
+  href: string;
+}
+
 export interface AskContext {
   block: string; // plaintext data block injected into the system prompt
   sources: AskSource[];
+  links: AskLink[];
 }
 
 interface MatchedPlayer extends PlayerListItem {
@@ -102,6 +109,12 @@ export async function buildAskContext(question: string): Promise<AskContext> {
   const intent = classifyIntent(question);
   const sources: AskSource[] = [];
   const sections: string[] = [];
+  // Inline links: a name → its deepest useful page. Rumour pages beat profiles
+  // (the saga + discussion is the rabbit hole); first writer wins per name.
+  const linkMap = new Map<string, string>();
+  const addLink = (text: string | null | undefined, href: string) => {
+    if (text && text.length >= 3 && !linkMap.has(text)) linkMap.set(text, href);
+  };
 
   const safe = async <T>(p: Promise<T>, fallback: T): Promise<T> => {
     try {
@@ -119,7 +132,10 @@ export async function buildAskContext(question: string): Promise<AskContext> {
 
   if (players.length) {
     sections.push(`MATCHED PLAYERS:\n${players.map(playerLine).join("\n")}`);
-    for (const p of players) sources.push({ label: p.displayName, href: `/players/${p.slug}` });
+    for (const p of players) {
+      sources.push({ label: p.displayName, href: `/players/${p.slug}` });
+      addLink(p.displayName, `/players/${p.slug}`);
+    }
   }
 
   if (clubs.length) {
@@ -128,7 +144,10 @@ export async function buildAskContext(question: string): Promise<AskContext> {
         .map((c) => `- ${c.name}${c.leagues ? ` (${c.leagues.name})` : ""} — squad value ${fmtM(Math.round((c.squad_value ?? 0) / 1e6))}`)
         .join("\n")}`,
     );
-    for (const c of clubs) sources.push({ label: c.name, href: `/clubs/${c.slug}` });
+    for (const c of clubs) {
+      sources.push({ label: c.name, href: `/clubs/${c.slug}` });
+      addLink(c.name, `/clubs/${c.slug}`);
+    }
   }
 
   if (nations.length) {
@@ -137,7 +156,10 @@ export async function buildAskContext(question: string): Promise<AskContext> {
         .map((n) => `- ${n.name} — FIFA rank ${n.fifa_rank ?? "—"}, group ${n.group_letter ?? "—"}, squad value ${fmtM(Math.round((n.squad_value ?? 0) / 1e6))}`)
         .join("\n")}`,
     );
-    for (const n of nations) sources.push({ label: n.name, href: `/worldcup/teams/${n.slug}` });
+    for (const n of nations) {
+      sources.push({ label: n.name, href: `/worldcup/teams/${n.slug}` });
+      addLink(n.name, `/worldcup/teams/${n.slug}`);
+    }
   }
 
   // Generic rumour questions ("any rumours worth believing?") — no player named,
@@ -155,6 +177,9 @@ export async function buildAskContext(question: string): Promise<AskContext> {
     if (lines.length) {
       sections.push(`TOP LIVE TRANSFER RUMOURS (by Onside Confidence %):\n${lines.join("\n")}`);
       sources.push({ label: "The Wire", href: "/transfers" });
+      for (const r of top.filter((x) => x.status === "rumour").slice(0, 8)) {
+        addLink(r.player.name, `/transfers/${r.id}`);
+      }
     }
   }
 
@@ -164,14 +189,15 @@ export async function buildAskContext(question: string): Promise<AskContext> {
       Promise.all(players.slice(0, 2).map((p) => getRumoursForPlayer(p.id))),
       [] as Awaited<ReturnType<typeof getRumoursForPlayer>>[],
     );
-    const lines = rumourBlocks
-      .flat()
-      .slice(0, 4)
-      .map(
-        (r) =>
-          `- ${r.player.name} → ${r.toClub ?? "?"} (${r.status}) — ${r.summary ?? "no summary"} | source: ${r.source ?? "—"} | Onside Confidence ${r.confidence}%${r.reportedFeeM ? ` | reported fee €${r.reportedFeeM}M` : ""}`,
-      );
-    if (lines.length) sections.push(`TRANSFER RUMOURS (Onside Confidence = our credibility model):\n${lines.join("\n")}`);
+    const flat = rumourBlocks.flat().slice(0, 4);
+    const lines = flat.map(
+      (r) =>
+        `- ${r.player.name} → ${r.toClub ?? "?"} (${r.status}) — ${r.summary ?? "no summary"} | source: ${r.source ?? "—"} | Onside Confidence ${r.confidence.pct}%${r.reportedFeeM ? ` | reported fee €${r.reportedFeeM}M` : ""}`,
+    );
+    if (lines.length) {
+      sections.push(`TRANSFER RUMOURS (Onside Confidence = our credibility model):\n${lines.join("\n")}`);
+      for (const r of flat) addLink(r.player.name, `/transfers/${r.id}`);
+    }
   }
 
   // World Cup fixtures: live now + next upcoming (+ matched nation's games).
@@ -211,5 +237,6 @@ export async function buildAskContext(question: string): Promise<AskContext> {
   return {
     block: sections.length ? sections.join("\n\n") : "NO MATCHING DATA — tell the user what you can answer (player values, stats, transfer rumours, World Cup fixtures and forecasts) and suggest naming a player, club, or nation.",
     sources: sources.slice(0, 5),
+    links: [...linkMap.entries()].slice(0, 12).map(([text, href]) => ({ text, href })),
   };
 }

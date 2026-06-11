@@ -64,7 +64,7 @@ export async function POST(req: Request) {
   const lastUser = [...parsed.messages].reverse().find((m) => m.role === "user");
   if (!lastUser) return NextResponse.json({ error: "bad-request" }, { status: 400 });
 
-  const { block, sources } = await buildAskContext(lastUser.content);
+  const { block, sources, links } = await buildAskContext(lastUser.content);
   const history = parsed.messages.slice(-8) as ChatMessage[];
 
   const result = await askStream(systemPrompt(block), history);
@@ -78,6 +78,7 @@ export async function POST(req: Request) {
       "Cache-Control": "no-store",
       "X-Ask-Provider": result.provider,
       "X-Ask-Sources": encodeURIComponent(JSON.stringify(sources)),
+      "X-Ask-Links": encodeURIComponent(JSON.stringify(links)),
     },
   });
 }

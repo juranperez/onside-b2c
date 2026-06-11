@@ -164,6 +164,35 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                 <p className="text-[10px] text-mute-soft mt-4">Per-90 and percentages, this season &middot; Onside data engine</p>
               </Card>
             )}
+
+            {/* Season-by-season history (historical backfill) */}
+            {player.seasonHistory.length > 1 && (
+              <Card className="overflow-hidden">
+                <div className="px-6 py-4 border-b border-line">
+                  <SectionHead eyebrow="Career form, season by season" title="Seasons" />
+                </div>
+                <div className="grid grid-cols-[80px_1fr_1fr_1fr_1fr_1fr] px-6 py-2.5 text-[10px] uppercase tracking-wider text-mute-soft num border-b border-line bg-ink-900">
+                  <span>Season</span>
+                  <span className="text-right">Apps</span>
+                  <span className="text-right">Mins</span>
+                  <span className="text-right">Goals</span>
+                  <span className="text-right">Assists</span>
+                  <span className="text-right">xG</span>
+                </div>
+                {player.seasonHistory.map((s) => (
+                  <div key={s.season} className="grid grid-cols-[80px_1fr_1fr_1fr_1fr_1fr] px-6 py-2.5 items-center border-b border-line last:border-0 text-[13px]">
+                    <span className="num text-mute">{s.season}/{String((s.season + 1) % 100).padStart(2, "0")}</span>
+                    <span className="num text-right">{s.apps}</span>
+                    <span className="num text-right text-mute">{s.minutes.toLocaleString()}</span>
+                    <span className="num text-right font-semibold">{s.goals}</span>
+                    <span className="num text-right">{s.assists}</span>
+                    <span className="num text-right text-mute">{s.xg != null ? Math.round(s.xg * 10) / 10 : "—"}</span>
+                  </div>
+                ))}
+                <p className="px-6 py-3 text-[10px] text-mute-soft">Across our covered leagues &middot; Onside data engine</p>
+              </Card>
+            )}
+
             {/* Valuation chart */}
             <Card className="p-6">
               <SectionHead eyebrow="12-month history" title="Valuation trajectory" />
