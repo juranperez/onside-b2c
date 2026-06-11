@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../db/types";
-import { fold, buildPlayerIndex, buildClubIndex, matchPlayer, matchDestClub } from "./match";
+import { fold, buildPlayerIndex, buildClubIndex, matchPlayer, matchDestClub, stripJournalists, type MatchStrength } from "./match";
 
 export interface FeedSource {
   name: string; // fallback source label
@@ -16,8 +16,9 @@ const gnews = (q: string) =>
 
 // Free multi-source firehose. Replaces the paid X API: the tier-1 journalist signal
 // comes from Reddit r/soccer (the community names the reporting journalist) + Google
-// News attribution. Used only when RUMOUR_INGEST_ENABLED=1; everything inserts as a
-// human-review candidate, never live.
+// News attribution. Used only when RUMOUR_INGEST_ENABLED=1. New sagas from trusted
+// sources with a STRONG name match auto-publish; corroborations of known sagas merge
+// into the existing rumour; everything else lands as a human-review candidate.
 export const DEFAULT_FEEDS: FeedSource[] = [
   { name: "r/soccer", tier: 3, kind: "reddit", url: "https://www.reddit.com/r/soccer/search.rss?q=flair%3ATransfers&restrict_sr=on&sort=new&limit=75" },
   { name: "Google News", tier: 3, kind: "google", url: gnews("Premier League transfer") },
@@ -104,47 +105,124 @@ function resolveItem(feed: FeedSource, title: string): { source: string; tier: n
   return { source: feed.name, tier: feed.tier, summary: title };
 }
 
+// ---- Ingest decision (pure — unit-tested) -----------------------------------
+
+export interface ExistingRumour {
+  id: string;
+  status: string;
+  to_club: string;
+  corroborations: number;
+  source_tier: number;
+  reported_fee_eur: number | null;
+}
+
+export type IngestAction =
+  | { kind: "skip"; reason: "saga-over" | "ambiguous-target" }
+  | { kind: "merge"; target: ExistingRumour; promote: boolean }
+  | { kind: "publish" }
+  | { kind: "candidate" };
+
+/**
+ * What to do with a freshly matched headline:
+ * - An existing rumour for the same player+destination (or the player's single
+ *   live saga when the destination is unknown) absorbs it as corroboration —
+ *   confidence rises through corroborations/tier/freshness, no human needed.
+ *   A strong trusted corroboration also promotes a queued candidate to live.
+ * - A NEW saga from a trusted source (tier ≤ 2) with a STRONG full-name match
+ *   and a resolved destination publishes immediately (fast lane).
+ * - Everything else queues for human review, exactly as before.
+ */
+export function decideIngest(args: {
+  toClub: string;
+  tier: number;
+  strength: MatchStrength;
+  byPair: ExistingRumour | undefined;
+  forPlayer: ExistingRumour[];
+}): IngestAction {
+  const { toClub, tier, strength } = args;
+  let target = args.byPair;
+  if (!target && toClub === "—") {
+    const live = args.forPlayer.filter((r) => r.status !== "dead" && r.status !== "confirmed");
+    if (live.length === 1) target = live[0]; // destination-less chatter about a single live saga
+    else if (live.length > 1) return { kind: "skip", reason: "ambiguous-target" };
+  }
+  if (target) {
+    if (target.status === "confirmed" || target.status === "dead") return { kind: "skip", reason: "saga-over" };
+    const promote = target.status === "candidate" && tier <= 2 && strength === "strong" && target.to_club !== "—";
+    return { kind: "merge", target, promote };
+  }
+  if (tier <= 2 && strength === "strong" && toClub !== "—") return { kind: "publish" };
+  return { kind: "candidate" };
+}
+
 export interface IngestResult {
   feeds: number;
   items: number;
   matched: number;
   inserted: number;
+  merged: number;
+  autoPublished: number;
+  promoted: number;
   tier1: number;
   skippedResolved: number; // player already has a confirmed move — saga over
 }
 
+const EMPTY_RESULT: IngestResult = { feeds: 0, items: 0, matched: 0, inserted: 0, merged: 0, autoPublished: 0, promoted: 0, tier1: 0, skippedResolved: 0 };
+
+/** Every player (id, folded name, current club) — paginated past PostgREST's row cap so the match index covers the full population, not just the most valuable. */
+async function loadAllPlayers(db: SupabaseClient<Database>): Promise<{ id: string; name_norm: string | null; clubs: { name: string } | null }[]> {
+  const out: { id: string; name_norm: string | null; clubs: { name: string } | null }[] = [];
+  const PAGE = 1000;
+  for (let from = 0; from < 30_000; from += PAGE) {
+    const { data, error } = await db.from("players").select("id,name_norm, clubs(name)").range(from, from + PAGE - 1);
+    if (error || !data?.length) break;
+    out.push(...(data as unknown as typeof out));
+    if (data.length < PAGE) break;
+  }
+  return out;
+}
+
 /**
- * Free multi-source ingestion → candidate rumours (never auto-published). Resolves
- * each headline to a player with the precision matcher (src/lib/ingest/match.ts),
- * extracts a destination club, suppresses stale stories for players whose move is
- * already confirmed, and dedupes by URL + (player → club). Source → reliability tier.
+ * Free multi-source ingestion. Resolves each headline to a player with the
+ * precision matcher (journalist bylines stripped, full player population indexed),
+ * extracts a destination club, then routes via decideIngest: merge corroborations
+ * into existing rumours, fast-lane strong trusted new sagas, queue the rest.
  */
 export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSource[]): Promise<IngestResult> {
-  // Top players (precision matcher + current-club lookup for destination exclusion).
-  const { data: pv } = await db
-    .from("player_valuations")
-    .select("value_eur, players!inner(id,name_norm, clubs(name))")
-    .order("value_eur", { ascending: false })
-    .limit(5000);
-  const players = ((pv ?? []) as unknown as { players: { id: string; name_norm: string | null; clubs: { name: string } | null } }[]).map((r) => r.players);
+  const players = await loadAllPlayers(db);
   const playerIndex = buildPlayerIndex(players);
   const currentClub = new Map(players.map((p) => [p.id, p.clubs?.name ?? null]));
 
   const { data: clubRows } = await db.from("clubs").select("id,name,name_norm,short_name");
   const clubIndex = buildClubIndex((clubRows ?? []) as { id: string; name: string; name_norm: string | null; short_name: string | null }[]);
 
-  // Existing state for dedup + saga suppression.
-  const { data: existing } = await db.from("rumours").select("url,player_id,status,to_club").limit(5000);
+  // Existing state for dedup, saga suppression, and corroboration-merge.
+  const { data: existing } = await db
+    .from("rumours")
+    .select("id,url,player_id,status,to_club,corroborations,source_tier,reported_fee_eur")
+    .limit(5000);
   const seenUrls = new Set<string>();
   const confirmedPlayers = new Set<string>();
-  const seenPairs = new Set<string>(); // player_id|toClub
+  const byPair = new Map<string, ExistingRumour>();
+  const forPlayer = new Map<string, ExistingRumour[]>();
   for (const r of existing ?? []) {
     if (r.url) seenUrls.add(r.url);
     if (r.status === "confirmed") confirmedPlayers.add(r.player_id);
-    seenPairs.add(`${r.player_id}|${r.to_club}`);
+    const row: ExistingRumour = {
+      id: r.id,
+      status: r.status ?? "rumour",
+      to_club: r.to_club ?? "—",
+      corroborations: r.corroborations ?? 1,
+      source_tier: r.source_tier ?? 3,
+      reported_fee_eur: r.reported_fee_eur,
+    };
+    byPair.set(`${r.player_id}|${row.to_club}`, row);
+    const arr = forPlayer.get(r.player_id);
+    if (arr) arr.push(row);
+    else forPlayer.set(r.player_id, [row]);
   }
 
-  let items = 0, matched = 0, inserted = 0, tier1 = 0, skippedResolved = 0;
+  const result: IngestResult = { ...EMPTY_RESULT, feeds: feeds.length };
   const now = new Date().toISOString();
 
   for (const feed of feeds) {
@@ -159,45 +237,100 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
     for (const it of parseFeed(xml).slice(0, 75)) {
       const resolved = resolveItem(feed, it.title);
       if (!resolved) continue;
-      items++;
+      result.items++;
       const folded = fold(resolved.summary);
       if (!TRANSFER_KEYWORDS.some((k) => folded.includes(k))) continue;
 
-      const hit = matchPlayer(resolved.summary, playerIndex);
+      // Match on byline-stripped text; store the original summary.
+      const matchText = stripJournalists(resolved.summary);
+      const hit = matchPlayer(matchText, playerIndex);
       if (!hit) continue; // no confident player match — skip rather than guess
-      matched++;
+      result.matched++;
 
       if (confirmedPlayers.has(hit.playerId)) {
-        skippedResolved++; // their move is already confirmed — don't queue stale chatter
+        result.skippedResolved++; // their move is already confirmed — don't queue stale chatter
         continue;
       }
       if (it.link && seenUrls.has(it.link)) continue;
 
-      const toClub = matchDestClub(resolved.summary, clubIndex, currentClub.get(hit.playerId) ?? null) ?? "—";
-      if (seenPairs.has(`${hit.playerId}|${toClub}`)) continue;
-
-      const { error } = await db.from("rumours").insert({
-        player_id: hit.playerId,
-        to_club: toClub,
-        reported_fee_eur: extractFeeEur(resolved.summary),
-        status: "candidate",
-        summary: resolved.summary.slice(0, 280),
-        primary_source: resolved.source.slice(0, 80),
-        source_tier: resolved.tier,
-        corroborations: 1,
-        first_seen: now,
-        last_update: now,
-        url: it.link || null,
+      const toClub = matchDestClub(matchText, clubIndex, currentClub.get(hit.playerId) ?? null) ?? "—";
+      const action = decideIngest({
+        toClub,
+        tier: resolved.tier,
+        strength: hit.strength,
+        byPair: byPair.get(`${hit.playerId}|${toClub}`),
+        forPlayer: forPlayer.get(hit.playerId) ?? [],
       });
+
+      if (action.kind === "skip") continue;
+
+      if (action.kind === "merge") {
+        const t = action.target;
+        const bestTier = Math.min(t.source_tier, resolved.tier);
+        const fee = extractFeeEur(resolved.summary);
+        const fresherCredible = resolved.tier <= t.source_tier;
+        const { error } = await db
+          .from("rumours")
+          .update({
+            corroborations: t.corroborations + 1,
+            last_update: now,
+            source_tier: bestTier,
+            reported_fee_eur: fee != null ? Math.max(fee, t.reported_fee_eur ?? 0) : t.reported_fee_eur,
+            // A report at least as credible as the current source carries the saga's latest development.
+            ...(fresherCredible ? { summary: resolved.summary.slice(0, 280), url: it.link || null, primary_source: resolved.source.slice(0, 80) } : {}),
+            ...(action.promote ? { status: "rumour" } : {}),
+          })
+          .eq("id", t.id);
+        if (!error) {
+          result.merged++;
+          if (action.promote) result.promoted++;
+          t.corroborations += 1;
+          t.source_tier = bestTier;
+          if (action.promote) t.status = "rumour";
+          if (it.link) seenUrls.add(it.link);
+        }
+        continue;
+      }
+
+      const status = action.kind === "publish" ? "rumour" : "candidate";
+      const { data: created, error } = await db
+        .from("rumours")
+        .insert({
+          player_id: hit.playerId,
+          to_club: toClub,
+          reported_fee_eur: extractFeeEur(resolved.summary),
+          status,
+          summary: resolved.summary.slice(0, 280),
+          primary_source: resolved.source.slice(0, 80),
+          source_tier: resolved.tier,
+          corroborations: 1,
+          first_seen: now,
+          last_update: now,
+          url: it.link || null,
+        })
+        .select("id")
+        .single();
       if (!error) {
-        inserted++;
-        if (resolved.tier === 1) tier1++;
+        result.inserted++;
+        if (action.kind === "publish") result.autoPublished++;
+        if (resolved.tier === 1) result.tier1++;
         if (it.link) seenUrls.add(it.link);
-        seenPairs.add(`${hit.playerId}|${toClub}`);
+        const row: ExistingRumour = {
+          id: created?.id ?? "new",
+          status,
+          to_club: toClub,
+          corroborations: 1,
+          source_tier: resolved.tier,
+          reported_fee_eur: extractFeeEur(resolved.summary),
+        };
+        byPair.set(`${hit.playerId}|${toClub}`, row);
+        const arr = forPlayer.get(hit.playerId);
+        if (arr) arr.push(row);
+        else forPlayer.set(hit.playerId, [row]);
       }
     }
   }
-  return { feeds: feeds.length, items, matched, inserted, tier1, skippedResolved };
+  return result;
 }
 
 /**
@@ -206,7 +339,6 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
  * required. Enable only for the raw journalist firehose: set X_API_BEARER + clear legal.
  */
 export async function ingestFromX(): Promise<IngestResult> {
-  const empty = { feeds: 0, items: 0, matched: 0, inserted: 0, tier1: 0, skippedResolved: 0 };
-  if (!process.env.X_API_BEARER) return empty;
-  return empty;
+  if (!process.env.X_API_BEARER) return { ...EMPTY_RESULT };
+  return { ...EMPTY_RESULT };
 }

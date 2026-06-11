@@ -36,6 +36,27 @@ export function tokenize(s: string): string[] {
   return fold(s).replace(/[^a-z\s]/g, " ").split(/\s+/).filter(Boolean);
 }
 
+// Famous transfer journalists whose names appear as bylines or attributions in
+// headlines. Their FULL names are stripped before player matching so a byline
+// can never resolve to a player who shares a name token ("Fabrizio Romano
+// confirms…" must not match Romano Schmid). Full phrases only — a bare surname
+// stays, because it can be a legitimate player token ("Romano Schmid agrees…").
+const JOURNALISTS = [
+  "fabrizio romano", "david ornstein", "matteo moretto", "florian plettenberg",
+  "gianluca di marzio", "di marzio", "santi aouna", "ben jacobs", "sami mokbel",
+  "rudy galetti", "alfredo pedulla", "nicolo schira", "ekrem konur",
+  "mohamed bouhafsi", "cesar luis merlo", "john percy", "craig hope",
+  "luke edwards", "paul joyce", "james pearce", "dean jones", "graeme bailey",
+  "keith downie", "andrea losapio", "mark ogden", "melissa reddy",
+];
+
+/** Folded headline with journalist full names removed — feed THIS to the matchers. */
+export function stripJournalists(s: string): string {
+  let out = fold(s);
+  for (const j of JOURNALISTS) out = out.split(j).join(" ");
+  return out;
+}
+
 function keyTokens(nameNorm: string): string[] {
   return [...new Set(tokenize(nameNorm))].filter((t) => t.length >= 4 && !NAME_STOP.has(t));
 }
