@@ -93,10 +93,24 @@ export default async function LeagueDetailPage({ params }: { params: Promise<{ i
 
       {standings.length > 0 && (
         <Card className="overflow-hidden mb-8">
-          <div className="px-5 py-3 border-b border-line">
-            <SectionHead eyebrow="2025/26 season · vs = where squad value alone would rank them" title="Table" />
+          <div className="px-5 py-3 border-b border-line flex items-center justify-between gap-4 flex-wrap">
+            <SectionHead eyebrow="2025/26 season" title="Table" />
+            <div className="flex items-center gap-3 text-[11px] text-mute">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-flex items-center rounded-full bg-up/15 text-up border border-up/30 px-1.5 py-0.5 text-[10px] font-bold num">+3</span>
+                beating their budget
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-flex items-center rounded-full bg-down/10 text-down border border-down/30 px-1.5 py-0.5 text-[10px] font-bold num">−3</span>
+                underdelivering
+              </span>
+            </div>
           </div>
-          <div className="grid grid-cols-[36px_1fr_30px_30px_30px_30px_38px_42px_84px] px-4 py-2.5 text-[10px] uppercase tracking-wider text-mute-soft num border-b border-line bg-ink-900">
+          <div className="px-5 py-2 border-b border-line bg-ink-900/60 text-[11px] text-mute leading-relaxed">
+            <span className="text-acc font-semibold">Budget rank</span> is Onside&apos;s twist: where each club <em>should</em> finish if squad value
+            (the money) decided everything. The badge shows places gained or lost against the money — only Onside can compute it.
+          </div>
+          <div className="grid grid-cols-[36px_1fr_30px_30px_30px_30px_38px_42px_110px] px-4 py-2.5 text-[10px] uppercase tracking-wider text-mute-soft num border-b border-line bg-ink-900">
             <span>#</span>
             <span>Club</span>
             <span className="text-right">P</span>
@@ -105,13 +119,13 @@ export default async function LeagueDetailPage({ params }: { params: Promise<{ i
             <span className="text-right">L</span>
             <span className="text-right">GD</span>
             <span className="text-right">Pts</span>
-            <span className="text-right">vs value</span>
+            <span className="text-right">vs budget</span>
           </div>
           {standings.map((row) => {
             const vr = valueRank.get(row.clubName);
             const delta = vr != null ? vr - row.position : null; // + = outperforming the money
             const inner = (
-              <div className="grid grid-cols-[36px_1fr_30px_30px_30px_30px_38px_42px_84px] px-4 py-2.5 items-center hover:bg-overlay/[0.03] transition border-b border-line last:border-0">
+              <div className="grid grid-cols-[36px_1fr_30px_30px_30px_30px_38px_42px_110px] px-4 py-2.5 items-center hover:bg-overlay/[0.03] transition border-b border-line last:border-0">
                 <span className="num text-[12px] text-mute">{row.position}</span>
                 <span className="text-[13px] font-medium truncate">{row.clubName}</span>
                 <span className="num text-[12px] text-right text-mute">{row.played ?? "—"}</span>
@@ -120,8 +134,20 @@ export default async function LeagueDetailPage({ params }: { params: Promise<{ i
                 <span className="num text-[12px] text-right text-mute">{row.lost ?? "—"}</span>
                 <span className="num text-[12px] text-right text-mute">{row.gd != null ? (row.gd > 0 ? `+${row.gd}` : row.gd) : "—"}</span>
                 <span className="num text-[13px] text-right font-semibold">{row.points ?? "—"}</span>
-                <span className={`num text-[11px] text-right font-medium ${delta == null ? "text-mute-soft" : delta >= 2 ? "text-up" : delta <= -2 ? "text-down" : "text-mute-soft"}`}>
-                  {delta == null ? "—" : delta === 0 ? "par" : delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`}
+                <span className="text-right">
+                  {delta == null ? (
+                    <span className="text-[11px] text-mute-soft">—</span>
+                  ) : delta >= 2 ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-up/15 text-up border border-up/30 px-2 py-0.5 text-[10.5px] font-bold num" title={`Squad value says ${vr}th — finishing ${row.position}${row.position === 1 ? "st" : row.position === 2 ? "nd" : row.position === 3 ? "rd" : "th"}. ${delta} places above their budget.`}>
+                      ▲ +{delta}
+                    </span>
+                  ) : delta <= -2 ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-down/10 text-down border border-down/30 px-2 py-0.5 text-[10.5px] font-bold num" title={`Squad value says ${vr}th — finishing ${row.position}th. ${Math.abs(delta)} places below their budget.`}>
+                      ▼ −{Math.abs(delta)}
+                    </span>
+                  ) : (
+                    <span className="text-[10.5px] text-mute-soft num" title="Finishing about where their squad value predicts.">on budget</span>
+                  )}
                 </span>
               </div>
             );

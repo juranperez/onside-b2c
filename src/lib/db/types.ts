@@ -59,6 +59,76 @@ export type Database = {
           },
         ]
       }
+      club_fixtures: {
+        Row: {
+          away_club_id: string | null
+          away_name: string
+          fetched_at: string
+          home_club_id: string | null
+          home_name: string
+          id: string
+          kickoff: string | null
+          league_id: string | null
+          round: string | null
+          score_away: number | null
+          score_home: number | null
+          sm_id: number | null
+          status: string
+        }
+        Insert: {
+          away_club_id?: string | null
+          away_name: string
+          fetched_at?: string
+          home_club_id?: string | null
+          home_name: string
+          id: string
+          kickoff?: string | null
+          league_id?: string | null
+          round?: string | null
+          score_away?: number | null
+          score_home?: number | null
+          sm_id?: number | null
+          status?: string
+        }
+        Update: {
+          away_club_id?: string | null
+          away_name?: string
+          fetched_at?: string
+          home_club_id?: string | null
+          home_name?: string
+          id?: string
+          kickoff?: string | null
+          league_id?: string | null
+          round?: string | null
+          score_away?: number | null
+          score_home?: number | null
+          sm_id?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_fixtures_away_club_id_fkey"
+            columns: ["away_club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_fixtures_home_club_id_fkey"
+            columns: ["home_club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_fixtures_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clubs: {
         Row: {
           country: string | null

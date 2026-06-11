@@ -3,7 +3,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui";
 import { JsonLd } from "@/components/seo/json-ld";
-import { getClubBySlug } from "@/lib/queries";
+import { getClubBySlug, getClubFixtures } from "@/lib/queries";
+import { ClubFixtures } from "@/components/clubs/ClubFixtures";
 import { getRumours } from "@/lib/queries/rumours";
 import { SquadTable } from "@/components/clubs/SquadTable";
 import { ClubDashboard } from "@/components/clubs/ClubDashboard";
@@ -51,6 +52,7 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
   const rumours = (await getRumours().catch(() => [])).filter(
     (r) => r.toClub === club.name || r.player.fromClub === club.name,
   );
+  const { results, upcoming } = await getClubFixtures(club.slug).catch(() => ({ results: [], upcoming: [] }));
 
   return (
     <div>
@@ -114,6 +116,8 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
       {/* Content */}
       <div className="max-w-[1440px] mx-auto px-6 py-8">
         <ClubDashboard squad={club.squad} rumours={rumours} />
+
+        <ClubFixtures results={results} upcoming={upcoming} />
         <h2 className="text-[18px] font-semibold mb-3">Full squad</h2>
         <SquadTable squad={club.squad} />
         <p className="text-[11px] text-mute-soft mt-3">

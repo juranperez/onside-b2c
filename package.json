@@ -26,7 +26,8 @@
     "sync:sportmonks": "node --env-file=.env.local --import tsx scripts/sync-sportmonks.ts",
     "sync:transfers": "node --env-file=.env.local --import tsx scripts/sync-transfers.ts",
     "sync:injuries": "node --env-file=.env.local --import tsx scripts/sync-injuries.ts",
-    "sync:standings": "node --env-file=.env.local --import tsx scripts/sync-standings.ts"
+    "sync:standings": "node --env-file=.env.local --import tsx scripts/sync-standings.ts",
+    "sync:club-fixtures": "node --env-file=.env.local --import tsx scripts/sync-club-fixtures.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

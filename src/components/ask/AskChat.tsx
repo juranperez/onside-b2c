@@ -74,7 +74,8 @@ export function AskChat({ suggestions }: { suggestions: string[] }) {
         const { done, value } = await reader.read();
         if (done) break;
         acc += decoder.decode(value, { stream: true });
-        const snapshot = acc;
+        // Models drift into markdown despite instructions — render plain.
+        const snapshot = acc.replace(/\*\*/g, "").replace(/^#+\s/gm, "");
         setMessages([...history, { role: "assistant", content: snapshot, sources }]);
       }
       if (!acc.trim()) {

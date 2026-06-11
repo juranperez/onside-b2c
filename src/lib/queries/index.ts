@@ -482,6 +482,57 @@ export async function getLeagueTopScorers(leagueSlug: string, limit = 10): Promi
   });
 }
 
+// ─────────────────────────── Club fixtures ───────────────────────────
+
+export interface ClubFixtureItem {
+  id: string;
+  kickoff: string | null;
+  status: string;
+  round: string | null;
+  homeName: string;
+  awayName: string;
+  scoreHome: number | null;
+  scoreAway: number | null;
+  isHome: boolean;
+  result: "W" | "D" | "L" | null; // from this club's perspective, finished games only
+}
+
+/** Last `past` results + next `next` fixtures for a club (Sportmonks schedules, daily refresh). */
+export async function getClubFixtures(clubSlug: string, past = 5, next = 5): Promise<{ results: ClubFixtureItem[]; upcoming: ClubFixtureItem[] }> {
+  const db = readDb();
+  const { data: club } = await db.from("clubs").select("id").eq("slug", clubSlug).maybeSingle();
+  if (!club) return { results: [], upcoming: [] };
+
+  const base = () => db.from("club_fixtures").select("id,kickoff,status,round,home_club_id,home_name,away_name,score_home,score_away").or(`home_club_id.eq.${club.id},away_club_id.eq.${club.id}`);
+  const [fin, up] = await Promise.all([
+    base().eq("status", "finished").order("kickoff", { ascending: false }).limit(past),
+    base().in("status", ["scheduled", "live"]).gte("kickoff", new Date(Date.now() - 6 * 3600_000).toISOString()).order("kickoff", { ascending: true }).limit(next),
+  ]);
+
+  const shape = (r: NonNullable<typeof fin.data>[number]): ClubFixtureItem => {
+    const isHome = r.home_club_id === club.id;
+    let result: ClubFixtureItem["result"] = null;
+    if (r.status === "finished" && r.score_home != null && r.score_away != null) {
+      const us = isHome ? r.score_home : r.score_away;
+      const them = isHome ? r.score_away : r.score_home;
+      result = us > them ? "W" : us < them ? "L" : "D";
+    }
+    return {
+      id: r.id,
+      kickoff: r.kickoff,
+      status: r.status,
+      round: r.round,
+      homeName: r.home_name,
+      awayName: r.away_name,
+      scoreHome: r.score_home,
+      scoreAway: r.score_away,
+      isHome,
+      result,
+    };
+  };
+  return { results: (fin.data ?? []).map(shape), upcoming: (up.data ?? []).map(shape) };
+}
+
 // ─────────────────────────── Injuries ───────────────────────────
 
 export interface ActiveInjury {
