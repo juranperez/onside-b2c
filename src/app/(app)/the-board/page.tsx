@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { TrendingUp, TrendingDown, Mail } from "lucide-react";
-import { Card, Avatar, Delta, SectionHead, Button } from "@/components/ui";
+import { Card, Avatar, Delta, SectionHead } from "@/components/ui";
 import { Sparkline } from "@/components/ui/sparkline";
 import { RumourCard } from "@/components/transfers/rumour-card";
+import { BoardSubscribe } from "@/components/board/BoardSubscribe";
 import { buildDigest } from "@/lib/digest/build";
 import type { PlayerListItem } from "@/lib/queries/map";
 
@@ -72,19 +73,17 @@ export default async function TheBoardPage() {
         </div>
       )}
 
-      <Card className="p-6 flex items-center justify-between gap-4 flex-wrap border-acc/20">
-        <div className="flex items-center gap-3">
+      <Card className="p-6 border-acc/20">
+        <div className="flex items-center gap-3 mb-4">
           <div className="w-9 h-9 rounded-lg bg-acc/12 text-acc grid place-items-center">
             <Mail size={17} />
           </div>
           <div>
             <div className="text-[14px] font-semibold">Get The Board in your inbox</div>
-            <div className="text-[12px] text-mute">Every Monday — movers + the week&apos;s top rumours.</div>
+            <div className="text-[12px] text-mute">Every Sunday — the movers, top-confidence rumours, and done deals. No account needed.</div>
           </div>
         </div>
-        <Link href="/login">
-          <Button kind="primary" size="sm">Sign in to subscribe</Button>
-        </Link>
+        <BoardSubscribe />
       </Card>
     </div>
   );

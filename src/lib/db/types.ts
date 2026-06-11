@@ -59,6 +59,38 @@ export type Database = {
           },
         ]
       }
+      board_subscribers: {
+        Row: {
+          created_at: string
+          email: string
+          profile_id: string | null
+          token: string
+          unsubscribed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          profile_id?: string | null
+          token: string
+          unsubscribed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          profile_id?: string | null
+          token?: string
+          unsubscribed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_subscribers_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_fixtures: {
         Row: {
           away_club_id: string | null
