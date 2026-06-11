@@ -218,6 +218,66 @@ export type Database = {
         }
         Relationships: []
       }
+      league_standings: {
+        Row: {
+          club_id: string | null
+          club_name: string
+          draw: number | null
+          fetched_at: string
+          ga: number | null
+          gf: number | null
+          league_id: string
+          lost: number | null
+          played: number | null
+          points: number | null
+          position: number
+          won: number | null
+        }
+        Insert: {
+          club_id?: string | null
+          club_name: string
+          draw?: number | null
+          fetched_at?: string
+          ga?: number | null
+          gf?: number | null
+          league_id: string
+          lost?: number | null
+          played?: number | null
+          points?: number | null
+          position: number
+          won?: number | null
+        }
+        Update: {
+          club_id?: string | null
+          club_name?: string
+          draw?: number | null
+          fetched_at?: string
+          ga?: number | null
+          gf?: number | null
+          league_id?: string
+          lost?: number | null
+          played?: number | null
+          points?: number | null
+          position?: number
+          won?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_standings_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_standings_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       managers: {
         Row: {
           age: number | null

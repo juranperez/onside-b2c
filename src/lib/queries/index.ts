@@ -388,6 +388,100 @@ export async function getStatLeaders(metric: "goals" | "assists" | "rating" | "x
   });
 }
 
+// ─────────────────────────── League tables & scorers ───────────────────────────
+
+export interface StandingRow {
+  position: number;
+  clubSlug: string | null;
+  clubName: string;
+  played: number | null;
+  won: number | null;
+  draw: number | null;
+  lost: number | null;
+  gd: number | null;
+  points: number | null;
+  squadValueM: number | null;
+}
+
+/** The league table (Sportmonks, daily refresh), with each club's Onside squad value attached. */
+export async function getLeagueStandings(leagueSlug: string): Promise<StandingRow[]> {
+  const db = readDb();
+  const { data: lg } = await db.from("leagues").select("id").eq("slug", leagueSlug).maybeSingle();
+  if (!lg) return [];
+  const { data } = await db
+    .from("league_standings")
+    .select("position,club_id,club_name,played,won,draw,lost,gf,ga,points, clubs(slug,squad_value)")
+    .eq("league_id", lg.id)
+    .order("position", { ascending: true });
+  return (data ?? []).map((r) => {
+    const c = r.clubs as unknown as { slug: string; squad_value: number | null } | null;
+    return {
+      position: r.position,
+      clubSlug: c?.slug ?? null,
+      clubName: r.club_name,
+      played: r.played,
+      won: r.won,
+      draw: r.draw,
+      lost: r.lost,
+      gd: r.gf != null && r.ga != null ? r.gf - r.ga : null,
+      points: r.points,
+      squadValueM: c?.squad_value != null ? Math.round(c.squad_value / 1e6) : null,
+    };
+  });
+}
+
+export interface LeagueScorer {
+  slug: string;
+  displayName: string;
+  club: string;
+  goals: number;
+  assists: number;
+  valueM: number;
+  photoUrl: string | null;
+  clubBg: string;
+  clubColor: string;
+}
+
+/** Top scorers from OUR stats (already synced) — stays consistent with profiles. */
+export async function getLeagueTopScorers(leagueSlug: string, limit = 10): Promise<LeagueScorer[]> {
+  const db = readDb();
+  const { data: lg } = await db.from("leagues").select("id").eq("slug", leagueSlug).maybeSingle();
+  if (!lg) return [];
+  const { data } = await db
+    .from("player_stats")
+    .select("goals,assists, players!inner(slug,name,known_as,photo_url, player_valuations(value_eur), clubs!inner(name,slug,league_id))")
+    .eq("players.clubs.league_id", lg.id)
+    .not("goals", "is", null)
+    .order("goals", { ascending: false })
+    .limit(limit);
+  type Row = {
+    goals: number | null;
+    assists: number | null;
+    players: {
+      slug: string;
+      name: string;
+      known_as: string | null;
+      photo_url: string | null;
+      player_valuations: { value_eur: number } | null;
+      clubs: { name: string; slug: string } | null;
+    };
+  };
+  return ((data ?? []) as unknown as Row[]).map((r) => {
+    const style = clubStyle(r.players.clubs?.slug ?? r.players.slug);
+    return {
+      slug: r.players.slug,
+      displayName: r.players.known_as ?? r.players.name,
+      club: r.players.clubs?.name ?? "—",
+      goals: r.goals ?? 0,
+      assists: r.assists ?? 0,
+      valueM: Math.round((r.players.player_valuations?.value_eur ?? 0) / 1e6),
+      photoUrl: r.players.photo_url ?? null,
+      clubBg: style.bg,
+      clubColor: style.color,
+    };
+  });
+}
+
 // ─────────────────────────── Injuries ───────────────────────────
 
 export interface ActiveInjury {

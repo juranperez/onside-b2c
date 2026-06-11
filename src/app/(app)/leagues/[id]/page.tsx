@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { Card, SectionHead, Button } from "@/components/ui";
+import { Card, SectionHead, Button, Avatar } from "@/components/ui";
 import { JsonLd } from "@/components/seo/json-ld";
-import { getLeagueBySlug } from "@/lib/queries";
+import { getLeagueBySlug, getLeagueStandings, getLeagueTopScorers } from "@/lib/queries";
 
 export const revalidate = 3600;
 
@@ -40,6 +40,14 @@ export default async function LeagueDetailPage({ params }: { params: Promise<{ i
   }
 
   const clubs = league.clubs;
+  const [standings, scorers] = await Promise.all([
+    getLeagueStandings(league.slug).catch(() => []),
+    getLeagueTopScorers(league.slug, 10).catch(() => []),
+  ]);
+  // The Onside layer on a league table: where each club SHOULD sit on squad value alone.
+  const valueRank = new Map(
+    [...standings].sort((a, b) => (b.squadValueM ?? 0) - (a.squadValueM ?? 0)).map((r, i) => [r.clubName, i + 1]),
+  );
 
   return (
     <div className="max-w-[1440px] mx-auto px-6 py-8">
@@ -82,6 +90,74 @@ export default async function LeagueDetailPage({ params }: { params: Promise<{ i
           <div className="text-[16px] font-semibold mt-1.5">{league.country ?? "—"}</div>
         </Card>
       </div>
+
+      {standings.length > 0 && (
+        <Card className="overflow-hidden mb-8">
+          <div className="px-5 py-3 border-b border-line">
+            <SectionHead eyebrow="2025/26 season · vs = where squad value alone would rank them" title="Table" />
+          </div>
+          <div className="grid grid-cols-[36px_1fr_30px_30px_30px_30px_38px_42px_84px] px-4 py-2.5 text-[10px] uppercase tracking-wider text-mute-soft num border-b border-line bg-ink-900">
+            <span>#</span>
+            <span>Club</span>
+            <span className="text-right">P</span>
+            <span className="text-right">W</span>
+            <span className="text-right">D</span>
+            <span className="text-right">L</span>
+            <span className="text-right">GD</span>
+            <span className="text-right">Pts</span>
+            <span className="text-right">vs value</span>
+          </div>
+          {standings.map((row) => {
+            const vr = valueRank.get(row.clubName);
+            const delta = vr != null ? vr - row.position : null; // + = outperforming the money
+            const inner = (
+              <div className="grid grid-cols-[36px_1fr_30px_30px_30px_30px_38px_42px_84px] px-4 py-2.5 items-center hover:bg-overlay/[0.03] transition border-b border-line last:border-0">
+                <span className="num text-[12px] text-mute">{row.position}</span>
+                <span className="text-[13px] font-medium truncate">{row.clubName}</span>
+                <span className="num text-[12px] text-right text-mute">{row.played ?? "—"}</span>
+                <span className="num text-[12px] text-right text-mute">{row.won ?? "—"}</span>
+                <span className="num text-[12px] text-right text-mute">{row.draw ?? "—"}</span>
+                <span className="num text-[12px] text-right text-mute">{row.lost ?? "—"}</span>
+                <span className="num text-[12px] text-right text-mute">{row.gd != null ? (row.gd > 0 ? `+${row.gd}` : row.gd) : "—"}</span>
+                <span className="num text-[13px] text-right font-semibold">{row.points ?? "—"}</span>
+                <span className={`num text-[11px] text-right font-medium ${delta == null ? "text-mute-soft" : delta >= 2 ? "text-up" : delta <= -2 ? "text-down" : "text-mute-soft"}`}>
+                  {delta == null ? "—" : delta === 0 ? "par" : delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`}
+                </span>
+              </div>
+            );
+            return row.clubSlug ? (
+              <Link key={row.clubName} href={`/clubs/${row.clubSlug}`} className="block cursor-pointer">
+                {inner}
+              </Link>
+            ) : (
+              <div key={row.clubName}>{inner}</div>
+            );
+          })}
+        </Card>
+      )}
+
+      {scorers.length > 0 && (
+        <Card className="overflow-hidden mb-8">
+          <div className="px-5 py-3 border-b border-line">
+            <SectionHead eyebrow="2025/26 season · Onside values alongside" title="Top scorers" />
+          </div>
+          {scorers.map((s, i) => (
+            <Link key={s.slug} href={`/players/${s.slug}`}>
+              <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-overlay/[0.03] transition border-b border-line last:border-0 cursor-pointer">
+                <span className="num text-[12px] text-mute w-5">{i + 1}</span>
+                <Avatar name={s.displayName} clubBg={s.clubBg} clubColor={s.clubColor} src={s.photoUrl} size={28} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium truncate">{s.displayName}</div>
+                  <div className="text-[11px] text-mute-soft truncate">{s.club}</div>
+                </div>
+                <span className="num text-[12px] text-mute">{s.assists}a</span>
+                <span className="num text-[14px] font-bold w-9 text-right">{s.goals}g</span>
+                <span className="num text-[12px] text-mute-soft w-16 text-right">€{s.valueM}M</span>
+              </div>
+            </Link>
+          ))}
+        </Card>
+      )}
 
       <Card className="overflow-hidden">
         <div className="px-5 py-3 border-b border-line">
