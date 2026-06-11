@@ -56,6 +56,8 @@ async function tryGroq(system: string, messages: ChatMessage[]): Promise<Readabl
       stream: true,
       temperature: 0.4,
       max_tokens: 700,
+      // gpt-oss is a reasoning model — low effort keeps first-token latency chat-grade.
+      ...(GROQ_MODEL.includes("gpt-oss") ? { reasoning_effort: "low" } : {}),
       messages: [{ role: "system", content: system }, ...messages],
     }),
   });
