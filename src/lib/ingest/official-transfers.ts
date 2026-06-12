@@ -50,22 +50,35 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
   // Sportmonks dates transfers by EFFECTIVE date and only flips `completed` then —
   // so a deal announced in June with a July 1 start (most of the summer window,
   // e.g. Senesi→Tottenham announced Jun 10, dated Jul 1, completed:false) is
-  // invisible to a backwards completed-only query. Look 7 days back AND 90 days
+  // invisible to a backwards completed-only query. Look 7 days back AND ~83 days
   // forward, and accept announced-but-not-yet-effective deals when they name a
-  // real destination. "End of loan" rows and "TBC" contract-expiry placeholders
-  // are noise, never announcements.
-  const to = new Date(Date.now() + 90 * 86_400_000).toISOString().slice(0, 10);
-  const from = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
-  const all: SmTransfer[] = [];
-  for (let page = 1; page <= 8; page++) {
-    const res = await fetch(`${BASE}/transfers/between/${from}/${to}?include=player;fromTeam;toTeam;type&per_page=50&page=${page}`, {
-      headers: { Authorization: token, Accept: "application/json" },
-    });
-    if (!res.ok) throw new Error(`sportmonks transfers ${res.status}`);
-    const body = (await res.json()) as { data?: SmTransfer[]; pagination?: { has_more?: boolean } };
-    all.push(...(body.data ?? []));
-    if (!body.pagination?.has_more) break;
+  // real destination. The /between endpoint rejects ranges over ~31 days (422),
+  // so the horizon is fetched in 30-day chunks. "End of loan" rows and "TBC"
+  // contract-expiry placeholders are noise, never announcements.
+  const day = (offset: number) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+  const windows: [string, string][] = [
+    [day(-7), day(23)],
+    [day(23), day(53)],
+    [day(53), day(83)],
+  ];
+  const byId = new Map<number, SmTransfer>();
+  for (const [from, to] of windows) {
+    for (let page = 1; page <= 8; page++) {
+      const res = await fetch(`${BASE}/transfers/between/${from}/${to}?include=player;fromTeam;toTeam;type&per_page=50&page=${page}`, {
+        headers: { Authorization: token, Accept: "application/json", "User-Agent": "OnsideBot/1.0 (+https://onsidemarket.com)" },
+      });
+      if (!res.ok) {
+        // Auth/config failures surface on the very first call; a later-window
+        // hiccup must not kill the whole sync.
+        if (byId.size === 0 && page === 1 && from === windows[0][0]) throw new Error(`sportmonks transfers ${res.status}`);
+        break;
+      }
+      const body = (await res.json()) as { data?: SmTransfer[]; pagination?: { has_more?: boolean } };
+      for (const t of body.data ?? []) byId.set(t.id, t);
+      if (!body.pagination?.has_more) break;
+    }
   }
+  const all = [...byId.values()];
   const transfers = all.filter((t) => {
     if (!t.player_id) return false;
     const kind = t.type?.name?.toLowerCase() ?? "";
