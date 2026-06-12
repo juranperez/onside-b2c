@@ -5,8 +5,9 @@ import { Card, Avatar, SectionHead, Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ConfidenceBadge } from "@/components/transfers/confidence-badge";
 import { DiscussionThread } from "@/components/transfers/discussion-thread";
+import { OnsideBrief, SourceTrail } from "@/components/transfers/onside-brief";
 import { ShareButton } from "@/components/ui/share-button";
-import { getRumourById, getRumourComments } from "@/lib/queries/rumours";
+import { getRumourById, getRumourComments, getRumourSources, type RumourSourceItem } from "@/lib/queries/rumours";
 import { getSessionUser } from "@/lib/db/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -37,10 +38,19 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
     );
   }
 
-  const [comments, user] = await Promise.all([
+  const [comments, user, trail] = await Promise.all([
     getRumourComments(id).catch(() => []),
     getSessionUser().catch(() => null),
+    getRumourSources(id).catch(() => [] as RumourSourceItem[]),
   ]);
+  // Older rumours predate the sources table — fall back to the primary link.
+  const sources: RumourSourceItem[] =
+    trail.length > 0
+      ? trail
+      : r.url
+        ? [{ url: r.url, source: r.source, tier: r.sourceTier, seenAt: r.lastUpdate }]
+        : [];
+  const nowTs = new Date().getTime();
   const confirmed = r.status === "confirmed";
   const dead = r.status === "dead";
 
@@ -97,6 +107,9 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
         </span>
       </div>
 
+      {/* The Onside Brief — our own read on the saga, from tracked data */}
+      <OnsideBrief r={r} />
+
       {/* Confidence breakdown */}
       {!confirmed && !dead && (
         <Card className="p-6 mt-6">
@@ -120,6 +133,9 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
           </div>
         </Card>
       )}
+
+      {/* The reporting trail — best sources, linked out */}
+      <SourceTrail sources={sources} now={nowTs} />
 
       {/* Discussion */}
       <div className="mt-8">

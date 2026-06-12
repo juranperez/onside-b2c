@@ -168,31 +168,57 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
 
         {wc.forecast && (
           <Card className="p-6">
-            <div className="flex items-center gap-1.5 mb-1 text-[10px] uppercase tracking-[0.14em] font-bold num text-acc">
-              <span className="w-1.5 h-1.5 rounded-full bg-acc" /> Onside Forecast
-            </div>
-            <p className="text-[12px] text-mute mb-4 leading-relaxed">
-              Win probability from our squad-value model, anchored by FIFA rank — entertainment, not betting advice.
-            </p>
-            <div className="grid grid-cols-3 text-center mb-2">
-              <div>
-                <div className="display num text-[26px]">{wc.forecast.home}%</div>
-                <div className="text-[11px] text-mute">{wc.home.name}</div>
-              </div>
-              <div>
-                <div className="display num text-[26px] text-mute">{wc.forecast.draw}%</div>
-                <div className="text-[11px] text-mute-soft">Draw</div>
-              </div>
-              <div>
-                <div className="display num text-[26px]">{wc.forecast.away}%</div>
-                <div className="text-[11px] text-mute">{wc.away.name}</div>
-              </div>
-            </div>
-            <div className="flex h-2.5 rounded-full overflow-hidden bg-ink-700">
-              <div style={{ width: `${wc.forecast.home}%` }} className="bg-acc" />
-              <div style={{ width: `${wc.forecast.draw}%` }} className="bg-ink-600" />
-              <div style={{ width: `${wc.forecast.away}%` }} className="bg-fg/70" />
-            </div>
+            {(() => {
+              const fc = wc.status === "live" && wc.live ? wc.live : wc.forecast;
+              const liveNow = wc.status === "live" && wc.live != null;
+              return (
+                <>
+                  <div className={`flex items-center gap-1.5 mb-1 text-[10px] uppercase tracking-[0.14em] font-bold num ${liveNow ? "text-up" : "text-acc"}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${liveNow ? "bg-up animate-pulse" : "bg-acc"}`} />
+                    {liveNow ? "Live forecast" : "Onside Forecast"}
+                  </div>
+                  <p className="text-[12px] text-mute mb-4 leading-relaxed">
+                    {liveNow
+                      ? "Re-priced from the live score and clock on top of our squad-value model — entertainment, not betting advice."
+                      : "Win probability from our squad-value model, anchored by FIFA rank — entertainment, not betting advice."}
+                  </p>
+                  <div className="grid grid-cols-3 text-center mb-2">
+                    <div>
+                      <div className="display num text-[26px]">{fc.home}%</div>
+                      <div className="text-[11px] text-mute">{wc.home.name}</div>
+                    </div>
+                    <div>
+                      <div className="display num text-[26px] text-mute">{fc.draw}%</div>
+                      <div className="text-[11px] text-mute-soft">Draw</div>
+                    </div>
+                    <div>
+                      <div className="display num text-[26px]">{fc.away}%</div>
+                      <div className="text-[11px] text-mute">{wc.away.name}</div>
+                    </div>
+                  </div>
+                  <div className="flex h-2.5 rounded-full overflow-hidden bg-ink-700">
+                    <div style={{ width: `${fc.home}%` }} className={liveNow ? "bg-up" : "bg-acc"} />
+                    <div style={{ width: `${fc.draw}%` }} className="bg-ink-600" />
+                    <div style={{ width: `${fc.away}%` }} className="bg-fg/70" />
+                  </div>
+                  {liveNow && (
+                    <p className="text-[10.5px] text-mute-soft mt-2 num">
+                      At kickoff: {wc.home.name} {wc.forecast!.home}% · draw {wc.forecast!.draw}% · {wc.away.name} {wc.forecast!.away}%
+                    </p>
+                  )}
+                  {wc.status === "finished" && wc.verdict && (
+                    <div className="mt-3 pt-3 border-t border-line flex items-center justify-between gap-2 flex-wrap">
+                      <span className={`inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] font-bold num ${wc.verdict.hit ? "text-up" : "text-mute"}`}>
+                        {wc.verdict.hit ? "✓ Onside called it" : "✗ Result went against the forecast"}
+                      </span>
+                      <span className="num text-[11px] text-mute-soft">
+                        Kickoff call: {wc.verdict.predicted === "home" ? wc.home.name : wc.verdict.predicted === "away" ? wc.away.name : "Draw"} at {wc.verdict.predictedPct}%
+                      </span>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </Card>
         )}
       </div>

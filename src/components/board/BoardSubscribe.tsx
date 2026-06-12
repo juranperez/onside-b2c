@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { MailCheck, LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { subscribeBoard } from "@/lib/board/actions";
+import { track } from "@/lib/analytics";
 
 const ERROR_COPY: Record<string, string> = {
   "invalid-email": "That email doesn't look right.",
@@ -38,6 +39,7 @@ export function BoardSubscribe({ initialEmail = "" }: { initialEmail?: string })
             setErrorMsg(ERROR_COPY[r.error] ?? ERROR_COPY["try-again"]);
           } else {
             setState("done");
+            track("board_subscribed");
           }
         });
       }}

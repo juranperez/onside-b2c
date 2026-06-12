@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { BellRing, BellPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toggleFollowRumour } from "@/lib/rumours/follow-actions";
+import { track } from "@/lib/analytics";
 
 /** Follow a saga → in-app alert on every development (signed-out users get sent to login). */
 export function TrackDealButton({ rumourId, initialFollowing }: { rumourId: string; initialFollowing: boolean }) {
@@ -24,6 +25,7 @@ export function TrackDealButton({ rumourId, initialFollowing }: { rumourId: stri
             return;
           }
           setFollowing(r.following);
+          track("deal_tracked", { rumourId, on: r.following });
         });
       }}
       title={following ? "Tracking — you'll be alerted on every development" : "Track this deal"}

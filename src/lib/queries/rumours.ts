@@ -187,6 +187,31 @@ export interface CommentItem {
   author: string;
 }
 
+export interface RumourSourceItem {
+  url: string;
+  source: string;
+  tier: number;
+  seenAt: string;
+}
+
+/** The reporting trail behind a rumour — best sources first (tier, then recency). */
+export async function getRumourSources(rumourId: string, limit = 6): Promise<RumourSourceItem[]> {
+  const { data } = await readDb()
+    .from("rumour_sources")
+    .select("url,source,tier,seen_at")
+    .eq("rumour_id", rumourId)
+    .not("url", "like", "sm-transfer:%") // idempotency markers, not articles
+    .order("tier", { ascending: true })
+    .order("seen_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []).map((s) => ({
+    url: s.url,
+    source: s.source ?? "Source",
+    tier: s.tier ?? 3,
+    seenAt: s.seen_at,
+  }));
+}
+
 /** Discussion thread for a rumour. */
 export async function getRumourComments(rumourId: string): Promise<CommentItem[]> {
   const { data } = await readDb()

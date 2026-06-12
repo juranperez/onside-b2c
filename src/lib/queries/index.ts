@@ -1,7 +1,7 @@
 import "server-only";
 import { readDb } from "../db/server";
 import { clubStyle, monogram } from "../club-style";
-import { onsideForecast, type Forecast } from "../forecast/onside-forecast";
+import { onsideForecast, liveForecast, forecastVerdict, type Forecast, type ForecastVerdict } from "../forecast/onside-forecast";
 import {
   toPlayerListItem,
   toPlayerProfile,
@@ -638,7 +638,18 @@ export interface WcFixture {
   group: string | null; // group letter during the group stage
   scoreHome: number | null;
   scoreAway: number | null;
-  forecast: Forecast | null; // Onside Forecast (squad-value-led); null when teams unknown or played
+  forecast: Forecast | null; // pre-match Onside Forecast (squad-value-led); null when teams unknown
+  live: Forecast | null; // in-play forecast conditioned on score + minute; only while live
+  verdict: ForecastVerdict | null; // how the pre-match call fared; only when finished
+}
+
+/** Estimated match minute from the wall clock (we sync scores, not minutes). */
+function estimateMinute(kickoff: string | null, now: number): number {
+  if (!kickoff) return 0;
+  const elapsed = (now - new Date(kickoff).getTime()) / 60_000;
+  if (elapsed <= 0) return 0;
+  // Skip the ~17' of half-time + pre-match buffer once past the interval.
+  return Math.min(95, elapsed <= 48 ? elapsed : Math.max(45, elapsed - 17));
 }
 
 /** The full World Cup 2026 schedule, chronological. Teams joined in JS (home/away → national_teams). */
@@ -657,14 +668,24 @@ export async function getWcFixtures(): Promise<WcFixture[]> {
     (ntRes.data ?? []).map((n) => [n.slug, { name: n.name, value: n.squad_value, rank: n.fifa_rank, group: n.group_letter }] as const),
   );
   const team = (slug: string | null) => ({ slug: slug ?? "", name: (slug && metaBySlug.get(slug)?.name) || "TBD" });
+  const now = Date.now();
   return (fxRes.data ?? []).map((f) => {
     const h = f.home_id ? metaBySlug.get(f.home_id) : null;
     const a = f.away_id ? metaBySlug.get(f.away_id) : null;
     const status = (f.status as FixtureStatus) ?? "scheduled";
-    // Forecast only for upcoming fixtures with both squads valued (neutral WC venues).
+    // Pre-match forecast whenever both squads are valued — squad values don't
+    // move with the result, so it stays honest to recompute it after the fact.
     const forecast =
-      status !== "finished" && h?.value && a?.value
+      h?.value && a?.value
         ? onsideForecast({ homeValueEur: Number(h.value), awayValueEur: Number(a.value), homeRank: h.rank, awayRank: a.rank, neutral: true })
+        : null;
+    const live =
+      status === "live" && forecast
+        ? liveForecast(forecast, f.score_home ?? 0, f.score_away ?? 0, estimateMinute(f.kickoff, now))
+        : null;
+    const verdict =
+      status === "finished" && forecast && f.score_home != null && f.score_away != null
+        ? forecastVerdict(forecast, f.score_home, f.score_away)
         : null;
     return {
       id: f.id,
@@ -679,6 +700,8 @@ export async function getWcFixtures(): Promise<WcFixture[]> {
       scoreHome: f.score_home,
       scoreAway: f.score_away,
       forecast,
+      live,
+      verdict,
     };
   });
 }

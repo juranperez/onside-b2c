@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { Sparkles, SendHorizontal, LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { track } from "@/lib/analytics";
 
 interface Source {
   label: string;
@@ -73,6 +74,7 @@ export function AskChat({ suggestions }: { suggestions: string[] }) {
     if (!q || busy) return;
     setInput("");
     setBusy(true);
+    track("ask_submitted");
 
     const history: Msg[] = [...messages, { role: "user", content: q }];
     setMessages([...history, { role: "assistant", content: "" }]);

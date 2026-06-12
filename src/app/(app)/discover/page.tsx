@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Sparkles, TrendingUp, Trophy } from "lucide-react";
 import { Card, Avatar, Delta, Button, LiveDot } from "@/components/ui";
 import { MoversBoard } from "@/components/discover/MoversBoard";
+import { WelcomeRail } from "@/components/discover/WelcomeRail";
 import { getMovers, getTopPlayers, getCounts, getMoverReasons } from "@/lib/queries";
 import type { PlayerListItem } from "@/lib/queries/map";
 
@@ -51,6 +52,7 @@ export default async function DiscoverPage() {
 
   return (
     <div className="max-w-[1440px] mx-auto px-6 py-8">
+      <WelcomeRail />
       {/* Hero greeting — editorial voice preserved */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-3">

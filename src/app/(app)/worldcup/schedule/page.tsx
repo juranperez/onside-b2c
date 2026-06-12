@@ -96,28 +96,65 @@ function MatchRow({ f }: { f: WcFixture }) {
           {f.city ? ` · ${f.city}` : ""}
         </div>
       </div>
-      {/* Onside Forecast — squad-value win probability (our own model) */}
-      {f.forecast && (
-        <div className="mt-2.5 pointer-events-none">
-          <div className="flex items-center justify-between mb-1">
-            <span className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-[0.14em] font-bold num text-acc">
-              <span className="w-1.5 h-1.5 rounded-full bg-acc" /> Onside Forecast
-            </span>
-            <span className="num text-[10.5px] text-mute tabular-nums">
-              <span className="text-fg font-semibold">{homeCode} {f.forecast.home}%</span>
-              <span className="text-mute-soft mx-1.5">·</span>
-              draw {f.forecast.draw}%
-              <span className="text-mute-soft mx-1.5">·</span>
-              <span className="text-fg font-semibold">{awayCode} {f.forecast.away}%</span>
-            </span>
-          </div>
-          <div className="flex h-2 rounded-full overflow-hidden bg-ink-700" title={`${f.home.name} ${f.forecast.home}% · Draw ${f.forecast.draw}% · ${f.away.name} ${f.forecast.away}%`}>
-            <div style={{ width: `${f.forecast.home}%` }} className="bg-acc" />
-            <div style={{ width: `${f.forecast.draw}%` }} className="bg-ink-600" />
-            <div style={{ width: `${f.forecast.away}%` }} className="bg-fg/70" />
-          </div>
+      {/* Onside Forecast — squad-value win probability (our own model).
+          Upcoming: the pre-match call. Live: re-priced every refresh from the
+          score + minute. Finished: how the call fared. */}
+      {f.status === "scheduled" && f.forecast && (
+        <ForecastBar label="Onside Forecast" fc={f.forecast} homeCode={homeCode} awayCode={awayCode} homeName={f.home.name} awayName={f.away.name} />
+      )}
+      {f.status === "live" && f.live && (
+        <ForecastBar label="Live forecast · re-priced with the score" fc={f.live} homeCode={homeCode} awayCode={awayCode} homeName={f.home.name} awayName={f.away.name} pulse />
+      )}
+      {f.status === "finished" && f.verdict && f.forecast && (
+        <div className="mt-2 pointer-events-none flex items-center justify-between gap-2 flex-wrap">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.12em] font-bold num",
+              f.verdict.hit ? "text-up" : "text-mute",
+            )}
+          >
+            {f.verdict.hit ? "✓ Onside called it" : "✗ Against the forecast"}
+          </span>
+          <span className="num text-[10.5px] text-mute-soft tabular-nums">
+            had {f.verdict.predicted === "home" ? homeCode : f.verdict.predicted === "away" ? awayCode : "draw"}{" "}
+            {f.verdict.predictedPct}% · {homeCode} {f.forecast.home}% / draw {f.forecast.draw}% / {awayCode} {f.forecast.away}%
+          </span>
         </div>
       )}
+    </div>
+  );
+}
+
+function ForecastBar({
+  label, fc, homeCode, awayCode, homeName, awayName, pulse = false,
+}: {
+  label: string;
+  fc: NonNullable<WcFixture["forecast"]>;
+  homeCode: string;
+  awayCode: string;
+  homeName: string;
+  awayName: string;
+  pulse?: boolean;
+}) {
+  return (
+    <div className="mt-2.5 pointer-events-none">
+      <div className="flex items-center justify-between mb-1">
+        <span className={cn("inline-flex items-center gap-1.5 text-[9px] uppercase tracking-[0.14em] font-bold num", pulse ? "text-up" : "text-acc")}>
+          <span className={cn("w-1.5 h-1.5 rounded-full", pulse ? "bg-up animate-pulse" : "bg-acc")} /> {label}
+        </span>
+        <span className="num text-[10.5px] text-mute tabular-nums">
+          <span className="text-fg font-semibold">{homeCode} {fc.home}%</span>
+          <span className="text-mute-soft mx-1.5">·</span>
+          draw {fc.draw}%
+          <span className="text-mute-soft mx-1.5">·</span>
+          <span className="text-fg font-semibold">{awayCode} {fc.away}%</span>
+        </span>
+      </div>
+      <div className="flex h-2 rounded-full overflow-hidden bg-ink-700" title={`${homeName} ${fc.home}% · Draw ${fc.draw}% · ${awayName} ${fc.away}%`}>
+        <div style={{ width: `${fc.home}%` }} className={pulse ? "bg-up" : "bg-acc"} />
+        <div style={{ width: `${fc.draw}%` }} className="bg-ink-600" />
+        <div style={{ width: `${fc.away}%` }} className="bg-fg/70" />
+      </div>
     </div>
   );
 }

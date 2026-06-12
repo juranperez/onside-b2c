@@ -1,34 +1,73 @@
 "use client";
 
-import { useState } from "react";
-import { Mail, Check } from "lucide-react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Mail, Check, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/db/supabase-browser";
 import { Card, Button } from "@/components/ui";
 import { OnsideMark } from "@/components/ui/logo";
+import { track } from "@/lib/analytics";
 
-export default function LoginPage() {
+/** Supabase errors are developer-speak — translate the ones users actually hit. */
+function friendlyError(message: string): string {
+  if (/rate limit|too many/i.test(message)) {
+    return "We're sending sign-in links as fast as we're allowed right now. Give it a minute and try again.";
+  }
+  if (/invalid email/i.test(message)) return "That doesn't look like a valid email address.";
+  return message;
+}
+
+function LoginForm() {
+  const params = useSearchParams();
+  const next = params.get("next") ?? "";
+  const linkFailed = params.get("error") === "link";
+
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
+
+  function startCooldown(seconds: number) {
+    setCooldown(seconds);
+    if (timer.current) clearInterval(timer.current);
+    timer.current = setInterval(() => {
+      setCooldown((c) => {
+        if (c <= 1 && timer.current) clearInterval(timer.current);
+        return Math.max(0, c - 1);
+      });
+    }, 1000);
+  }
+
+  async function send() {
     setLoading(true);
     setError("");
     try {
       const supabase = createClient();
+      const redirect = `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ""}`;
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: { emailRedirectTo: redirect },
       });
-      if (error) setError(error.message);
-      else setSent(true);
+      if (error) setError(friendlyError(error.message));
+      else {
+        setSent(true);
+        startCooldown(30);
+        track("magic_link_requested");
+      }
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    await send();
   }
 
   return (
@@ -47,12 +86,38 @@ export default function LoginPage() {
             </div>
             <h1 className="display text-[22px] mb-2">Check your email</h1>
             <p className="text-[13px] text-mute leading-relaxed">
-              We sent a sign-in link to <span className="text-fg num">{email}</span>. Click it to access your
-              watchlist and alerts.
+              We sent a sign-in link to <span className="text-fg num">{email}</span>. Open it on{" "}
+              <span className="text-fg">this device</span> to access your watchlist and alerts.
+            </p>
+            {error && (
+              <p className="text-[12px] text-down mt-3 flex items-center justify-center gap-1.5">
+                <AlertCircle size={12} /> {error}
+              </p>
+            )}
+            <p className="text-[12px] text-mute-soft mt-5">
+              Didn&apos;t get it? Check spam, or{" "}
+              {cooldown > 0 ? (
+                <span className="num">resend in {cooldown}s</span>
+              ) : (
+                <button onClick={send} disabled={loading} className="text-acc hover:underline disabled:opacity-50">
+                  {loading ? "sending…" : "resend the link"}
+                </button>
+              )}
+              .
             </p>
           </div>
         ) : (
           <>
+            {linkFailed && (
+              <div className="mb-5 rounded-xl border border-down/30 bg-down/10 px-3.5 py-3 flex items-start gap-2.5">
+                <AlertCircle size={15} className="text-down shrink-0 mt-0.5" />
+                <p className="text-[12.5px] text-fg leading-relaxed">
+                  That sign-in link didn&apos;t work — it may have expired, already been used (some email apps
+                  pre-open links), or been opened in a different browser. Enter your email and we&apos;ll send a
+                  fresh one.
+                </p>
+              </div>
+            )}
             <h1 className="display text-[24px] mb-1">Sign in to Onside</h1>
             <p className="text-[13px] text-mute mb-6">
               Build a watchlist, track value moves, and get alerts. No password — we&apos;ll email you a link.
@@ -82,5 +147,13 @@ export default function LoginPage() {
         )}
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }
