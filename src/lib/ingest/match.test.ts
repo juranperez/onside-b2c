@@ -88,6 +88,25 @@ describe("matchPlayer — generic-word and adjacency hardening (Jun 11 queue fai
   });
 });
 
+describe("matchPlayer — display-name tie-break (the Bernardo Silva miss)", () => {
+  // Two players legally own (bernardo, silva); only one is CALLED Bernardo Silva.
+  const POP = [
+    { id: "bsilva", name_norm: "bernardo mota veiga de carvalho e silva", known_as: "Bernardo Silva" },
+    { id: "bernardo-hoff", name_norm: "bernardo fernandes da silva junior", known_as: "Bernardo" },
+    { id: "anderson", name_norm: "elliot anderson", known_as: "Elliot Anderson" },
+  ];
+  const popIdx = buildPlayerIndex(POP);
+
+  it("a Bernardo Silva headline resolves to the player the press calls Bernardo Silva", () => {
+    const h = stripJournalists("Bernardo Silva agrees Real Madrid transfer as Mourinho closes in on first signing");
+    expect(matchPlayer(h, popIdx)).toEqual({ playerId: "bsilva", strength: "strong" });
+  });
+
+  it("a mononym mention without adjacency support stays null — never guess", () => {
+    expect(matchPlayer("Bernardo agrees new Hoffenheim contract extension", popIdx)).toBeNull();
+  });
+});
+
 describe("matchPlayer — stadium, coach and word-collision classes (Jun 12 audit)", () => {
   it("'Old Trafford' never matches the keeper James Trafford", () => {
     expect(matchPlayer(stripJournalists("Star keen on a move to Old Trafford as United accelerate pursuit"), idx)).toBeNull();

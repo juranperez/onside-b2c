@@ -194,12 +194,12 @@ export interface IngestResult {
 
 const EMPTY_RESULT: IngestResult = { feeds: 0, items: 0, matched: 0, inserted: 0, merged: 0, autoPublished: 0, promoted: 0, pressConfirmed: 0, tier1: 0, skippedResolved: 0 };
 
-/** Every player (id, folded name, current club) — paginated past PostgREST's row cap so the match index covers the full population, not just the most valuable. */
-async function loadAllPlayers(db: SupabaseClient<Database>): Promise<{ id: string; name_norm: string | null; clubs: { name: string } | null }[]> {
-  const out: { id: string; name_norm: string | null; clubs: { name: string } | null }[] = [];
+/** Every player (id, folded name, display name, current club) — paginated past PostgREST's row cap so the match index covers the full population, not just the most valuable. */
+async function loadAllPlayers(db: SupabaseClient<Database>): Promise<{ id: string; name_norm: string | null; known_as: string | null; clubs: { name: string } | null }[]> {
+  const out: { id: string; name_norm: string | null; known_as: string | null; clubs: { name: string } | null }[] = [];
   const PAGE = 1000;
   for (let from = 0; from < 30_000; from += PAGE) {
-    const { data, error } = await db.from("players").select("id,name_norm, clubs(name)").range(from, from + PAGE - 1);
+    const { data, error } = await db.from("players").select("id,name_norm,known_as, clubs(name)").range(from, from + PAGE - 1);
     if (error || !data?.length) break;
     out.push(...(data as unknown as typeof out));
     if (data.length < PAGE) break;

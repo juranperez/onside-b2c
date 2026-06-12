@@ -113,19 +113,22 @@ function keyTokens(nameNorm: string): string[] {
 
 export interface PlayerIndex {
   owners: Map<string, string[]>; // token -> player ids that have it
+  knownAs: Map<string, string>; // player id -> folded display name (tie-breaker)
 }
 
-export function buildPlayerIndex(players: { id: string; name_norm: string | null }[]): PlayerIndex {
+export function buildPlayerIndex(players: { id: string; name_norm: string | null; known_as?: string | null }[]): PlayerIndex {
   const owners = new Map<string, string[]>();
+  const knownAs = new Map<string, string>();
   for (const p of players) {
     if (!p.name_norm) continue;
+    if (p.known_as) knownAs.set(p.id, fold(p.known_as));
     for (const t of keyTokens(p.name_norm)) {
       const arr = owners.get(t);
       if (arr) arr.push(p.id);
       else owners.set(t, [p.id]);
     }
   }
-  return { owners };
+  return { owners, knownAs };
 }
 
 export type MatchStrength = "strong" | "unique";
@@ -148,7 +151,24 @@ export function matchPlayer(headline: string, idx: PlayerIndex): { playerId: str
     for (const pid of a) if (bSet.has(pid)) strongIds.add(pid);
   }
   if (strongIds.size === 1) return { playerId: [...strongIds][0], strength: "strong" };
-  if (strongIds.size > 1) return null; // two full-name matches → ambiguous
+  if (strongIds.size > 1) {
+    // Two players can own the same adjacent pair through their LEGAL names —
+    // Man City's Bernardo Silva and Hoffenheim's "Bernardo Fernandes da Silva
+    // Junior" both own (bernardo, silva), which dropped every Bernardo Silva
+    // headline as ambiguous. The DISPLAY name is how journalists refer to a
+    // player: the candidate whose known_as appears verbatim wins, longest
+    // display name first ("bernardo silva" beats the mononym "bernardo", which
+    // is a substring of it).
+    const folded = fold(headline);
+    const matches = [...strongIds]
+      .map((id) => ({ id, ka: idx.knownAs.get(id) ?? "" }))
+      .filter((m) => m.ka.length >= 5 && folded.includes(m.ka))
+      .sort((a, b) => b.ka.length - a.ka.length);
+    if (matches.length === 1 || (matches.length > 1 && matches[0].ka.length > matches[1].ka.length)) {
+      return { playerId: matches[0].id, strength: "strong" };
+    }
+    return null; // genuinely ambiguous — never guess
+  }
 
   // UNIQUE: exactly one player owns a distinctive token (len ≥ 5, not a common
   // given name, not an ordinary word/place that hides inside legal names).

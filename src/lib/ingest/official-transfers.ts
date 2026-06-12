@@ -89,10 +89,11 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
 
   // Saga-precision pass: the July-1 contract-turnover wave runs to thousands of
   // rows with no reliable server-side ordering, so the window scan above is
-  // best-effort breadth. Players with LIVE rumours are user-visible and must
-  // flip deterministically — fetch their transfer records directly (one cheap
-  // call per live saga player).
-  const { data: liveRows } = await db.from("rumours").select("player_id").eq("status", "rumour");
+  // best-effort breadth. Players the pipeline is tracking (live sagas AND
+  // queued candidates — the Bernardo Silva lesson: big signings often sit
+  // candidate-only first) must flip deterministically — fetch their transfer
+  // records directly (one cheap call per tracked player).
+  const { data: liveRows } = await db.from("rumours").select("player_id").in("status", ["rumour", "candidate"]);
   const liveIds = [...new Set((liveRows ?? []).map((r) => r.player_id))];
   if (liveIds.length) {
     const { data: livePlayers } = await db
