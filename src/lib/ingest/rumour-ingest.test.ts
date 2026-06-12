@@ -74,4 +74,28 @@ describe("decideIngest", () => {
     expect(decideIngest({ toClub: "Arsenal", tier: 1, strength: "unique", ...base }).kind).toBe("candidate"); // weak match
     expect(decideIngest({ toClub: "—", tier: 1, strength: "strong", ...base }).kind).toBe("candidate"); // no destination
   });
+
+  // Press-consensus confirm — the Senesi failure: a trusted outlet reporting the
+  // deal in completed language must flip the saga, not corroborate it forever.
+  describe("press-consensus confirm", () => {
+    it("a trusted done-language report confirms the existing saga", () => {
+      const a = decideIngest({ toClub: "Tottenham", tier: 2, strength: "strong", done: true, byPair: rumour({ to_club: "Tottenham" }), forPlayer: [rumour({ to_club: "Tottenham" })] });
+      expect(a).toMatchObject({ kind: "merge", confirm: true });
+    });
+
+    it("a trusted done-language report with a resolved destination publishes as confirmed", () => {
+      const a = decideIngest({ toClub: "Tottenham", tier: 2, strength: "strong", done: true, byPair: undefined, forPlayer: [] });
+      expect(a).toMatchObject({ kind: "publish", confirm: true });
+    });
+
+    it("untrusted sources never confirm, whatever the language", () => {
+      const a = decideIngest({ toClub: "Tottenham", tier: 3, strength: "strong", done: true, byPair: rumour({ to_club: "Tottenham" }), forPlayer: [] });
+      expect(a).toMatchObject({ kind: "merge", confirm: false });
+    });
+
+    it("done-language chatter with an UNRESOLVED destination never confirms the saga it merges into", () => {
+      const a = decideIngest({ toClub: "—", tier: 1, strength: "strong", done: true, byPair: undefined, forPlayer: [rumour()] });
+      expect(a).toMatchObject({ kind: "merge", confirm: false });
+    });
+  });
 });

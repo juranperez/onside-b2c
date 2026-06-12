@@ -131,7 +131,7 @@ export default async function TransfersPage({
             icon={<Flame size={13} />}
             label="Biggest live saga"
             value={biggest ? biggest.player.name : "—"}
-            sub={biggest?.reportedFeeM != null ? `€${biggest.reportedFeeM}M` : undefined}
+            sub={biggest?.reportedFeeM ? `€${biggest.reportedFeeM}M` : undefined}
           />
           <PulseStat
             icon={<MessagesSquare size={13} />}

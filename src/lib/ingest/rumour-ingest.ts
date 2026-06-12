@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../db/types";
 import { fold, buildPlayerIndex, buildClubIndex, matchPlayer, matchDestClub, stripJournalists, type MatchStrength } from "./match";
+import { doneLanguage } from "../rumours/stage";
 import { notifyFollowers } from "../rumours/notify";
 
 export interface FeedSource {
@@ -87,6 +88,11 @@ function extractFeeEur(title: string): number | null {
   return /b/i.test(m[2]) ? Math.round(n * 1e9) : Math.round(n * 1e6);
 }
 
+/** Fee 0 = free transfer (display "Free"); null = no fee reported yet. */
+function isFreeTransfer(title: string): boolean {
+  return /\bfree transfer\b|\bon a free\b|\bfree agent\b/i.test(title);
+}
+
 // Per-item {source, tier, summary} depending on the feed kind.
 function resolveItem(feed: FeedSource, title: string): { source: string; tier: number; summary: string } | null {
   if (feed.kind === "reddit") {
@@ -120,8 +126,8 @@ export interface ExistingRumour {
 
 export type IngestAction =
   | { kind: "skip"; reason: "saga-over" | "ambiguous-target" }
-  | { kind: "merge"; target: ExistingRumour; promote: boolean }
-  | { kind: "publish" }
+  | { kind: "merge"; target: ExistingRumour; promote: boolean; confirm: boolean }
+  | { kind: "publish"; confirm: boolean }
   | { kind: "candidate" };
 
 /**
@@ -132,16 +138,24 @@ export type IngestAction =
  *   A strong trusted corroboration also promotes a queued candidate to live.
  * - A NEW saga from a trusted source (tier ≤ 2) with a STRONG full-name match
  *   and a resolved destination publishes immediately (fast lane).
+ * - PRESS-CONSENSUS CONFIRM: a trusted source (tier ≤ 2) reporting the deal in
+ *   completed language ("Tottenham sign X on free transfer") flips the saga to
+ *   confirmed — announced deals must not sit as "Linked" rumours for hours while
+ *   the official-records feed waits for the effective date (the Senesi failure).
+ *   Requires an explicit destination: done-language chatter with an unresolved
+ *   club must never confirm a saga it can't verify it belongs to.
  * - Everything else queues for human review, exactly as before.
  */
 export function decideIngest(args: {
   toClub: string;
   tier: number;
   strength: MatchStrength;
+  done?: boolean; // summary uses completed-deal language (stage.doneLanguage)
   byPair: ExistingRumour | undefined;
   forPlayer: ExistingRumour[];
 }): IngestAction {
-  const { toClub, tier, strength } = args;
+  const { toClub, tier, strength, done = false } = args;
+  const confirm = done && tier <= 2 && toClub !== "—";
   let target = args.byPair;
   if (toClub === "—") {
     // Destination-less chatter belongs to the player's PUBLISHED saga first —
@@ -159,9 +173,9 @@ export function decideIngest(args: {
   if (target) {
     if (target.status === "confirmed" || target.status === "dead") return { kind: "skip", reason: "saga-over" };
     const promote = target.status === "candidate" && tier <= 2 && strength === "strong" && target.to_club !== "—";
-    return { kind: "merge", target, promote };
+    return { kind: "merge", target, promote, confirm };
   }
-  if (tier <= 2 && strength === "strong" && toClub !== "—") return { kind: "publish" };
+  if (tier <= 2 && strength === "strong" && toClub !== "—") return { kind: "publish", confirm };
   return { kind: "candidate" };
 }
 
@@ -173,11 +187,12 @@ export interface IngestResult {
   merged: number;
   autoPublished: number;
   promoted: number;
+  pressConfirmed: number; // sagas flipped to confirmed by trusted done-language reports
   tier1: number;
   skippedResolved: number; // player already has a confirmed move — saga over
 }
 
-const EMPTY_RESULT: IngestResult = { feeds: 0, items: 0, matched: 0, inserted: 0, merged: 0, autoPublished: 0, promoted: 0, tier1: 0, skippedResolved: 0 };
+const EMPTY_RESULT: IngestResult = { feeds: 0, items: 0, matched: 0, inserted: 0, merged: 0, autoPublished: 0, promoted: 0, pressConfirmed: 0, tier1: 0, skippedResolved: 0 };
 
 /** Every player (id, folded name, current club) — paginated past PostgREST's row cap so the match index covers the full population, not just the most valuable. */
 async function loadAllPlayers(db: SupabaseClient<Database>): Promise<{ id: string; name_norm: string | null; clubs: { name: string } | null }[]> {
@@ -245,6 +260,18 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
   const result: IngestResult = { ...EMPTY_RESULT, feeds: feeds.length };
   const now = new Date().toISOString();
 
+  // A press-confirmed deal settles the player's market: competing live sagas die.
+  const killCompeting = async (playerId: string, keepId: string, toName: string) => {
+    const others = (forPlayer.get(playerId) ?? []).filter((r) => r.id !== keepId && r.status === "rumour");
+    for (const c of others) {
+      const { error } = await db.from("rumours").update({ status: "dead", last_update: now, resolved_at: now }).eq("id", c.id);
+      if (!error) {
+        c.status = "dead";
+        await notifyFollowers(db, c.id, `Saga over — deal done with ${toName} instead`, { kind: "dead" });
+      }
+    }
+  };
+
   for (const feed of feeds) {
     let xml = "";
     try {
@@ -278,6 +305,7 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
         toClub,
         tier: resolved.tier,
         strength: hit.strength,
+        done: doneLanguage(resolved.summary),
         byPair: byPair.get(`${hit.playerId}|${toClub}`),
         forPlayer: forPlayer.get(hit.playerId) ?? [],
       });
@@ -288,6 +316,7 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
         const t = action.target;
         const bestTier = Math.min(t.source_tier, resolved.tier);
         const fee = extractFeeEur(resolved.summary);
+        const free = action.confirm && isFreeTransfer(resolved.summary);
         const fresherCredible = resolved.tier <= t.source_tier;
         const { error } = await db
           .from("rumours")
@@ -295,10 +324,12 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
             corroborations: t.corroborations + 1,
             last_update: now,
             source_tier: bestTier,
-            reported_fee_eur: fee != null ? Math.max(fee, t.reported_fee_eur ?? 0) : t.reported_fee_eur,
-            // A report at least as credible as the current source carries the saga's latest development.
-            ...(fresherCredible ? { summary: resolved.summary.slice(0, 280), url: it.link || null, primary_source: resolved.source.slice(0, 80) } : {}),
-            ...(action.promote ? { status: "rumour" } : {}),
+            // A free transfer settles the fee at 0; otherwise keep the best reported figure.
+            reported_fee_eur: free ? 0 : fee != null ? Math.max(fee, t.reported_fee_eur ?? 0) : t.reported_fee_eur,
+            // A report at least as credible as the current source — and any confirming
+            // report — carries the saga's latest development.
+            ...(fresherCredible || action.confirm ? { summary: resolved.summary.slice(0, 280), url: it.link || null, primary_source: resolved.source.slice(0, 80) } : {}),
+            ...(action.confirm ? { status: "confirmed", resolved_at: now } : action.promote ? { status: "rumour" } : {}),
           })
           .eq("id", t.id);
         if (!error) {
@@ -306,9 +337,17 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
           if (action.promote) result.promoted++;
           t.corroborations += 1;
           t.source_tier = bestTier;
-          if (action.promote) t.status = "rumour";
+          if (action.confirm) {
+            t.status = "confirmed";
+            result.pressConfirmed++;
+            confirmedPlayers.add(hit.playerId);
+            await notifyFollowers(db, t.id, `Deal done: ${resolved.summary.slice(0, 120)}`, { kind: "confirmed" });
+            await killCompeting(hit.playerId, t.id, t.to_club);
+          } else if (action.promote) {
+            t.status = "rumour";
+          }
           // Followers hear about real developments (fresher credible report or going live) — not raw corroboration ticks.
-          if (fresherCredible || action.promote) {
+          if (!action.confirm && (fresherCredible || action.promote)) {
             await notifyFollowers(db, t.id, `New development: ${resolved.summary.slice(0, 120)}`, { kind: action.promote ? "live" : "update" });
           }
           if (it.link) {
@@ -322,13 +361,14 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
         continue;
       }
 
-      const status = action.kind === "publish" ? "rumour" : "candidate";
+      const confirmNew = action.kind === "publish" && action.confirm;
+      const status = action.kind === "publish" ? (confirmNew ? "confirmed" : "rumour") : "candidate";
       const { data: created, error } = await db
         .from("rumours")
         .insert({
           player_id: hit.playerId,
           to_club: toClub,
-          reported_fee_eur: extractFeeEur(resolved.summary),
+          reported_fee_eur: confirmNew && isFreeTransfer(resolved.summary) ? 0 : extractFeeEur(resolved.summary),
           status,
           summary: resolved.summary.slice(0, 280),
           primary_source: resolved.source.slice(0, 80),
@@ -337,12 +377,18 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
           first_seen: now,
           last_update: now,
           url: it.link || null,
+          ...(confirmNew ? { resolved_at: now } : {}),
         })
         .select("id")
         .single();
       if (!error) {
         result.inserted++;
         if (action.kind === "publish") result.autoPublished++;
+        if (confirmNew) {
+          result.pressConfirmed++;
+          confirmedPlayers.add(hit.playerId);
+          if (created?.id) await killCompeting(hit.playerId, created.id, toClub);
+        }
         if (resolved.tier === 1) result.tier1++;
         if (it.link) {
           seenUrls.add(it.link);

@@ -15,6 +15,7 @@ function timeAgo(iso: string): string {
 
 function feeVerdict(feeM: number | null, valueM: number) {
   if (feeM == null || valueM <= 0) return null;
+  if (feeM === 0) return { t: "Free — value gain", c: "text-up" };
   const r = feeM / valueM;
   if (r <= 1.1) return { t: "Fair / bargain", c: "text-up" };
   if (r <= 1.8) return { t: "Above value", c: "text-acc" };
@@ -56,7 +57,9 @@ export function RumourCard({ r }: { r: RumourItem }) {
       <p className="text-[12.5px] text-mute mt-3 leading-relaxed">{r.summary}</p>
 
       <div className="flex items-center gap-2 mt-3 pt-3 border-t border-line text-[11px] flex-wrap">
-        {r.reportedFeeM != null ? (
+        {r.reportedFeeM === 0 ? (
+          <span className="num font-semibold text-up">Free</span>
+        ) : r.reportedFeeM != null ? (
           <span className="num font-semibold">€{r.reportedFeeM}M</span>
         ) : (
           <span className="text-mute-soft">Fee undisclosed</span>

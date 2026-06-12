@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildPlayerIndex, matchPlayer, stripJournalists } from "./match";
+import { buildPlayerIndex, matchPlayer, stripJournalists, buildClubIndex, matchDestClub } from "./match";
 
 // A small population reproducing the real misfires from the 2026-06-11 queue audit.
 const PLAYERS = [
@@ -81,5 +81,80 @@ describe("matchPlayer — generic-word and adjacency hardening (Jun 11 queue fai
 
   it("a lone generic surname is never a unique key", () => {
     expect(matchPlayer(stripJournalists("Frankfurt's Brown attracting transfer interest"), idx)).toBeNull();
+  });
+});
+
+// ---- Destination clubs — the 2026-06-12 phantom-destination audit ------------
+
+const CLUBS = [
+  { id: "ner", name: "New England Revolution", name_norm: "new england revolution", short_name: null },
+  { id: "redstar", name: "RED Star FC 93", name_norm: "red star fc 93", short_name: null },
+  { id: "spurs", name: "Tottenham", name_norm: "tottenham", short_name: null },
+  { id: "bou", name: "Bournemouth", name_norm: "bournemouth", short_name: null },
+  { id: "mcfc", name: "Manchester City", name_norm: "manchester city", short_name: null },
+  { id: "mufc", name: "Manchester United", name_norm: "manchester united", short_name: null },
+  { id: "rm", name: "Real Madrid", name_norm: "real madrid", short_name: null },
+  { id: "atm", name: "Atletico Madrid", name_norm: "atletico madrid", short_name: null },
+  { id: "inter", name: "Inter", name_norm: "inter", short_name: null },
+  { id: "acm", name: "AC Milan", name_norm: "ac milan", short_name: null },
+  { id: "forest", name: "Nottingham Forest", name_norm: "nottingham forest", short_name: null },
+  { id: "ars", name: "Arsenal", name_norm: "arsenal", short_name: null },
+  { id: "kc", name: "Kaizer Chiefs", name_norm: "kaizer chiefs", short_name: null },
+  { id: "hearts", name: "Heart Of Midlothian", name_norm: "heart of midlothian", short_name: null },
+  { id: "shw", name: "Sheffield Wednesday", name_norm: "sheffield wednesday", short_name: null },
+  { id: "shu", name: "Sheffield Utd", name_norm: "sheffield utd", short_name: null },
+  { id: "junior", name: "Junior", name_norm: "junior", short_name: null },
+  { id: "cfire", name: "Chicago Fire", name_norm: "chicago fire", short_name: null },
+];
+const clubIdx = buildClubIndex(CLUBS);
+
+describe("matchDestClub — generic-word guard (the England/star phantoms)", () => {
+  it("'England mainstay' never resolves to New England Revolution", () => {
+    expect(matchDestClub("Elliot Anderson brings the noise and promise of England mainstay amid City transfer talk", clubIdx, "Nottingham Forest")).toBeNull();
+  });
+
+  it("'Real Madrid star' never resolves to RED Star FC 93", () => {
+    expect(matchDestClub("Man Utd transfer tipped for Real Madrid star who can be Elliot Anderson alternative", clubIdx, "Nottingham Forest")).toBeNull();
+  });
+
+  it("'Arsenal chiefs' resolves to Arsenal, never Kaizer Chiefs", () => {
+    expect(matchDestClub("Arsenal chiefs plot summer swoop for winger", clubIdx, "Bournemouth")).toBe("Arsenal");
+  });
+
+  it("'heart set on a move' and 'agreed on Wednesday' resolve to nothing", () => {
+    expect(matchDestClub("Striker has his heart set on a summer move", clubIdx, null)).toBeNull();
+    expect(matchDestClub("Personal terms agreed on Wednesday says agent", clubIdx, null)).toBeNull();
+  });
+
+  it("'Vinicius Junior' never resolves to Junior (Barranquilla)", () => {
+    expect(matchDestClub("Vinicius Junior agrees new deal amid transfer talk", clubIdx, "Real Madrid")).toBeNull();
+  });
+
+  it("multi-word clubs still match via adjacency", () => {
+    expect(matchDestClub("New England Revolution sign veteran defender", clubIdx, "Bournemouth")).toBe("New England Revolution");
+    expect(matchDestClub("Sheffield Wednesday complete loan move for keeper", clubIdx, "Arsenal")).toBe("Sheffield Wednesday");
+  });
+});
+
+describe("matchDestClub — phrase tokens make the giants reachable", () => {
+  it("resolves Manchester City (was unreachable: 'city' stopped, 'manchester' ambiguous)", () => {
+    expect(matchDestClub("Manchester City have second bid rejected for Nottingham Forest midfielder", clubIdx, "Nottingham Forest")).toBe("Manchester City");
+    expect(matchDestClub("Man City prepare third bid for midfielder", clubIdx, "Nottingham Forest")).toBe("Manchester City");
+  });
+
+  it("resolves Real Madrid via the phrase, not the ambiguous 'madrid' token", () => {
+    expect(matchDestClub("Real Madrid agree deal for Bournemouth defender", clubIdx, "Bournemouth")).toBe("Real Madrid");
+  });
+
+  it("'Inter Milan' resolves to Inter, never AC Milan", () => {
+    expect(matchDestClub("Inter Milan agree fee for Bournemouth defender", clubIdx, "Bournemouth")).toBe("Inter");
+  });
+
+  it("the Senesi headline resolves Tottenham with Bournemouth as current club", () => {
+    expect(matchDestClub("Marcos Senesi: Tottenham sign Bournemouth defender on free transfer after four-year stay at Cherries", clubIdx, "Bournemouth")).toBe("Tottenham");
+  });
+
+  it("two competing destinations stay null — never guess", () => {
+    expect(matchDestClub("Arsenal and Tottenham battle for defender", clubIdx, "Bournemouth")).toBeNull();
   });
 });

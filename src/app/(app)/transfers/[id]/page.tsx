@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!r) return { title: "Rumour — Onside" };
   return {
     title: `${r.player.name} → ${r.toClub} — ${r.confidence.pct}% Onside Confidence`,
-    description: `${r.summary} ${r.reportedFeeM != null ? `€${r.reportedFeeM}M reported` : "Fee undisclosed"} vs €${r.onsideValueM}M Onside value.`,
+    description: `${r.summary} ${r.reportedFeeM === 0 ? "Free transfer" : r.reportedFeeM != null ? `€${r.reportedFeeM}M reported` : "Fee undisclosed"} vs €${r.onsideValueM}M Onside value.`,
   };
 }
 
@@ -78,7 +78,9 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
       <p className="text-[15px] text-mute mt-4 leading-relaxed">{r.summary}</p>
 
       <div className="flex items-center gap-2 mt-4 text-[13px] flex-wrap">
-        {r.reportedFeeM != null ? (
+        {r.reportedFeeM === 0 ? (
+          <span className="num font-semibold text-up">Free transfer</span>
+        ) : r.reportedFeeM != null ? (
           <span className="num font-semibold">€{r.reportedFeeM}M reported</span>
         ) : (
           <span className="text-mute-soft">Fee undisclosed</span>

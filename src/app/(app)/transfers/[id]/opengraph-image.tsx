@@ -68,7 +68,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
             <div style={{ display: "flex", fontSize: 26, color: OG.mute }}>
-              {r.reportedFeeM != null ? `€${r.reportedFeeM}M reported` : "Fee undisclosed"}
+              {r.reportedFeeM === 0 ? "Free transfer" : r.reportedFeeM != null ? `€${r.reportedFeeM}M reported` : "Fee undisclosed"}
             </div>
             <div style={{ display: "flex", fontSize: 26, color: OG.mute }}>€{r.onsideValueM}M Onside value</div>
           </div>

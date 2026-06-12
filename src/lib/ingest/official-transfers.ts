@@ -47,13 +47,17 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
   const token = process.env.SPORTMONKS_API_TOKEN;
   if (!token) throw new Error("SPORTMONKS_API_TOKEN is not set");
 
-  // /transfers/latest is dominated by future-dated "end of loan" placeholders;
-  // the COMPLETED deals live on the date-range endpoint. Daily cron + 7-day
-  // window = self-healing overlap.
-  const to = new Date().toISOString().slice(0, 10);
+  // Sportmonks dates transfers by EFFECTIVE date and only flips `completed` then —
+  // so a deal announced in June with a July 1 start (most of the summer window,
+  // e.g. Senesi→Tottenham announced Jun 10, dated Jul 1, completed:false) is
+  // invisible to a backwards completed-only query. Look 7 days back AND 90 days
+  // forward, and accept announced-but-not-yet-effective deals when they name a
+  // real destination. "End of loan" rows and "TBC" contract-expiry placeholders
+  // are noise, never announcements.
+  const to = new Date(Date.now() + 90 * 86_400_000).toISOString().slice(0, 10);
   const from = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
   const all: SmTransfer[] = [];
-  for (let page = 1; page <= 4; page++) {
+  for (let page = 1; page <= 8; page++) {
     const res = await fetch(`${BASE}/transfers/between/${from}/${to}?include=player;fromTeam;toTeam;type&per_page=50&page=${page}`, {
       headers: { Authorization: token, Accept: "application/json" },
     });
@@ -62,7 +66,14 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
     all.push(...(body.data ?? []));
     if (!body.pagination?.has_more) break;
   }
-  const transfers = all.filter((t) => t.completed && t.player_id);
+  const transfers = all.filter((t) => {
+    if (!t.player_id) return false;
+    const kind = t.type?.name?.toLowerCase() ?? "";
+    if (/end of loan|back from loan/.test(kind)) return false; // scheduled loan return, not a signing
+    const toName = (t.toteam ?? t.toTeam)?.name ?? "";
+    if (!toName || toName.toUpperCase() === "TBC") return false; // expiry placeholder
+    return Boolean(t.completed) || Boolean(t.date); // completed, or announced with an effective date
+  });
 
   const out: OfficialSyncResult = {
     fetched: all.length,
@@ -85,9 +96,29 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
   const { data: playerRows } = await db.from("players").select("id,name,known_as,sportmonks_id").in("sportmonks_id", smIds);
   const bySmId = new Map((playerRows ?? []).map((p) => [p.sportmonks_id as string, p]));
 
-  // Club lookup by folded name for FK linkage (best-effort — text name is the fallback).
+  // Club lookup for FK linkage and saga matching. Sportmonks names differ from
+  // ours ("Tottenham Hotspur" vs "Tottenham", "AFC Bournemouth" vs "Bournemouth"),
+  // so exact fold equality silently misses — resolve by exact fold first, then by
+  // UNIQUE containment (the refresh-anchors lesson). Falls back to the raw name.
   const { data: clubRows } = await db.from("clubs").select("id,name");
-  const clubByFold = new Map((clubRows ?? []).map((c) => [fold(c.name), c.id]));
+  const clubByFold = new Map((clubRows ?? []).map((c) => [fold(c.name), c]));
+  const resolveClub = (name: string | null): { id: string | null; display: string | null } => {
+    if (!name) return { id: null, display: null };
+    const f = fold(name);
+    const exact = clubByFold.get(f);
+    if (exact) return { id: exact.id, display: exact.name };
+    const hits = (clubRows ?? []).filter((c) => {
+      const cf = fold(c.name);
+      return cf.length >= 5 && f.length >= 5 && (f.includes(cf) || cf.includes(f));
+    });
+    return hits.length === 1 ? { id: hits[0].id, display: hits[0].name } : { id: null, display: name };
+  };
+  const sameClub = (a: string, b: string): boolean => {
+    const fa = fold(a);
+    const fb = fold(b);
+    if (fa === fb) return true;
+    return fa.length >= 5 && fb.length >= 5 && (fa.includes(fb) || fb.includes(fa));
+  };
 
   const now = new Date().toISOString();
 
@@ -101,19 +132,23 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
     if (!player) continue; // outside our covered population
     out.matchedPlayers++;
 
-    const toName = (t.toteam ?? t.toTeam)?.name ?? "—";
-    const fromName = (t.fromteam ?? t.fromTeam)?.name ?? null;
+    const toResolved = resolveClub((t.toteam ?? t.toTeam)?.name ?? null);
+    const fromResolved = resolveClub((t.fromteam ?? t.fromTeam)?.name ?? null);
+    const toName = toResolved.display ?? "—"; // our club name when known — keeps saga merges aligned
+    const fromName = fromResolved.display;
     const kind = t.type?.name?.toLowerCase() ?? "transfer";
     const isLoan = kind.includes("loan");
-    const feeEur = t.amount && t.amount > 0 ? Math.round(t.amount) : null;
+    const isFree = kind.includes("free");
+    // 0 = free transfer (renders "Free"); null = fee unknown/undisclosed.
+    const feeEur = isFree ? 0 : t.amount && t.amount > 0 ? Math.round(t.amount) : null;
 
     // 1) System of record.
     const { error: trErr } = await db.from("transfers").upsert(
       {
         id: `sm-${t.id}`,
         player_id: player.id,
-        from_club_id: fromName ? (clubByFold.get(fold(fromName)) ?? null) : null,
-        to_club_id: toName !== "—" ? (clubByFold.get(fold(toName)) ?? null) : null,
+        from_club_id: fromResolved.id,
+        to_club_id: toResolved.id,
         fee: feeEur,
         date: t.date,
         type: isLoan ? "loan" : "confirmed",
@@ -128,14 +163,15 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
 
     // 2) Wire reflection.
     const display = player.known_as ?? player.name;
-    const summary = `OFFICIAL: ${display} ${isLoan ? "joins on loan" : "joins"} ${toName}${feeEur ? ` for €${Math.round(feeEur / 1e6)}M` : ""}${fromName ? ` from ${fromName}` : ""}`;
+    const future = t.date && t.date > now.slice(0, 10);
+    const summary = `OFFICIAL: ${display} ${isLoan ? "joins on loan" : "joins"} ${toName}${isFree ? " on a free transfer" : feeEur ? ` for €${Math.round(feeEur / 1e6)}M` : ""}${fromName ? ` from ${fromName}` : ""}${future ? `, effective ${t.date}` : ""}`;
 
     const { data: existing } = await db
       .from("rumours")
       .select("id,to_club,status")
       .eq("player_id", player.id);
 
-    const match = (existing ?? []).find((r) => fold(r.to_club) === fold(toName));
+    const match = (existing ?? []).find((r) => sameClub(r.to_club, toName));
     let rumourId: string | null = null;
 
     if (match) {
@@ -181,7 +217,7 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
     }
 
     // The deal is done — competing live rumours for this player are dead.
-    const competing = (existing ?? []).filter((r) => r.status === "rumour" && fold(r.to_club) !== fold(toName));
+    const competing = (existing ?? []).filter((r) => r.status === "rumour" && !sameClub(r.to_club, toName));
     for (const c of competing) {
       const { error } = await db.from("rumours").update({ status: "dead", last_update: now, resolved_at: now }).eq("id", c.id);
       if (!error) {

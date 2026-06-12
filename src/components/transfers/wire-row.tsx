@@ -17,6 +17,7 @@ function timeAgo(iso: string, now: number): string {
 
 function feeTone(feeM: number | null, valueM: number): { label: string; cls: string } | null {
   if (feeM == null || valueM <= 0) return null;
+  if (feeM === 0) return { label: "bargain", cls: "text-up" }; // free transfer of a valued player
   const r = feeM / valueM;
   if (r <= 1.1) return { label: "fair", cls: "text-up" };
   if (r <= 1.8) return { label: "above value", cls: "text-acc" };
@@ -95,7 +96,9 @@ export function WireRow({ r, comments = 0, now, following = false }: { r: Rumour
             <ConfidenceBadge pct={r.confidence.pct} band={r.confidence.band} />
           )}
           <div className="text-right text-[11px] leading-tight">
-            {r.reportedFeeM != null ? (
+            {r.reportedFeeM === 0 ? (
+              <div className="num font-semibold text-up">Free</div>
+            ) : r.reportedFeeM != null ? (
               <div className="num font-semibold">€{r.reportedFeeM}M</div>
             ) : (
               <div className="text-mute-soft">no fee yet</div>

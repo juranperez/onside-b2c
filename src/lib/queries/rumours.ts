@@ -68,6 +68,7 @@ function toItem(r: RumourRow, now: Date): RumourItem | null {
   const style = clubStyle(p.clubs?.slug ?? p.id);
   const conf = confidence({
     status: r.status as RumourStatus,
+    summary: r.summary,
     sourceTier: r.source_tier,
     corroborations: r.corroborations,
     reportedFeeEur: r.reported_fee_eur,

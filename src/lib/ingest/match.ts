@@ -141,10 +141,62 @@ const CLUB_STOP = new Set([
   "athletic", "city", "united", "inter", "county", "town", "rovers", "albion",
   "fc", "cf", "afc", "ac", "ss", "us", "sv", "sc", "rc", "cd", "ud", "real madrid",
 ]);
+// Single-owner club tokens that are also ordinary headline words, country names,
+// weekdays, or common given names — never a SOLE key. Real failures from the
+// 2026-06-12 Wire audit: "England mainstay" → New England Revolution; "Real
+// Madrid star" → RED Star FC 93. The same class waits in "heart set on a move"
+// (Heart of Midlothian), "Arsenal chiefs" (Kaizer Chiefs), "agreed on Wednesday"
+// (Sheffield Wednesday), "Vinícius Júnior" (Junior, Colombia), "youth academy"
+// (Qingdao Youth Island). Multi-word club names still match via ADJACENCY
+// ("New England Revolution sign…"), exactly like player names.
+const CLUB_GENERIC = new Set([
+  "england", "austria", "america", "scotland", "wales", "ireland",
+  "star", "stars", "fire", "racing", "start", "viking", "rapid", "derby",
+  "wednesday", "heart", "hearts", "once", "better", "three", "towns", "youth",
+  "island", "golden", "arrows", "eagles", "ahead", "chiefs", "motor", "nice",
+  "pulse", "standard", "junior", "juniors", "young", "crew", "boys", "college",
+  "salt", "lake", "richards", "vicente", "santa", "clara", "central",
+  "leon", "jose", "luis", "louis", "diego", "paulo", "martin", "lorenzo", "austin",
+]);
 // Common shorthands → a distinctive token of the canonical club name.
 const CLUB_ALIAS: Record<string, string> = {
-  barca: "barcelona", psg: "paris", spurs: "tottenham", juve: "juventus",
-  gunners: "arsenal", reds: "liverpool", bavarians: "bayern",
+  barca: "barcelona", psg: "germain", spurs: "tottenham", juve: "juventus",
+  gunners: "arsenal", bavarians: "bayern", cherries: "bournemouth",
+};
+// Giants whose name tokens are all stopped or ambiguous ("city", "united",
+// "madrid"×2, "inter") are matched as PHRASES and given a synthetic token —
+// otherwise Manchester City, Man Utd, Real Madrid, Atlético and Inter can never
+// be resolved as destinations (the matcher's biggest recall hole).
+const CLUB_PHRASES: [RegExp, string][] = [
+  [/\bman(?:chester)?\s+city\b/g, " mancity "],
+  [/\bman(?:chester)?\s+(?:utd|united)\b/g, " manutd "],
+  [/\breal\s+madrid\b/g, " realmadrid "],
+  [/\batletico\s+(?:de\s+)?madrid\b|\batleti\b/g, " atleticomadrid "],
+  [/\binter\s+milan\b|\binternazionale\b/g, " internazionale "],
+  [/\bd\.?c\.?\s+united\b/g, " dcunited "],
+  [/\b(?:los angeles|la)\s+galaxy\b/g, " lagalaxy "],
+  [/\bnew york city\b/g, " newyorkcityfc "],
+  [/\bst\.?\s+louis\s+city\b/g, " stlouiscity "],
+  [/\bsan diego\b/g, " sandiegofc "],
+  [/\bsao paulo\b/g, " saopaulofc "],
+  [/\bsalt lake\b/g, " realsaltlake "],
+  [/\baustin fc\b/g, " austinfc "],
+];
+// Synthetic token → owning club, keyed by the club's folded name in our DB.
+const SYNTH_TOKENS: Record<string, string> = {
+  "manchester city": "mancity",
+  "manchester united": "manutd",
+  "real madrid": "realmadrid",
+  "atletico madrid": "atleticomadrid",
+  inter: "internazionale",
+  "dc united": "dcunited",
+  "los angeles galaxy": "lagalaxy",
+  "new york city fc": "newyorkcityfc",
+  "st. louis city": "stlouiscity",
+  "san diego": "sandiegofc",
+  "sao paulo": "saopaulofc",
+  "real salt lake": "realsaltlake",
+  austin: "austinfc",
 };
 
 export interface ClubIndex {
@@ -155,14 +207,17 @@ export interface ClubIndex {
 export function buildClubIndex(clubs: { id: string; name: string; name_norm: string | null; short_name: string | null }[]): ClubIndex {
   const owners = new Map<string, string[]>();
   const nameOf = new Map<string, string>();
+  const add = (t: string, id: string) => {
+    const arr = owners.get(t);
+    if (arr) arr.push(id);
+    else owners.set(t, [id]);
+  };
   for (const c of clubs) {
     nameOf.set(c.id, c.name);
     const toks = new Set<string>([...keyTokensClub(c.name_norm ?? c.name), ...keyTokensClub(c.short_name ?? "")]);
-    for (const t of toks) {
-      const arr = owners.get(t);
-      if (arr) arr.push(c.id);
-      else owners.set(t, [c.id]);
-    }
+    for (const t of toks) add(t, c.id);
+    const synth = SYNTH_TOKENS[fold(c.name_norm ?? c.name)];
+    if (synth) add(synth, c.id);
   }
   return { owners, nameOf };
 }
@@ -171,17 +226,36 @@ function keyTokensClub(s: string): string[] {
   return [...new Set(tokenize(s))].filter((t) => t.length >= 4 && !CLUB_STOP.has(t));
 }
 
-/** Best-guess destination club from a headline (excluding the player's current club). */
+/**
+ * Best-guess destination club from a headline (excluding the player's current club).
+ * Mirrors matchPlayer: STRONG = two of one club's tokens adjacent in the text
+ * ("Sheffield Wednesday", "New England Revolution"); UNIQUE = a single-owner
+ * distinctive token that is not an ordinary word ("Tottenham", "Barcelona").
+ * Exactly one non-current club → confident; anything else → null, never guess.
+ */
 export function matchDestClub(headline: string, idx: ClubIndex, currentClub: string | null): string | null {
-  const toks = new Set(tokenize(headline));
-  for (const [alias, canon] of Object.entries(CLUB_ALIAS)) if (toks.has(alias)) toks.add(canon);
+  let text = fold(headline);
+  for (const [re, tok] of CLUB_PHRASES) text = text.replace(re, tok);
+  for (const [alias, canon] of Object.entries(CLUB_ALIAS)) text = text.replace(new RegExp(`\\b${alias}\\b`, "g"), ` ${canon} `);
+  const ordered = tokenize(text).filter((t) => t.length >= 4 && !CLUB_STOP.has(t));
+
+  // Strong (adjacent pair) and unique candidates UNION — the current club often
+  // appears as the headline's only multi-word mention ("… for Nottingham Forest
+  // midfielder") and is excluded below; it must not shadow the real destination.
   const found = new Set<string>();
-  for (const t of toks) {
-    if (t.length < 4 || CLUB_STOP.has(t)) continue;
+  for (let i = 0; i < ordered.length - 1; i++) {
+    const a = idx.owners.get(ordered[i]);
+    const b = idx.owners.get(ordered[i + 1]);
+    if (!a?.length || !b?.length) continue;
+    const bSet = new Set(b);
+    for (const id of a) if (bSet.has(id)) found.add(id);
+  }
+  for (const t of new Set(ordered)) {
+    if (CLUB_GENERIC.has(t)) continue;
     const owners = idx.owners.get(t);
-    if (owners?.length === 1) found.add(owners[0]); // only unambiguous clubs
+    if (owners?.length === 1) found.add(owners[0]);
   }
   const cur = currentClub ? fold(currentClub) : "";
   const dests = [...found].map((id) => idx.nameOf.get(id)!).filter((n) => n && fold(n) !== cur);
-  return dests.length === 1 ? dests[0] : null; // exactly one non-current club → confident
+  return dests.length === 1 ? dests[0] : null;
 }
