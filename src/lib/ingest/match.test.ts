@@ -14,6 +14,10 @@ const PLAYERS = [
   { id: "waldo", name_norm: "waldo emilio madrid quezada" },
   { id: "bkdavies", name_norm: "benjamin keith davies" },
   { id: "brown", name_norm: "nathaniel brown" },
+  { id: "trafford", name_norm: "james trafford" },
+  { id: "ligue", name_norm: "calixte ligue" },
+  { id: "gpalace", name_norm: "genino palace" },
+  { id: "koemanp", name_norm: "ronald koeman" },
 ];
 
 const idx = buildPlayerIndex(PLAYERS);
@@ -81,6 +85,26 @@ describe("matchPlayer — generic-word and adjacency hardening (Jun 11 queue fai
 
   it("a lone generic surname is never a unique key", () => {
     expect(matchPlayer(stripJournalists("Frankfurt's Brown attracting transfer interest"), idx)).toBeNull();
+  });
+});
+
+describe("matchPlayer — stadium, coach and word-collision classes (Jun 12 audit)", () => {
+  it("'Old Trafford' never matches the keeper James Trafford", () => {
+    expect(matchPlayer(stripJournalists("Star keen on a move to Old Trafford as United accelerate pursuit"), idx)).toBeNull();
+  });
+
+  it("a real James Trafford story still matches him", () => {
+    expect(matchPlayer(stripJournalists("James Trafford in line for England squad after fine season"), idx)?.playerId).toBe("trafford");
+  });
+
+  it("'Ligue 1' and 'Crystal Palace' never match players named Ligue / Palace", () => {
+    expect(matchPlayer(stripJournalists("Liverpool could turn to Ligue 1 in midfield transfer search"), idx)).toBeNull();
+    expect(matchPlayer(stripJournalists("Crystal Palace agrees to appoint new head coach until June 2029"), idx)).toBeNull();
+  });
+
+  it("a coach's full name never matches a player who shares it", () => {
+    expect(matchPlayer(stripJournalists("Ronald Koeman doesn't rule out Everton move for jettisoned star"), idx)).toBeNull();
+    expect(matchPlayer(stripJournalists("Jose Mourinho and Real Madrid in talks to hijack Manchester United transfer"), idx)).toBeNull();
   });
 });
 

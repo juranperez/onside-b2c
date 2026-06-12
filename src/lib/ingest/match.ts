@@ -50,6 +50,10 @@ const GENERIC_TOKEN = new Set([
   "law", "god", "french", "german", "english", "spanish", "dutch", "danish",
   "north", "south", "east", "west", "madrid", "monaco", "sevilla", "santiago",
   "milan", "roma", "porto", "leeds", "derby", "chelsea", "arsenal", "everton",
+  // 2026-06-12 queue audit: players literally named Palace, Ligue, Holding,
+  // Coventry, Bologna, Chase, Surprise and Aston matched ordinary headline text
+  // ("Crystal Palace", "Ligue 1", "'holding out' for £25m", "transfer chase").
+  "palace", "ligue", "holding", "coventry", "bologna", "chase", "surprise", "aston",
 ]);
 
 export function tokenize(s: string): string[] {
@@ -70,10 +74,36 @@ const JOURNALISTS = [
   "keith downie", "andrea losapio", "mark ogden", "melissa reddy",
 ];
 
-/** Folded headline with journalist full names removed — feed THIS to the matchers. */
+// Managers and executives whose names headline transfer stories the same way
+// bylines do ("Jose Mourinho and Real Madrid in talks…", "Florentino Perez
+// confirms…", "Koeman doesn't rule out…") — each caused a player misfire in the
+// 2026-06-12 queue audit. Full names only, same rule as journalists.
+const COACHES = [
+  "jose mourinho", "ronald koeman", "unai emery", "mikel arteta", "ruben amorim",
+  "arne slot", "hansi flick", "pep guardiola", "carlo ancelotti", "xabi alonso",
+  "andoni iraola", "eddie howe", "thomas tuchel", "roberto de zerbi",
+  "ange postecoglou", "gian piero gasperini", "florentino perez", "thomas frank",
+  "oliver glasner", "marco silva", "nuno espirito santo", "enzo maresca",
+  "vincent kompany", "luis enrique", "diego simeone", "antonio conte",
+];
+
+// Stadium and ground names that hide player surnames — "Old Trafford move"
+// matched the keeper James Trafford on the live Wire. Stripped as full phrases;
+// the club is always named elsewhere in a real transfer headline.
+const STADIUMS = [
+  "old trafford", "stamford bridge", "villa park", "selhurst park",
+  "st james' park", "st james park", "goodison park", "craven cottage",
+  "london stadium", "etihad stadium", "emirates stadium", "anfield",
+  "molineux", "hillsborough", "elland road", "santiago bernabeu", "bernabeu",
+  "camp nou", "san siro", "allianz arena", "signal iduna park", "parc des princes",
+];
+
+/** Folded headline with journalist/coach/stadium phrases removed — feed THIS to the matchers. */
 export function stripJournalists(s: string): string {
   let out = fold(s);
   for (const j of JOURNALISTS) out = out.split(j).join(" ");
+  for (const c of COACHES) out = out.split(c).join(" ");
+  for (const g of STADIUMS) out = out.split(g).join(" ");
   return out;
 }
 
