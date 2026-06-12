@@ -10,6 +10,58 @@ const AXES = [
   { key: "recoveries_p90", label: "Defending", cap: 12, fmt: (v: number) => v.toFixed(1) },
 ] as const;
 
+/** Overlay radar for head-to-head: up to four players on the same benchmark axes. */
+export function CompareRadar({
+  entries,
+  size = 280,
+}: {
+  entries: { label: string; color: string; radar: Record<string, number> }[];
+  size?: number;
+}) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const R = size / 2 - 44;
+  const pt = (i: number, n: number): [number, number] => {
+    const a = (-90 + i * 60) * (Math.PI / 180);
+    return [cx + R * n * Math.cos(a), cy + R * n * Math.sin(a)];
+  };
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="shrink-0" role="img" aria-label="Comparison radar">
+      {[0.25, 0.5, 0.75, 1].map((r) => (
+        <polygon
+          key={r}
+          points={AXES.map((_, i) => pt(i, r).join(",")).join(" ")}
+          fill="none"
+          stroke="currentColor"
+          className="text-line"
+          strokeWidth={r === 1 ? 1.2 : 0.6}
+        />
+      ))}
+      {AXES.map((ax, i) => {
+        const [x, y] = pt(i, 1.18);
+        return (
+          <text key={ax.key} x={x} y={y} textAnchor="middle" dominantBaseline="middle" className="fill-current text-mute" fontSize={9.5}>
+            {ax.label}
+          </text>
+        );
+      })}
+      {entries.map((e) => {
+        const vals = AXES.map((ax) => Math.max(0, Math.min(1, (e.radar[ax.key] ?? 0) / ax.cap)));
+        const poly = vals.map((n, i) => pt(i, n).join(",")).join(" ");
+        return (
+          <g key={e.label}>
+            <polygon points={poly} fill={e.color} fillOpacity={0.12} stroke={e.color} strokeWidth={1.8} strokeLinejoin="round" />
+            {vals.map((n, i) => {
+              const [x, y] = pt(i, n);
+              return <circle key={i} cx={x} cy={y} r={2.2} fill={e.color} />;
+            })}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 /** Legend rows (label + formatted value) so the card text matches the chart. */
 export function radarRows(radar: Record<string, number>) {
   return AXES.map((ax) => ({ label: ax.label, display: ax.fmt(radar[ax.key] ?? 0) }));

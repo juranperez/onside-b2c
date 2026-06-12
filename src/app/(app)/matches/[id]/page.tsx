@@ -6,6 +6,7 @@ import { Card, Chip } from "@/components/ui";
 import { readDb } from "@/lib/db/server";
 import { getWcFixtures, type WcFixture } from "@/lib/queries";
 import { nationFlagSrc, nationCode } from "@/components/worldcup/nation-code";
+import { LiveScore } from "@/components/matches/LiveScore";
 
 // Match centre v1 (build #5 foundation): our stored fixture row + Sportmonks
 // detail (events, lineups) fetched server-side. 5-minute revalidate now; the
@@ -143,13 +144,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           <div className="flex items-center justify-center gap-4 md:gap-6">
             <WcTeam slug={wc.home.slug} name={wc.home.name} align="right" />
             <div className="shrink-0 px-2">
-              {wc.scoreHome != null && wc.scoreAway != null && wc.status !== "scheduled" ? (
-                <span className={cn("display num text-[38px] md:text-[48px] tracking-tight", wc.status === "live" && "text-up")}>
-                  {wc.scoreHome}–{wc.scoreAway}
-                </span>
-              ) : (
-                <span className="display num text-[24px] text-mute-soft">vs</span>
-              )}
+              <LiveScore id={wc.id} initial={{ status: wc.status, scoreHome: wc.scoreHome, scoreAway: wc.scoreAway }} kickoff={wc.kickoff} />
             </div>
             <WcTeam slug={wc.away.slug} name={wc.away.name} align="left" />
           </div>

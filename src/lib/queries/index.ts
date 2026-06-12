@@ -364,14 +364,14 @@ export function currentSeasonYear(now = new Date()): number {
   return now.getUTCMonth() >= 6 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
 }
 
-export async function getStatLeaders(metric: "goals" | "assists" | "rating" | "xg", limit = 25): Promise<StatLeader[]> {
-  const { data, error } = await readDb()
+export async function getStatLeaders(metric: "goals" | "assists" | "rating" | "xg", limit = 25, u21 = false): Promise<StatLeader[]> {
+  let q = readDb()
     .from("player_stats")
-    .select(`${metric}, players!inner(slug,name,known_as,photo_url, clubs(slug,name), player_valuations(value_eur))`)
+    .select(`${metric}, players!inner(slug,name,known_as,photo_url,age, clubs(slug,name), player_valuations(value_eur))`)
     .eq("season", currentSeasonYear()) // historical rows exist now — leaderboards are this-season only
-    .not(metric, "is", null)
-    .order(metric, { ascending: false })
-    .limit(limit);
+    .not(metric, "is", null);
+  if (u21) q = q.lte("players.age", 21);
+  const { data, error } = await q.order(metric, { ascending: false }).limit(limit);
   if (error) return [];
   const rows = (data ?? []) as unknown as Array<
     Record<string, number | null> & {
