@@ -13,7 +13,7 @@ async function main() {
   const db = createClient<Database>(url, key, { auth: { persistSession: false } });
   const r = await syncOfficialTransfers(db);
   console.log(
-    `fetched ${r.fetched} · matched ${r.matchedPlayers} · records ${r.recordsUpserted} · confirmed ${r.rumoursConfirmed} · created ${r.rumoursCreated} · killed ${r.competingKilled} · seen ${r.alreadySeen}`,
+    `fetched ${r.fetched} · matched ${r.matchedPlayers} · records ${r.recordsUpserted} · confirmed ${r.rumoursConfirmed} · created ${r.rumoursCreated} · killed ${r.competingKilled} · seen ${r.alreadySeen}${r.truncatedWindows ? ` · WARNING ${r.truncatedWindows} window(s) truncated at page cap` : ""}`,
   );
 }
 

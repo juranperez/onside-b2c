@@ -41,6 +41,7 @@ export interface OfficialSyncResult {
   rumoursCreated: number;
   competingKilled: number;
   alreadySeen: number;
+  truncatedWindows: number; // windows that still had pages past the cap — never let this be silent
 }
 
 export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promise<OfficialSyncResult> {
@@ -61,9 +62,15 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
     [day(23), day(53)],
     [day(53), day(83)],
   ];
+  // July 1 alone carries hundreds of contract-turnover transfers, so a window
+  // can easily run past 1,000 rows — page until the API says stop (high ceiling
+  // as a runaway guard; ~90 calls worst-case vs the 3000/hr entity budget).
+  const PAGE_CAP = 30;
   const byId = new Map<number, SmTransfer>();
+  let truncatedWindows = 0;
   for (const [from, to] of windows) {
-    for (let page = 1; page <= 8; page++) {
+    let page = 1;
+    for (; page <= PAGE_CAP; page++) {
       const res = await fetch(`${BASE}/transfers/between/${from}/${to}?include=player;fromTeam;toTeam;type&per_page=50&page=${page}`, {
         headers: { Authorization: token, Accept: "application/json", "User-Agent": "OnsideBot/1.0 (+https://onsidemarket.com)" },
       });
@@ -77,7 +84,37 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
       for (const t of body.data ?? []) byId.set(t.id, t);
       if (!body.pagination?.has_more) break;
     }
+    if (page > PAGE_CAP) truncatedWindows++;
   }
+
+  // Saga-precision pass: the July-1 contract-turnover wave runs to thousands of
+  // rows with no reliable server-side ordering, so the window scan above is
+  // best-effort breadth. Players with LIVE rumours are user-visible and must
+  // flip deterministically — fetch their transfer records directly (one cheap
+  // call per live saga player).
+  const { data: liveRows } = await db.from("rumours").select("player_id").eq("status", "rumour");
+  const liveIds = [...new Set((liveRows ?? []).map((r) => r.player_id))];
+  if (liveIds.length) {
+    const { data: livePlayers } = await db
+      .from("players")
+      .select("sportmonks_id")
+      .in("id", liveIds)
+      .not("sportmonks_id", "is", null);
+    const lo = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+    const hi = new Date(Date.now() + 120 * 86_400_000).toISOString().slice(0, 10);
+    for (const p of livePlayers ?? []) {
+      const res = await fetch(`${BASE}/transfers/players/${p.sportmonks_id}?include=player;fromTeam;toTeam;type`, {
+        headers: { Authorization: token, Accept: "application/json", "User-Agent": "OnsideBot/1.0 (+https://onsidemarket.com)" },
+      });
+      if (!res.ok) continue;
+      const body = (await res.json()) as { data?: SmTransfer[] };
+      // The player endpoint returns full career history — keep only the current window.
+      for (const t of body.data ?? []) {
+        if (t.date && t.date >= lo && t.date <= hi) byId.set(t.id, t);
+      }
+    }
+  }
+
   const all = [...byId.values()];
   const transfers = all.filter((t) => {
     if (!t.player_id) return false;
@@ -96,13 +133,19 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
     rumoursCreated: 0,
     competingKilled: 0,
     alreadySeen: 0,
+    truncatedWindows,
   };
   if (!transfers.length) return out;
 
-  // Idempotency markers from previous runs.
+  // Idempotency markers from previous runs — chunked: one .in() with 1,500
+  // values overruns PostgREST's URL limit and silently returns nothing, which
+  // re-processes (and re-bumps) every old record each run.
   const markers = transfers.map((t) => `sm-transfer:${t.id}`);
-  const { data: seenRows } = await db.from("rumour_sources").select("url").in("url", markers);
-  const seen = new Set((seenRows ?? []).map((r) => r.url));
+  const seen = new Set<string>();
+  for (let i = 0; i < markers.length; i += 100) {
+    const { data: seenRows } = await db.from("rumour_sources").select("url").in("url", markers.slice(i, i + 100));
+    for (const r of seenRows ?? []) seen.add(r.url);
+  }
 
   // Our players by Sportmonks id.
   const smIds = [...new Set(transfers.map((t) => String(t.player_id)))];
