@@ -32,6 +32,7 @@
     "send:digest": "node --conditions react-server --env-file=.env.local --import tsx scripts/send-digest.ts"
   },
   "dependencies": {
+    "@next/third-parties": "^16.2.6",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
     "clsx": "^2.1.1",

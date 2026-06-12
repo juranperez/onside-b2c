@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Instrument_Serif } from "next/font/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import { CookieConsent } from "@/components/ui/cookie-consent";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -43,6 +44,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Set only in the Vercel production environment, so localhost and preview
+  // deploys never pollute analytics.
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
+
   return (
     <html
       lang="en"
@@ -55,6 +60,7 @@ export default function RootLayout({
           <CookieConsent />
         </ThemeProvider>
       </body>
+      {gaId && <GoogleAnalytics gaId={gaId} />}
     </html>
   );
 }
