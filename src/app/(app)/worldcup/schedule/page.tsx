@@ -7,6 +7,7 @@ import { Countdown } from "@/components/worldcup/countdown";
 import { nationFlagSrc, nationCode } from "@/components/worldcup/nation-code";
 import { getWcFixtures, type WcFixture } from "@/lib/queries";
 import { roundLabel } from "@/lib/wc-day";
+import { WcBreadcrumb } from "@/components/worldcup/WcBreadcrumb";
 
 // Re-render every 5 min so synced live scores surface without a redeploy.
 export const revalidate = 300;
@@ -192,6 +193,7 @@ export default async function WorldCupSchedulePage() {
 
   return (
     <div className="max-w-[1100px] mx-auto px-6 py-8">
+      <WcBreadcrumb current="Schedule" />
       {/* Hero + countdown */}
       <div className="relative rounded-2xl bg-ink-850 border border-line overflow-hidden mb-8">
         <div className="absolute inset-0 grid-bg opacity-40 pointer-events-none" />

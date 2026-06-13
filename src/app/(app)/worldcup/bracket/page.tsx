@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
+import { WcBreadcrumb } from "@/components/worldcup/WcBreadcrumb";
 import { Card, SectionHead, Chip } from "@/components/ui";
 import { getNationalTeams, type NationalTeamSummary } from "@/lib/queries";
 import { nationCode, nationStyle, nationFlagSrc } from "@/components/worldcup/nation-code";
@@ -105,9 +106,7 @@ export default async function BracketPage() {
 
   return (
     <div className="max-w-[1440px] mx-auto px-6 py-8">
-      <Link href="/worldcup" className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-fg transition mb-6">
-        <ArrowLeft size={14} /> World Cup 2026
-      </Link>
+      <WcBreadcrumb current="Bracket" />
 
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-2">

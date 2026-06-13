@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { WcBreadcrumb } from "@/components/worldcup/WcBreadcrumb";
 import { Card, Chip } from "@/components/ui";
 import { getNationalTeams, type NationalTeamSummary } from "@/lib/queries";
 import { nationCode, nationStyle, nationFlagSrc } from "@/components/worldcup/nation-code";
@@ -64,9 +64,7 @@ export default async function WorldCupGroupsPage() {
 
   return (
     <div className="max-w-[1440px] mx-auto px-6 py-8">
-      <Link href="/worldcup" className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-fg transition mb-6">
-        <ArrowLeft size={14} /> World Cup 2026
-      </Link>
+      <WcBreadcrumb current="Groups" />
 
       <div className="mb-8">
         <div className="text-[11px] uppercase tracking-[0.18em] text-mute-soft mb-2 num">World Cup 2026</div>
