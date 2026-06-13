@@ -39,9 +39,15 @@ export async function watchRomano(db: SupabaseClient<Database>): Promise<RomanoW
   res.scanned = posts.length;
   const uris = posts.map((p) => p.uri);
 
-  // Idempotency: which post URIs have we already ingested? (rumour_sources.url)
-  const { data: seenRows } = await db.from("rumour_sources").select("url").in("url", uris);
-  const seen = new Set((seenRows ?? []).map((r) => r.url));
+  // Idempotency: which post URIs have we already ingested? Check BOTH
+  // rumour_sources.url AND rumours.url (tier 0) — so a partial write (rumours
+  // insert succeeded but the rumour_sources upsert blipped) can't produce a
+  // duplicate saga on the next pass.
+  const [{ data: seenSrc }, { data: seenRum }] = await Promise.all([
+    db.from("rumour_sources").select("url").in("url", uris),
+    db.from("rumours").select("url").eq("source_tier", 0).in("url", uris),
+  ]);
+  const seen = new Set([...(seenSrc ?? []), ...(seenRum ?? [])].map((r) => r.url).filter(Boolean));
 
   // Auto-retract: a LIVE tier-0 break whose source post VANISHED → dead. Only
   // RECENT breaks (last_update < 15 min) — an older break's URI naturally falls
