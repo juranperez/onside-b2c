@@ -28,12 +28,14 @@ export function GoogleSignInButton({ next }: { next?: string }) {
       if (!api || cancelled || !host) return;
       host.replaceChildren(); // guard against a double-render appending two buttons
       const width = Math.min(400, Math.max(240, host.clientWidth || 320));
-      // Rectangular + full-width so the dark button fills Google's iframe edge-to-edge.
-      // The iframe's background is white; a pill/narrower button let that white show as a
-      // band in dark mode. Filling it (and the rounded-xl clip on the host) hides it.
+      // Use Google's WHITE "outline" button: its iframe background is white, so a dark
+      // (filled_black) button leaves white slivers around the logo/edges on our dark card.
+      // A white button matches its own iframe exactly → zero mismatch in either theme, and
+      // it's the most recognized, trust-building sign-in control. rounded-xl clip on the
+      // host gives it our corner radius.
       api.renderButton(host, {
         type: "standard",
-        theme: "filled_black",
+        theme: "outline",
         size: "large",
         text: "continue_with",
         shape: "rectangular",
