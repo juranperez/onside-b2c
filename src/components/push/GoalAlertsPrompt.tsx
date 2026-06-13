@@ -12,9 +12,11 @@ import { createClient } from "@/lib/db/supabase-browser";
 export function GoalAlertsPrompt() {
   const [state, setState] = useState<"hidden" | "offer" | "ios" | "signin" | "on">("hidden");
   useEffect(() => {
-    // Feature flag by env presence: until VAPID is configured, push can't work — stay
-    // hidden so a deploy before the keys are set never shows a dead "Enable".
-    if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) return;
+    // Intentional go-live flag — the prompt shows ONLY when goal-push is deliberately
+    // turned on (NEXT_PUBLIC_GOAL_PUSH_ENABLED=1), decoupled from VAPID presence and
+    // from any other feature's deploy. Pair it with server GOAL_PUSH_ENABLED=1 (cron)
+    // so users never opt in before goals can actually be delivered.
+    if (process.env.NEXT_PUBLIC_GOAL_PUSH_ENABLED !== "1") return;
     if (typeof Notification !== "undefined" && Notification.permission === "granted") { setState("on"); return; }
     if (localStorage.getItem("goalAlertsDismissed") === "1") return;
     const standalone =
