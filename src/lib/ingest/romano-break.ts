@@ -1,8 +1,10 @@
 import type { MatchStrength } from "./match";
 
+export type SagaStatus = "rumour" | "candidate" | "confirmed" | "dead";
+
 export interface ExistingSaga {
   id: string;
-  status: string; // "rumour" | "candidate" | "confirmed" | "dead"
+  status: SagaStatus;
   to_club: string;
 }
 

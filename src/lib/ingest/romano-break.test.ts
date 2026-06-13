@@ -18,8 +18,11 @@ describe("decideRomanoBreak", () => {
   it("holds for review when the club is unresolved", () => {
     expect(decideRomanoBreak({ ...base, toClub: "—" }).kind).toBe("hold");
   });
-  it("holds when the player match is only weak/unique, not strong", () => {
+  it("holds when the player match is only unique, not strong", () => {
     expect(decideRomanoBreak({ ...base, strength: "unique" }).kind).toBe("hold");
+  });
+  it("holds when there is no player match at all (strength null)", () => {
+    expect(decideRomanoBreak({ ...base, playerId: null, strength: null }).kind).toBe("hold");
   });
   it("upgrades an existing live saga for that player instead of duplicating", () => {
     const d = decideRomanoBreak({
