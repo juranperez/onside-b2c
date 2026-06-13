@@ -7,6 +7,7 @@ import { matchdaySlate } from "@/lib/wc-day";
 import { MatchdaySlate } from "@/components/worldcup/MatchdaySlate";
 import { cn } from "@/lib/utils";
 import { CodeTile } from "@/components/worldcup/CodeTile";
+import { GoalAlertsPrompt } from "@/components/push/GoalAlertsPrompt";
 
 export const revalidate = 3600;
 
@@ -82,6 +83,7 @@ export default async function WorldCupPage() {
 
   return (
     <div className="max-w-[1440px] mx-auto px-6 py-8">
+      <GoalAlertsPrompt />
       {/* Hero */}
       <div className="relative rounded-2xl bg-ink-850 border border-line overflow-hidden mb-8">
         <div className="absolute inset-0 grid-bg opacity-40 pointer-events-none" />
