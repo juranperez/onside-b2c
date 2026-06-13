@@ -15,6 +15,14 @@ describe("isHereWeGo", () => {
     expect(isHereWeGo(post("Could this be here we go soon? Talks ongoing."))).toBe(false);
     expect(isHereWeGo(post("Not yet here we go — still negotiating."))).toBe(false);
     expect(isHereWeGo(post("Big week ahead in the transfer market."))).toBe(false);
+    expect(isHereWeGo(post("Newcastle are close to a here we go for the winger."))).toBe(false);
+  });
+  it("still fires on real breaks with post-confirmation follow-on clauses", () => {
+    // These carry when/if/could/almost AFTER the confirmation — must NOT be swallowed.
+    expect(isHereWeGo(post("Here we go! Chelsea sign X, confirmed. Medical when he returns from duty."))).toBe(true);
+    expect(isHereWeGo(post("Here we go! Arsenal sign Y — deal sealed, even if add-ons apply."))).toBe(true);
+    expect(isHereWeGo(post("Here we go, confirmed! Spurs sign Z. Could be announced tomorrow."))).toBe(true);
+    expect(isHereWeGo(post("Here we go! City sign W. Almost a year of talks now over."))).toBe(true);
   });
 });
 
