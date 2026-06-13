@@ -6,10 +6,10 @@ import { REPORTS } from "@/lib/reports";
 /** Editorial reports, folded in from the old /insights index (2026-06 nav refactor). */
 export function ReportsRail() {
   return (
-    <section className="mt-10">
-      <div className="text-[10px] uppercase tracking-[0.18em] text-mute-soft num mb-3">
+    <section className="mt-10" aria-labelledby="reports-rail-heading">
+      <h2 id="reports-rail-heading" className="text-[10px] uppercase tracking-[0.18em] text-mute-soft num mb-3">
         Reports — the numbers, with a take
-      </div>
+      </h2>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {REPORTS.map((r) => {
           const Icon = r.icon;
