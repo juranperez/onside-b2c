@@ -28,9 +28,30 @@ export function extractGoals(events: FixtureEvent[]): ParsedGoal[] {
   return out;
 }
 
-/** Dedup key for a pushed goal: fixture + scorer + minute. */
+/** Dedup key for a pushed goal: fixture + scorer + minute.
+ *  NOTE: a player scoring twice within the same reported `elapsed` minute collides
+ *  on this key and the second push is suppressed — rare and acceptable for v1. */
 export function goalSignature(fixtureId: string, scorerId: string, minute: number): string {
   return `${fixtureId}:${scorerId}:${minute}`;
+}
+
+/** Estimated current match minute from the wall clock (HT-adjusted — we sync scores,
+ *  not live minutes). Mirrors the fixtures-query estimate; skips ~17' of half-time. */
+export function matchMinute(kickoffIso: string | null, now: number): number {
+  if (!kickoffIso) return 0;
+  const elapsed = (now - new Date(kickoffIso).getTime()) / 60_000;
+  if (elapsed <= 0) return 0;
+  return Math.min(120, elapsed <= 48 ? elapsed : Math.max(45, elapsed - 17));
+}
+
+/**
+ * VAR safety: a goal is only safe to push once it's `bufferMins` match-minutes in the
+ * past. We re-fetch the live events every poll, so a VAR-reversed goal drops out of
+ * `extractGoals` during the buffer window and is never pushed — and a push can't be
+ * recalled. ~90s default (the spec's confirmation buffer).
+ */
+export function goalConfirmed(kickoffIso: string | null, goalMinute: number, now: number, bufferMins = 1.5): boolean {
+  return matchMinute(kickoffIso, now) - goalMinute >= bufferMins;
 }
 
 // ---------------------------------------------------------------------------
@@ -50,7 +71,7 @@ export interface GoalPushResult { live: number; goals: number; pushed: number; }
 export async function detectAndPushGoals(db: SupabaseClient<Database>): Promise<GoalPushResult> {
   const res: GoalPushResult = { live: 0, goals: 0, pushed: 0 };
   const { data: liveFx } = await db.from("fixtures")
-    .select("id,home_id,away_id,score_home,score_away")
+    .select("id,kickoff,home_id,away_id,score_home,score_away")
     .eq("competition", "World Cup 2026").eq("status", "live");
   if (!liveFx?.length) return res;
   res.live = liveFx.length;
@@ -70,7 +91,11 @@ export async function detectAndPushGoals(db: SupabaseClient<Database>): Promise<
     const { data: players } = await db.from("players").select("id,slug,known_as,name").in("id", ids);
     const playerById = new Map((players ?? []).map((p) => [p.id, p] as const));
 
+    const now = Date.now();
     for (const g of goals) {
+      // VAR buffer: too-fresh goals wait — if reversed, they vanish from the next
+      // poll's events before we ever push. Re-evaluated each poll until confirmed.
+      if (!goalConfirmed(fx.kickoff, g.minute, now)) continue;
       const player = playerById.get(g.scorerId);
       if (!player) continue; // no player page → skip (no dead-link push)
       const sig = goalSignature(fx.id, g.scorerId, g.minute);

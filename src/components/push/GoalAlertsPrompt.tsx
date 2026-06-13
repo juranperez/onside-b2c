@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Bell } from "lucide-react";
 import { pushSupport } from "@/lib/push/support";
 import { subscribeToPush } from "@/lib/push/subscribe-client";
+import { createClient } from "@/lib/db/supabase-browser";
 
-/** Dismissible "Get goal alerts" nudge. Android/desktop → permission prompt;
- *  iOS-not-installed → "Add to Home Screen" instructions. Honest volume copy. */
+/** Dismissible "Get goal alerts" nudge. Signed-out → sign-in path (alerts require an
+ *  account); Android/desktop → permission prompt; iOS-not-installed → install steps. */
 export function GoalAlertsPrompt() {
-  const [state, setState] = useState<"hidden" | "offer" | "ios" | "on">("hidden");
+  const [state, setState] = useState<"hidden" | "offer" | "ios" | "signin" | "on">("hidden");
   useEffect(() => {
     if (typeof Notification !== "undefined" && Notification.permission === "granted") { setState("on"); return; }
     if (localStorage.getItem("goalAlertsDismissed") === "1") return;
@@ -16,7 +18,11 @@ export function GoalAlertsPrompt() {
       window.matchMedia?.("(display-mode: standalone)").matches ||
       (navigator as Navigator & { standalone?: boolean }).standalone === true;
     const s = pushSupport(navigator.userAgent, standalone);
-    setState(s.needsInstall ? "ios" : "offer");
+    if (s.needsInstall) { setState("ios"); return; }
+    // Goal alerts require sign-in (subscriptions are owned by a profile). Check the
+    // session BEFORE offering Enable so we never spend the browser permission on a
+    // subscribe that the server will reject.
+    createClient().auth.getUser().then(({ data }) => setState(data.user ? "offer" : "signin"));
   }, []);
 
   if (state === "hidden" || state === "on") return null;
@@ -28,6 +34,10 @@ export function GoalAlertsPrompt() {
         {state === "ios" ? (
           <p className="text-mute mt-0.5">
             Add Onside to your home screen (Share → Add to Home Screen) to get a ping when a World Cup goal goes in.
+          </p>
+        ) : state === "signin" ? (
+          <p className="text-mute mt-0.5">
+            Sign in to get a ping the moment a World Cup goal goes in — tap through to the scorer.
           </p>
         ) : (
           <p className="text-mute mt-0.5">
@@ -42,6 +52,11 @@ export function GoalAlertsPrompt() {
         >
           Enable
         </button>
+      )}
+      {state === "signin" && (
+        <Link href="/login" className="shrink-0 h-8 px-3 inline-flex items-center rounded-lg bg-acc text-ink-950 text-[12px] font-semibold">
+          Sign in
+        </Link>
       )}
       <button
         aria-label="Dismiss goal alerts prompt"

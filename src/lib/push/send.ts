@@ -21,7 +21,9 @@ export async function broadcast(db: SupabaseClient<Database>, payload: { title: 
   let sent = 0;
   for (const s of subs) {
     try {
-      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body);
+      // Goal alerts are time-sensitive: high urgency, 5-min TTL so an offline device
+      // doesn't get pinged about a goal from 20 minutes ago.
+      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, { TTL: 300, urgency: "high" });
       sent++;
     } catch (e) {
       const code = (e as { statusCode?: number }).statusCode;
