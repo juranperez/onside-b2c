@@ -74,24 +74,39 @@ export default async function RumourManagePage() {
       <h2 className="text-[14px] font-semibold mb-3">Live feed ({rumours.length})</h2>
       <div className="space-y-2">
         {rumours.length === 0 && <p className="text-[13px] text-mute-soft">No rumours yet — add the first above.</p>}
-        {rumours.map((r) => (
-          <div key={r.id} className="flex items-center gap-3 px-4 py-3 rounded-lg bg-ink-850 border border-line">
-            <ConfidenceBadge pct={r.confidence.pct} band={r.confidence.band} />
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-medium truncate">
-                {r.player.name} → {r.toClub}
+        {rumours.map((r) => {
+          const isBreak = r.sourceTier === 0;
+          return (
+            <div key={r.id} className="flex items-center gap-3 px-4 py-3 rounded-lg bg-ink-850 border border-line">
+              <ConfidenceBadge pct={r.confidence.pct} band={r.confidence.band} />
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium truncate flex items-center gap-2">
+                  <span className="truncate">{r.player.name} → {r.toClub}</span>
+                  {isBreak && (
+                    <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider rounded bg-acc/15 text-acc px-1.5 py-0.5">
+                      Romano
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] text-mute-soft truncate">
+                  {r.status} · {r.source} · tier {r.sourceTier}
+                </div>
               </div>
-              <div className="text-[11px] text-mute-soft truncate">
-                {r.status} · {r.source} · tier {r.sourceTier}
-              </div>
+              <form action={setRumourStatus.bind(null, r.id, "dead")}>
+                <button className="h-8 px-3 rounded-lg bg-down/15 text-down text-[12px] font-semibold cursor-pointer">
+                  Retract
+                </button>
+              </form>
+              {!isBreak && (
+                <form action={deleteRumour.bind(null, r.id)}>
+                  <button className="p-2 rounded-lg text-mute-soft hover:text-down transition cursor-pointer" aria-label="Delete rumour">
+                    <Trash2 size={15} />
+                  </button>
+                </form>
+              )}
             </div>
-            <form action={deleteRumour.bind(null, r.id)}>
-              <button className="p-2 rounded-lg text-mute-soft hover:text-down transition cursor-pointer" aria-label="Delete rumour">
-                <Trash2 size={15} />
-              </button>
-            </form>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
