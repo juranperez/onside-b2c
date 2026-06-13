@@ -288,8 +288,8 @@ export default async function WorldCupSchedulePage() {
       })}
 
       <p className="text-[11px] text-mute-soft mt-2">
-        Fixtures, kickoff times and scores via API-Football. Knockout pairings are added once group results are
-        final. Times shown in US Eastern.
+        Fixtures, kickoff times and live scores update through the tournament. Knockout pairings are added once
+        group results are final. Times shown in US Eastern.
       </p>
     </div>
   );
