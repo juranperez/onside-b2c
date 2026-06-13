@@ -164,7 +164,12 @@ export default async function WorldCupSchedulePage() {
     console.error("[wc/schedule] data unavailable at render:", e);
   }
 
-  const opener = fixtures.find((f) => f.status === "scheduled") ?? fixtures[0];
+  // The next genuinely-upcoming match drives the "up next" hero + countdown;
+  // a separate headline match falls back to the first fixture once the tournament
+  // is over (so the H1 never goes blank). The cup is live — never frame this as
+  // "the tournament opens".
+  const nextMatch = fixtures.find((f) => f.status === "scheduled");
+  const headlineMatch = nextMatch ?? fixtures[0];
 
   // Group by round, preserving chronological order.
   const groups: { round: string; items: WcFixture[] }[] = [];
@@ -209,25 +214,25 @@ export default async function WorldCupSchedulePage() {
             </span>
           </div>
           <h1 className="display text-[clamp(26px,4vw,42px)] tracking-tight leading-[1.05] mb-2">
-            {opener ? (
+            {headlineMatch ? (
               <>
-                {opener.home.name} <span className="text-mute-soft font-serif italic font-normal text-[0.7em]">v</span>{" "}
-                {opener.away.name}
+                {headlineMatch.home.name} <span className="text-mute-soft font-serif italic font-normal text-[0.7em]">v</span>{" "}
+                {headlineMatch.away.name}
               </>
             ) : (
               "The schedule"
             )}
           </h1>
-          {opener?.kickoff && (
+          {nextMatch?.kickoff && (
             <p className="text-mute text-[14px] mb-6">
-              The tournament opens at {opener.venue}, {opener.city} —{" "}
+              Up next · {nextMatch.venue}, {nextMatch.city} —{" "}
               <span className="num text-fg">
-                {fmtDate(opener.kickoff)}, {fmtTime(opener.kickoff)} ET
+                {fmtDate(nextMatch.kickoff)}, {fmtTime(nextMatch.kickoff)} ET
               </span>
               .
             </p>
           )}
-          {opener?.kickoff && <Countdown target={opener.kickoff} />}
+          {nextMatch?.kickoff && <Countdown target={nextMatch.kickoff} />}
 
           <div className="mt-8 flex items-center gap-3 flex-wrap">
             <Link href="/worldcup/groups">
