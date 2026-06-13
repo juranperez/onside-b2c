@@ -1,5 +1,6 @@
 import { TopNav } from "@/components/layout/top-nav";
 import { Footer } from "@/components/layout/footer";
+import { BottomNav } from "@/components/layout/BottomNav";
 import { AnalyticsIdentity } from "@/components/layout/AnalyticsIdentity";
 import { GoogleOneTap } from "@/components/auth/GoogleOneTap";
 import { isWcWindow } from "@/lib/wc-window";
@@ -12,8 +13,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AnalyticsIdentity />
       <GoogleOneTap />
       <TopNav wcActive={wcActive} />
-      <main className="min-h-[calc(100vh-56px)]">{children}</main>
+      <main className="min-h-[calc(100vh-56px)] pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
       <Footer />
+      <BottomNav wcActive={wcActive} />
     </>
   );
 }
