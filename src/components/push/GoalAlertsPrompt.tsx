@@ -12,6 +12,9 @@ import { createClient } from "@/lib/db/supabase-browser";
 export function GoalAlertsPrompt() {
   const [state, setState] = useState<"hidden" | "offer" | "ios" | "signin" | "on">("hidden");
   useEffect(() => {
+    // Feature flag by env presence: until VAPID is configured, push can't work — stay
+    // hidden so a deploy before the keys are set never shows a dead "Enable".
+    if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) return;
     if (typeof Notification !== "undefined" && Notification.permission === "granted") { setState("on"); return; }
     if (localStorage.getItem("goalAlertsDismissed") === "1") return;
     const standalone =
