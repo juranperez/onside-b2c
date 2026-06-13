@@ -54,8 +54,9 @@ export function TopNav({ wcActive }: { wcActive: boolean }) {
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-8">
             <Logo />
-            <nav aria-label="Primary">
-              <ul className="hidden md:flex items-center gap-1">
+            {/* hidden on the nav itself, not the ul — keeps the landmark out of the a11y tree on mobile (BottomNav takes over there) */}
+            <nav aria-label="Primary" className="hidden md:block">
+              <ul className="flex items-center gap-1">
                 {navItems.map((item) => {
                   const active = pathname.startsWith(item.href);
                   return (
