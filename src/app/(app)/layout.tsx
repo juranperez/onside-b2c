@@ -3,6 +3,7 @@ import { Footer } from "@/components/layout/footer";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { AnalyticsIdentity } from "@/components/layout/AnalyticsIdentity";
 import { GoogleOneTap } from "@/components/auth/GoogleOneTap";
+import { RegisterSW } from "@/components/push/RegisterSW";
 import { isWcWindow } from "@/lib/wc-window";
 import { LiveTicker } from "@/components/layout/LiveTicker";
 
@@ -13,6 +14,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <>
       <AnalyticsIdentity />
       <GoogleOneTap />
+      <RegisterSW />
       <TopNav wcActive={wcActive} />
       {wcActive && <LiveTicker />}
       <main className="min-h-[calc(100vh-56px)] pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
