@@ -1,4 +1,5 @@
 import type { RawPlayer } from "./normalize";
+import type { FixtureEvent } from "./wc-goals";
 
 const API_BASE = "https://v3.football.api-sports.io";
 // Conservative ceilings under the Pro plan (7,500/day). Leaves headroom.
@@ -97,6 +98,12 @@ export interface RawFixture {
 /** All fixtures for a league/season (one call; the WC fits in a single page). */
 export function fetchFixtures(leagueId: number, season: number): Promise<ApiResult<RawFixture>> {
   return apiFetch<RawFixture>("fixtures", { league: leagueId, season });
+}
+
+/** Live events (goals, cards, subs, VAR) for a single fixture. `fixtureId` is the RAW
+ *  API-Football id (strip the "wc2026-" prefix before calling). */
+export async function fetchFixtureEvents(fixtureId: number | string): Promise<ApiResult<FixtureEvent>> {
+  return apiFetch<FixtureEvent>("fixtures/events", { fixture: fixtureId });
 }
 
 /** Page through every player in a league/season. */
