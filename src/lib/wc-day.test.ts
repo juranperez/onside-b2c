@@ -27,8 +27,7 @@ describe("tickerFixtures", () => {
     const up2 = fx("2026-06-12T22:00:00Z", "scheduled");
     const up3 = fx("2026-06-13T01:00:00Z", "scheduled");
     const picks = tickerFixtures([finished, up1, live, up2, up3], NOW, 4);
-    expect(picks[0]).toBe(live);
-    expect(picks).toHaveLength(4);
+    expect(picks).toEqual([live, up1, up2, up3]);
     expect(picks).not.toContain(finished);
   });
   it("returns empty when no fixtures today", () => {

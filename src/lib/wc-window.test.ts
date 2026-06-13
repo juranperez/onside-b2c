@@ -14,7 +14,10 @@ describe("isWcWindow", () => {
   it("is true through the final (July 19)", () => {
     expect(isWcWindow(new Date("2026-07-19T23:00:00Z"))).toBe(true);
   });
-  it("is false after the final day", () => {
-    expect(isWcWindow(new Date("2026-07-20T00:00:01Z"))).toBe(false);
+  it("is true late on final night in ET (early July 20 UTC)", () => {
+    expect(isWcWindow(new Date("2026-07-20T02:00:00Z"))).toBe(true);
+  });
+  it("is false once July 19 ends in ET", () => {
+    expect(isWcWindow(new Date("2026-07-20T04:00:01Z"))).toBe(false);
   });
 });

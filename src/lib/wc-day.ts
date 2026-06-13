@@ -7,7 +7,8 @@ export interface DayFixture {
 }
 
 const ET = "America/New_York"; // site-wide match time convention (see worldcup/schedule)
-const dayKey = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: ET }).format(d); // YYYY-MM-DD
+const etDayFmt = new Intl.DateTimeFormat("en-CA", { timeZone: ET }); // YYYY-MM-DD; hoisted — construction is the costly part
+const dayKey = (d: Date) => etDayFmt.format(d);
 
 /** Fixtures kicking off on the same ET calendar day as `now`, in input order. */
 export function todaysFixtures<T extends DayFixture>(fixtures: T[], now: Date): T[] {
