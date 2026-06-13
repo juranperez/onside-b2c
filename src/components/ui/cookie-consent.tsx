@@ -49,7 +49,9 @@ export function CookieConsent({ className }: { className?: string }) {
       aria-label="Cookie consent"
       aria-live="polite"
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 px-4 pb-4 sm:px-6 sm:pb-6 fade-in",
+        // Clear the mobile bottom tab bar (md:hidden, so present below md) so the
+        // banner never overlaps it; normal padding once the bottom nav is gone (md+).
+        "fixed inset-x-0 bottom-0 z-50 px-4 sm:px-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 fade-in",
         className,
       )}
     >
