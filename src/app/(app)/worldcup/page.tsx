@@ -3,8 +3,8 @@ import Link from "next/link";
 import { ArrowRight, Globe, Calendar, Trophy } from "lucide-react";
 import { Button, Card, SectionHead, LiveDot, Chip } from "@/components/ui";
 import { getNationalTeams, type NationalTeamSummary } from "@/lib/queries";
-import { nationCode, nationStyle, nationFlagSrc } from "@/components/worldcup/nation-code";
 import { cn } from "@/lib/utils";
+import { CodeTile } from "@/components/worldcup/CodeTile";
 
 export const revalidate = 3600;
 
@@ -20,33 +20,6 @@ const KICKOFF = new Date("2026-06-11T00:00:00Z");
 function money(m: number): string {
   if (m >= 1000) return `€${(m / 1000).toFixed(2)}B`;
   return `€${m.toFixed(0)}M`;
-}
-
-/** A code/monogram tile on a neutral chip — crest-free, flag-free. */
-function CodeTile({ slug, name, size = 40 }: { slug: string; name: string; size?: number }) {
-  const flag = nationFlagSrc(slug);
-  if (flag) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={flag}
-        alt={name}
-        width={size}
-        height={size}
-        className="rounded-full shrink-0 ring-1 ring-line/60 object-cover"
-        style={{ width: size, height: size }}
-      />
-    );
-  }
-  const style = nationStyle(slug);
-  return (
-    <div
-      className="rounded-full grid place-items-center font-bold num shrink-0 tracking-tight"
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.3), background: style.bg, color: style.color }}
-    >
-      {nationCode(slug, name)}
-    </div>
-  );
 }
 
 export default async function WorldCupPage() {

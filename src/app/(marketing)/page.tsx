@@ -4,6 +4,8 @@ import { Button, Delta, LiveDot } from "@/components/ui";
 import { getMovers, getClubsRanked, getCounts } from "@/lib/queries";
 import type { PlayerListItem } from "@/lib/queries/map";
 import type { ClubSummary } from "@/lib/queries";
+import { isWcWindow } from "@/lib/wc-window";
+import { WorldCupHero } from "@/components/worldcup/WorldCupHero";
 
 export const revalidate = 1800;
 
@@ -30,10 +32,11 @@ export default async function LandingPage() {
 
   const risers = movers.filter((m) => m.dWeek > 0).sort((a, b) => b.dWeek - a.dWeek);
   const fallers = movers.filter((m) => m.dWeek < 0).sort((a, b) => a.dWeek - b.dWeek);
+  const wcActive = isWcWindow(new Date());
 
   return (
     <div className="relative">
-      <HeroSection counts={counts} />
+      {wcActive ? <WorldCupHero /> : <HeroSection counts={counts} />}
       <TickerStrip />
       <ValueProps />
       <MoversPreview risers={risers} fallers={fallers} />
