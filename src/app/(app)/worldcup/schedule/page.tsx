@@ -3,10 +3,9 @@ import Link from "next/link";
 import { Trophy, Calendar, Globe } from "lucide-react";
 import { Card, SectionHead, LiveDot, Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { Countdown } from "@/components/worldcup/countdown";
 import { nationFlagSrc, nationCode } from "@/components/worldcup/nation-code";
 import { getWcFixtures, type WcFixture } from "@/lib/queries";
-import { roundLabel } from "@/lib/wc-day";
+import { matchdaySlate, roundLabel } from "@/lib/wc-day";
 import { WcBreadcrumb } from "@/components/worldcup/WcBreadcrumb";
 import { GoalAlertsPrompt } from "@/components/push/GoalAlertsPrompt";
 
@@ -16,7 +15,7 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "World Cup 2026 schedule — fixtures & kickoff times | Onside",
   description:
-    "Every World Cup 2026 fixture: dates, kickoff times, venues and live scores, counting down to the opening match at Estadio Azteca.",
+    "Every World Cup 2026 fixture: dates, kickoff times, venues and live scores, matchday by matchday through to the final.",
 };
 
 const ET = "America/New_York";
@@ -165,12 +164,12 @@ export default async function WorldCupSchedulePage() {
     console.error("[wc/schedule] data unavailable at render:", e);
   }
 
-  // The next genuinely-upcoming match drives the "up next" hero + countdown;
-  // a separate headline match falls back to the first fixture once the tournament
-  // is over (so the H1 never goes blank). The cup is live — never frame this as
-  // "the tournament opens".
-  const nextMatch = fixtures.find((f) => f.status === "scheduled");
-  const headlineMatch = nextMatch ?? fixtures[0];
+  // The cup is live: the hero leads with the current state, not a countdown to an
+  // opener that's already kicked off. matchdaySlate gives today's fixtures (ET), or
+  // the next match day's when today is empty — the same helper the hub leads with.
+  const slate = matchdaySlate(fixtures, new Date());
+  const liveNow = slate.fixtures.filter((f) => f.status === "live").length;
+  const slateDate = slate.fixtures.find((f) => f.kickoff)?.kickoff ?? null;
 
   // Group by round, preserving chronological order.
   const groups: { round: string; items: WcFixture[] }[] = [];
@@ -201,7 +200,7 @@ export default async function WorldCupSchedulePage() {
     <div className="max-w-[1100px] mx-auto px-6 py-8">
       <WcBreadcrumb current="Schedule" />
       <GoalAlertsPrompt />
-      {/* Hero + countdown */}
+      {/* Hero — live tournament state (no countdown; the cup is underway) */}
       <div className="relative rounded-2xl bg-ink-850 border border-line overflow-hidden mb-8">
         <div className="absolute inset-0 grid-bg opacity-40 pointer-events-none" />
         <div
@@ -216,25 +215,32 @@ export default async function WorldCupSchedulePage() {
             </span>
           </div>
           <h1 className="display text-[clamp(26px,4vw,42px)] tracking-tight leading-[1.05] mb-2">
-            {headlineMatch ? (
-              <>
-                {headlineMatch.home.name} <span className="text-mute-soft font-serif italic font-normal text-[0.7em]">v</span>{" "}
-                {headlineMatch.away.name}
-              </>
-            ) : (
-              "The schedule"
-            )}
+            {slate.label || "The schedule"}
           </h1>
-          {nextMatch?.kickoff && (
-            <p className="text-mute text-[14px] mb-6">
-              Up next · {nextMatch.venue}, {nextMatch.city} —{" "}
-              <span className="num text-fg">
-                {fmtDate(nextMatch.kickoff)}, {fmtTime(nextMatch.kickoff)} ET
+          {slate.fixtures.length > 0 ? (
+            <p className="text-mute text-[14px] mb-6 flex items-center gap-x-2 gap-y-1 flex-wrap">
+              {liveNow > 0 ? (
+                <span className="inline-flex items-center gap-1.5 text-up font-semibold num">
+                  <span className="w-1.5 h-1.5 rounded-full bg-up animate-pulse" />
+                  {liveNow} live now
+                </span>
+              ) : (
+                <span className="text-fg font-semibold">{slate.isToday ? "Today" : "Up next"}</span>
+              )}
+              {slateDate && (
+                <>
+                  <span className="text-mute-soft">·</span>
+                  <span className="num text-fg">{fmtDate(slateDate)}</span>
+                </>
+              )}
+              <span className="text-mute-soft">·</span>
+              <span className="num">
+                {slate.fixtures.length} {slate.fixtures.length === 1 ? "match" : "matches"}
               </span>
-              .
             </p>
+          ) : (
+            <p className="text-mute text-[14px] mb-6">Every fixture, from the group stage to the final.</p>
           )}
-          {nextMatch?.kickoff && <Countdown target={nextMatch.kickoff} />}
 
           <div className="mt-8 flex items-center gap-3 flex-wrap">
             <Link href="/worldcup/groups">
