@@ -22,7 +22,7 @@ export function parseAuthorFeed(payload: unknown): BskyPost[] {
   if (!Array.isArray(feed)) return [];
   const out: BskyPost[] = [];
   for (const item of feed) {
-    const post = (item as { post?: Record<string, unknown> }).post;
+    const post = (item as { post?: Record<string, unknown> } | null)?.post;
     const record = post?.record as { text?: string; createdAt?: string } | undefined;
     if (!post || typeof post.uri !== "string" || !record?.text || !record.createdAt) continue;
     const embed = post.embed as { images?: { alt?: string }[] } | undefined;

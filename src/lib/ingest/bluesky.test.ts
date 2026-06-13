@@ -36,4 +36,7 @@ describe("parseAuthorFeed", () => {
     expect(parseAuthorFeed({})).toEqual([]);
     expect(parseAuthorFeed({ feed: [] })).toEqual([]);
   });
+  it("skips malformed items (null entry or null post) without throwing", () => {
+    expect(parseAuthorFeed({ feed: [null, { post: null }, { post: { uri: 5 } }] })).toEqual([]);
+  });
 });
