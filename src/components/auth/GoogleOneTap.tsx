@@ -1,85 +1,42 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/db/supabase-browser";
-import { track } from "@/lib/analytics";
+import { ensureGoogleGis, onGoogleSignIn } from "@/lib/auth/google-gis";
 
 /**
  * Google One Tap — the "it just remembers you" layer. For visitors signed into
- * Chrome/Google, a small prompt offers their account; one click and they're in,
- * no password, no email round-trip. Shown only when signed OUT. The ID token is
- * exchanged with Supabase via signInWithIdToken (nonce-bound: raw nonce to
- * Supabase, its SHA-256 to Google).
+ * Chrome/Google, a small prompt offers their account; one tap and they're in,
+ * no password, no email round-trip. Shown only when signed OUT.
+ *
+ * Shares a single GIS initialization (one nonce, one signInWithIdToken callback)
+ * with the login-page button via the google-gis controller. Both use the token
+ * flow, so neither path ever routes the user through the Supabase project domain
+ * — the consent UI stays branded to onsidemarket.com. This component also owns
+ * the one-time <Script> load for GIS.
  */
-
 const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-
-interface GoogleAccounts {
-  accounts: {
-    id: {
-      initialize: (config: Record<string, unknown>) => void;
-      prompt: () => void;
-    };
-  };
-}
-
-declare global {
-  interface Window {
-    google?: GoogleAccounts;
-  }
-}
-
-async function sha256Hex(text: string): Promise<string> {
-  const data = new TextEncoder().encode(text);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 export function GoogleOneTap() {
   const router = useRouter();
-  const armed = useRef(false);
 
   useEffect(() => {
     if (!CLIENT_ID) return;
-    const init = async () => {
-      if (armed.current || !window.google) return;
-      const supabase = createClient();
-      const { data } = await supabase.auth.getUser();
-      if (data.user) return; // already signed in — never prompt
-
-      const rawNonce = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
-      const hashedNonce = await sha256Hex(rawNonce);
-      armed.current = true;
-
-      window.google.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        nonce: hashedNonce,
-        use_fedcm_for_prompt: true,
-        auto_select: true, // returning users: recognized and signed straight back in
-        cancel_on_tap_outside: false,
-        callback: async (response: { credential: string }) => {
-          const { error } = await supabase.auth.signInWithIdToken({
-            provider: "google",
-            token: response.credential,
-            nonce: rawNonce,
-          });
-          if (!error) {
-            track("google_one_tap_signin");
-            router.refresh();
-          }
-        },
-      });
-      window.google.accounts.id.prompt();
+    const off = onGoogleSignIn(() => router.refresh());
+    let cancelled = false;
+    (async () => {
+      // Never interrupt a signed-in visitor with the prompt.
+      const { data } = await createClient().auth.getUser();
+      if (cancelled || data.user) return;
+      const api = await ensureGoogleGis();
+      if (api && !cancelled) api.prompt();
+    })();
+    return () => {
+      cancelled = true;
+      off();
     };
-    // The GIS script may already be cached/loaded before this effect runs.
-    init();
-    const t = setInterval(() => {
-      if (window.google && !armed.current) init();
-      else if (armed.current) clearInterval(t);
-    }, 500);
-    return () => clearInterval(t);
   }, [router]);
 
   if (!CLIENT_ID) return null;
