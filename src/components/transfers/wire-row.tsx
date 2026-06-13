@@ -28,6 +28,7 @@ function feeTone(feeM: number | null, valueM: number): { label: string; cls: str
 export function WireRow({ r, comments = 0, now, following = false }: { r: RumourItem; comments?: number; now: number; following?: boolean }) {
   const ageH = (now - new Date(r.lastUpdate).getTime()) / 3_600_000;
   const breaking = r.status === "rumour" && r.sourceTier <= 2 && ageH < 2;
+  const hereWeGo = r.status === "rumour" && r.sourceTier === 0;
   const stage = stageOf(r.summary, r.status);
   const verdict = feeTone(r.reportedFeeM, r.onsideValueM);
   const dead = r.status === "dead";
@@ -36,15 +37,19 @@ export function WireRow({ r, comments = 0, now, following = false }: { r: Rumour
     <div
       className={cn(
         "relative rounded-xl border bg-ink-850 px-4 py-3.5 transition hover:bg-ink-800",
-        breaking ? "border-acc/40" : "border-line",
+        hereWeGo || breaking ? "border-acc/40" : "border-line",
         dead && "opacity-55",
       )}
     >
-      {breaking && (
+      {hereWeGo ? (
+        <span className="absolute -top-2 left-3 inline-flex items-center gap-1 rounded-full bg-acc text-ink-950 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider animate-pulse">
+          <Zap size={9} strokeWidth={3} /> Here We Go
+        </span>
+      ) : breaking ? (
         <span className="absolute -top-2 left-3 inline-flex items-center gap-1 rounded-full bg-acc text-ink-950 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider">
           <Zap size={9} strokeWidth={3} /> Breaking
         </span>
-      )}
+      ) : null}
       <div className="flex items-start gap-3">
         <Avatar name={r.player.name} clubBg={r.player.clubBg} clubColor={r.player.clubColor} src={r.player.photoUrl} size={38} />
 
@@ -69,7 +74,18 @@ export function WireRow({ r, comments = 0, now, following = false }: { r: Rumour
 
           <div className="flex items-center gap-2 mt-2 flex-wrap text-[10.5px] text-mute-soft">
             <Chip tone={stageTone(stage)} className="!px-2 !py-0.5 !text-[10px]">{stage}</Chip>
-            <span className="truncate max-w-[160px]">{r.source}</span>
+            {hereWeGo ? (
+              <a
+                href={r.url ?? "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="truncate max-w-[260px] text-mute hover:text-acc transition"
+              >
+                {r.source} · not yet club-official
+              </a>
+            ) : (
+              <span className="truncate max-w-[160px]">{r.source}</span>
+            )}
             {r.corroborations > 1 && <span className="num">+{r.corroborations - 1} sources</span>}
             {r.league && <span className="truncate max-w-[110px]">{r.league}</span>}
             <span className="num">{timeAgo(r.lastUpdate, now)} ago</span>
