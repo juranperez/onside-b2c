@@ -622,6 +622,31 @@ export async function getCounts(): Promise<{ players: number; clubs: number; lea
   return { players: players.count ?? 0, clubs: clubs.count ?? 0, leagues: leagues.count ?? 0 };
 }
 
+/** Top-valued players for a set of national teams, in ONE query. Keyed by team slug.
+ *  Powers the WC hub "players to watch" strips — bounded to the current slate's teams. */
+export async function getWatchPlayers(teamSlugs: string[], perTeam = 2): Promise<Record<string, PlayerListItem[]>> {
+  if (teamSlugs.length === 0) return {};
+  const { data, error } = await readDb()
+    .from("national_teams")
+    .select(
+      "slug, national_team_squads(players(id,slug,name,position,age, clubs(slug,name,short_name, leagues(slug,name)), player_valuations(value_eur)))",
+    )
+    .in("slug", teamSlugs);
+  if (error || !data) return {};
+  const now = new Date();
+  const out: Record<string, PlayerListItem[]> = {};
+  for (const row of data as never as Array<{ slug: string; national_team_squads: Array<{ players: PlayerRowDB | null }> }>) {
+    const players = (row.national_team_squads ?? [])
+      .map((s) => s.players)
+      .filter((p): p is PlayerRowDB => p !== null)
+      .map((p) => toPlayerListItem(p, now))
+      .sort((a, b) => b.val - a.val)
+      .slice(0, perTeam);
+    out[row.slug] = players;
+  }
+  return out;
+}
+
 // ─────────────────────────── World Cup fixtures ───────────────────────────
 
 export type FixtureStatus = "scheduled" | "live" | "finished" | "postponed";
