@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Globe, Calendar, Trophy } from "lucide-react";
 import { Button, Card, SectionHead, LiveDot, Chip } from "@/components/ui";
-import { getNationalTeams, type NationalTeamSummary } from "@/lib/queries";
+import { getNationalTeams, getWcFixtures, getWatchPlayers, type NationalTeamSummary, type WcFixture } from "@/lib/queries";
+import { matchdaySlate } from "@/lib/wc-day";
+import { MatchdaySlate } from "@/components/worldcup/MatchdaySlate";
 import { cn } from "@/lib/utils";
 import { CodeTile } from "@/components/worldcup/CodeTile";
 
@@ -13,8 +15,6 @@ export const metadata: Metadata = {
   description:
     "Every nation at the 2026 tournament, valued by the Onside engine. 48 squads ranked by combined value, the group of death, and projected knockouts.",
 };
-
-const KICKOFF = new Date("2026-06-11T00:00:00Z");
 
 /** Squad value in millions → editorial money string (€…M, or €…B at/above a billion). */
 function money(m: number): string {
@@ -31,7 +31,6 @@ export default async function WorldCupPage() {
     console.error("[worldcup] data unavailable at render:", e);
   }
 
-  const daysToKickoff = Math.max(0, Math.ceil((KICKOFF.getTime() - Date.now()) / 86_400_000));
   const totalValueM = nations.reduce((s, n) => s + n.squadValueM, 0);
   const top10 = nations.slice(0, 10); // already sorted by squad value desc
 
@@ -51,6 +50,16 @@ export default async function WorldCupPage() {
     }))
     .sort((a, b) => b.total - a.total);
   const groupOfDeath = groupTotals[0] ?? null;
+
+  let fixtures: WcFixture[] = [];
+  try {
+    fixtures = await getWcFixtures();
+  } catch (e) {
+    console.error("[worldcup] fixtures unavailable:", e);
+  }
+  const slate = matchdaySlate(fixtures, new Date());
+  const slateSlugs = [...new Set(slate.fixtures.flatMap((f) => [f.home.slug, f.away.slug]).filter(Boolean))];
+  const watch = slateSlugs.length ? await getWatchPlayers(slateSlugs).catch(() => ({})) : {};
 
   // Empty state — never throw, give the reader somewhere to go.
   if (nations.length === 0) {
@@ -98,8 +107,8 @@ export default async function WorldCupPage() {
 
           <div className="mt-8 flex items-center gap-6 flex-wrap">
             <div className="text-center">
-              <div className="display text-[48px] num text-acc leading-none">{daysToKickoff}</div>
-              <div className="text-[11px] text-mute-soft uppercase tracking-wider mt-1">Days to kickoff</div>
+              <div className="display text-[28px] num text-acc leading-none">{slate.label || "World Cup"}</div>
+              <div className="text-[11px] text-mute-soft uppercase tracking-wider mt-1">{slate.isToday ? "Today" : slate.label ? "Up next" : "2026"}</div>
             </div>
             <div className="w-px h-12 bg-line hidden md:block" />
             <div className="flex items-center gap-8">
@@ -110,21 +119,20 @@ export default async function WorldCupPage() {
           </div>
 
           <div className="mt-8 flex items-center gap-3 flex-wrap">
-            <Link href="/worldcup/groups">
-              <Button kind="primary" icon={<Globe size={14} />}>View all groups</Button>
-            </Link>
             <Link href="/worldcup/schedule">
-              <Button kind="outline" icon={<Calendar size={14} />}>Match schedule</Button>
+              <Button kind="primary" icon={<Calendar size={14} />}>Match schedule</Button>
+            </Link>
+            <Link href="/worldcup/groups">
+              <Button kind="outline" icon={<Globe size={14} />}>View all groups</Button>
             </Link>
             <Link href="/worldcup/bracket">
               <Button kind="outline" icon={<Trophy size={14} />}>Projected bracket</Button>
             </Link>
-            <span className="inline-flex items-center gap-1.5 text-[12px] text-mute num">
-              <Calendar size={13} /> Kicks off 11 June 2026
-            </span>
           </div>
         </div>
       </div>
+
+      <MatchdaySlate label={slate.label} isToday={slate.isToday} fixtures={slate.fixtures} watch={watch} />
 
       {/* Most valuable squads */}
       <SectionHead
