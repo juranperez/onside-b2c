@@ -18,6 +18,7 @@ export function TickerClose() {
 
   return (
     <button
+      type="button"
       aria-label="Hide scores for today"
       onClick={() => {
         const end = new Date();

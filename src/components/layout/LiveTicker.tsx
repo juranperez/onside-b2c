@@ -12,6 +12,7 @@ const fmtTime = (iso: string) =>
 
 function score(f: WcFixture): string {
   if (f.status === "scheduled") return f.kickoff ? fmtTime(f.kickoff) : "TBD";
+  if (f.status === "postponed") return "P–P"; // never played — don't fake a 0–0
   return `${f.scoreHome ?? 0}–${f.scoreAway ?? 0}`;
 }
 
