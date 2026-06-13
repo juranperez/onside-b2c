@@ -104,8 +104,14 @@ Expected: FAIL — cannot find module './bluesky'
 
 ```ts
 // src/lib/ingest/bluesky.ts
-/** Romano's verified Bluesky handle (confirmed live in Task 1). */
-export const ROMANO_HANDLE = "fabriziromano.bsky.social";
+/**
+ * Source handle for Romano's breaks. Task 1 verification (2026-06-13): his OWN
+ * Bluesky (fabriziorom.bsky.social) is abandoned — so we read the active
+ * third-party MIRROR that auto-reposts his X posts to Bluesky (verified live,
+ * posting current content). Best-effort, swappable: change this one constant to
+ * repoint at a paid X bridge if the mirror ever degrades.
+ */
+export const ROMANO_HANDLE = "fabrizioromano.yopro20.com";
 
 const APPVIEW = "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed";
 
