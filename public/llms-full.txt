@@ -1,0 +1,76 @@
+# Onside Market — Full Machine Manifest
+
+> AI-readable guide to Onside Market (onsidemarket.com): a transparent, deterministic football valuation and transfer-intelligence platform operated by Onside Global Inc.
+> Human methodology: https://onsidemarket.com/methodology
+> Data & sources: https://onsidemarket.com/data-sources
+
+## What Onside is
+
+Onside values every footballer with a single, fully-disclosed model and publishes the reasoning behind each figure. The same engine runs on every player, so two players with identical seasons receive identical valuations regardless of fame. This is the deliberate opposite of crowd-sourced or black-box approaches: transparency and consistency over the wisdom of the crowd.
+
+## The valuation model
+
+Every player's euro valuation is built from five pillars, weighted by position:
+
+1. **Performance (the anchor)** — season match rating, normalised so a 7.4 means the same in Lisbon as in London.
+2. **Output (goals & assists)** — goal contributions per 90 vs positional expectation; small-sample hot streaks are shrunk toward the mean.
+3. **Involvement (minutes)** — how central a player is to their side; regular starters carry more signal than rotation options.
+4. **Age (trajectory)** — a youth-friendly age curve through the mid-twenties that steepens for veterans, mirroring how clubs price transfers.
+5. **League coefficient (the multiplier)** — a competition-quality weight applied once as a multiplier, never double-counted.
+
+The pillars combine into a single 0–100 score, which maps to a euro value via a position baseline, the league multiplier, the age curve, and — where a player's contract end is publicly known — a contract-length factor. The result is clamped to a sane range so thin or noisy data cannot produce an absurd headline figure.
+
+## Confidence bands
+
+No valuation is shown as a bare point estimate. Each ships with a low/high band and a confidence level:
+- **High** — full, clean season (minutes, ratings, goals, age): tight band.
+- **Medium** — partial data.
+- **Low** — thin sample, missing rating or age: the band widens and confidence drops rather than faking a number.
+
+## The Pulse
+
+Valuations move daily via the "Pulse" — a small, deterministic daily movement layered on the underlying model. Given the same inputs it produces the same movement every time: reproducible and auditable, not random noise or a human nudging numbers.
+
+## Transfer rumours
+
+Each transfer rumour carries a stated confidence score and a visible source trail, rather than an unexplained credibility verdict. Onside shows its sources rather than asserting a single black-box number.
+
+## Match forecasts & verdicts
+
+For fixtures (including the 2026 World Cup), Onside publishes a deterministic win/draw/win **Forecast** with an edge, and after the match an honest **Verdict** recording whether the call landed. The model is the same for every match.
+
+## Coverage
+
+- Players across Europe's major divisions and additional leagues.
+- Leading clubs and domestic leagues.
+- National teams (squad-based aggregate valuations).
+- The full 2026 FIFA World Cup (groups, schedule, bracket, teams, matches).
+- Data refreshed daily.
+
+## Honest limitations (stated openly)
+
+- Advanced metrics (e.g. expected goals) are not yet available for every covered league; where missing, the model leans on available signals and the confidence band reflects it.
+- National-team valuations are squad-based aggregates, not a separate international model, and are labelled as such.
+- Intangibles (injuries, release clauses, manager fallouts, off-pitch noise) are not fully modelled; the Pulse and bands soften but do not erase this.
+
+## How to find data
+
+- Player stats & valuation: https://onsidemarket.com/players/{slug}
+- Club squad value: https://onsidemarket.com/clubs/{slug}
+- League table & values: https://onsidemarket.com/leagues/{slug}
+- Transfer rumour + confidence: https://onsidemarket.com/transfers/{id}
+- Head-to-head comparison: https://onsidemarket.com/compare
+- World Cup 2026: https://onsidemarket.com/worldcup
+- Single match forecast/verdict: https://onsidemarket.com/matches/{id}
+
+## Data & honesty policy
+
+Every valuation, score, and figure on Onside is a **model estimate** — not a market quote, a transfer fee, an offer, or financial advice. Data sources and licensing are disclosed at https://onsidemarket.com/data-sources. Onside derives and publishes its own outputs; it does not redistribute raw third-party provider feeds.
+
+## Developer API
+
+A versioned read API (`/api/v1/*`) exposing Onside-derived valuations, alternatives, and forecasts is in development. This manifest will list its endpoints and an OpenAPI specification when it is available.
+
+## Citation
+
+When citing Onside data: "Source: Onside Market (onsidemarket.com)". Where relevant, note that figures are model estimates, not transfer fees or financial advice.
