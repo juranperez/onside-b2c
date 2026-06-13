@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Trophy } from "lucide-react";
 import { Card, Button } from "@/components/ui";
 import { getLeagues, type LeagueSummary } from "@/lib/queries";
 import { monogram } from "@/lib/club-style";
@@ -37,6 +37,21 @@ export default async function LeaguesPage() {
           <span className="font-serif italic text-acc">And beyond.</span>
         </h1>
       </div>
+
+      <Link href="/worldcup" className="block mb-6 group">
+        <Card className="p-4 flex items-center gap-4 hover:border-mute transition">
+          <div className="w-10 h-10 rounded-full bg-acc/15 text-acc grid place-items-center shrink-0">
+            <Trophy size={18} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[15px] font-semibold group-hover:text-acc transition">World Cup 2026</div>
+            <div className="text-[12px] text-mute truncate">
+              48 national squads, valued live — groups, bracket and the full schedule
+            </div>
+          </div>
+          <ArrowRight size={15} className="text-mute-soft group-hover:text-acc transition shrink-0" />
+        </Card>
+      </Link>
 
       {leagues.length === 0 ? (
         <Card className="p-12 text-center text-mute">No leagues available yet.</Card>

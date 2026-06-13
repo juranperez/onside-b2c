@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, User, Shield, Trophy, CornerDownLeft } from "lucide-react";
+import { Search, User, Shield, Trophy, CornerDownLeft, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Hit {
@@ -144,6 +144,17 @@ export function CmdK() {
                 </div>
               ),
           )}
+        </div>
+        <div className="border-t border-line">
+          <button
+            onClick={() => go(first?.hits[0] ? `/compare?p=${first.hits[0].slug}` : "/compare")}
+            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-overlay/[0.05] transition text-left cursor-pointer"
+          >
+            <Scale size={12} className="text-mute-soft shrink-0" />
+            <span className="text-[13px] text-mute flex-1 truncate">
+              Compare players{first?.hits[0] ? ` — start with ${first.hits[0].name}` : ""}
+            </span>
+          </button>
         </div>
       </div>
     </div>

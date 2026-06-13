@@ -10,13 +10,16 @@ const STATIC_ROUTES: Array<{
   priority: number;
 }> = [
   { path: "/", changeFrequency: "daily", priority: 1.0 },
+  { path: "/discover", changeFrequency: "daily", priority: 0.85 },
   { path: "/players", changeFrequency: "daily", priority: 0.9 },
   { path: "/clubs", changeFrequency: "daily", priority: 0.8 },
+  { path: "/transfers", changeFrequency: "daily", priority: 0.8 },
   { path: "/leagues", changeFrequency: "weekly", priority: 0.7 },
   { path: "/stats", changeFrequency: "daily", priority: 0.7 },
-  { path: "/worldcup", changeFrequency: "daily", priority: 0.9 },
+  { path: "/worldcup", changeFrequency: "daily", priority: 0.95 },
   { path: "/worldcup/groups", changeFrequency: "weekly", priority: 0.7 },
   { path: "/worldcup/bracket", changeFrequency: "weekly", priority: 0.7 },
+  { path: "/worldcup/schedule", changeFrequency: "daily", priority: 0.8 },
   { path: "/pricing", changeFrequency: "monthly", priority: 0.5 },
   { path: "/methodology", changeFrequency: "monthly", priority: 0.5 },
   { path: "/data-sources", changeFrequency: "monthly", priority: 0.4 },

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtVal, fmtDelta } from "@/lib/format";
 import { Card, Avatar, Delta, Chip, SectionHead, Button } from "@/components/ui";
@@ -125,6 +126,9 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
               <div className="mt-4 flex items-center gap-2 justify-end">
                 <WatchButton playerId={player.id} />
                 <ShareButton title={`${player.displayName} — Onside valuation ${fmtVal(player.value)}`} />
+                <Link href={`/compare?p=${player.slug}`}>
+                  <Button kind="ghost" size="md" icon={<Scale size={14} />}>Compare</Button>
+                </Link>
               </div>
             </div>
           </div>
