@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { todaysFixtures, tickerFixtures, type DayFixture } from "./wc-day";
+import { todaysFixtures, tickerFixtures, roundLabel, matchdaySlate, type DayFixture } from "./wc-day";
 
 // 2026-06-12 in ET spans 04:00Z Jun 12 → 03:59Z Jun 13.
 const NOW = new Date("2026-06-12T18:00:00Z");
@@ -32,5 +32,47 @@ describe("tickerFixtures", () => {
   });
   it("returns empty when no fixtures today", () => {
     expect(tickerFixtures([fx("2026-06-20T16:00:00Z", "scheduled")], NOW)).toEqual([]);
+  });
+});
+
+const sf = (kickoff: string | null, status: "scheduled" | "live" | "finished" | "postponed", round: string | null) =>
+  ({ kickoff, status, round });
+
+describe("roundLabel", () => {
+  it("maps group-stage rounds to Matchday N", () => {
+    expect(roundLabel("Group Stage - 1")).toBe("Matchday 1");
+    expect(roundLabel("Group Stage - 3")).toBe("Matchday 3");
+  });
+  it("passes through knockout round names; falls back to Fixtures", () => {
+    expect(roundLabel("Round of 16")).toBe("Round of 16");
+    expect(roundLabel(null)).toBe("Fixtures");
+  });
+});
+
+describe("matchdaySlate", () => {
+  const NOW = new Date("2026-06-12T18:00:00Z"); // ET Jun 12
+
+  it("returns today's fixtures with the matchday label when there are any today", () => {
+    const a = sf("2026-06-12T16:00:00Z", "finished", "Group Stage - 1");
+    const b = sf("2026-06-13T01:00:00Z", "scheduled", "Group Stage - 1"); // 9pm ET Jun 12
+    const tomorrow = sf("2026-06-13T16:00:00Z", "scheduled", "Group Stage - 1");
+    const s = matchdaySlate([a, b, tomorrow], NOW);
+    expect(s.isToday).toBe(true);
+    expect(s.label).toBe("Matchday 1");
+    expect(s.fixtures).toEqual([a, b]);
+  });
+
+  it("falls back to the next calendar day's fixtures when today has none", () => {
+    const d1 = sf("2026-06-14T16:00:00Z", "scheduled", "Group Stage - 2");
+    const d1b = sf("2026-06-14T20:00:00Z", "scheduled", "Group Stage - 2");
+    const d2 = sf("2026-06-15T16:00:00Z", "scheduled", "Group Stage - 2");
+    const s = matchdaySlate([d1, d1b, d2], NOW);
+    expect(s.isToday).toBe(false);
+    expect(s.label).toBe("Matchday 2");
+    expect(s.fixtures).toEqual([d1, d1b]); // only the next day with fixtures, not the whole round
+  });
+
+  it("is empty when there are no fixtures at all", () => {
+    expect(matchdaySlate([], NOW)).toEqual({ label: "", isToday: false, fixtures: [] });
   });
 });

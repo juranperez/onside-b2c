@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Countdown } from "@/components/worldcup/countdown";
 import { nationFlagSrc, nationCode } from "@/components/worldcup/nation-code";
 import { getWcFixtures, type WcFixture } from "@/lib/queries";
+import { roundLabel } from "@/lib/wc-day";
 
 // Re-render every 5 min so synced live scores surface without a redeploy.
 export const revalidate = 300;
@@ -23,11 +24,6 @@ const fmtDate = (iso: string) =>
   );
 const fmtTime = (iso: string) =>
   new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: ET }).format(new Date(iso));
-
-function roundLabel(r: string | null): string {
-  const m = r?.match(/Group Stage - (\d)/);
-  return m ? `Matchday ${m[1]}` : (r ?? "Fixtures");
-}
 
 function Flag({ slug, name, size = 24 }: { slug: string; name: string; size?: number }) {
   const src = nationFlagSrc(slug);
