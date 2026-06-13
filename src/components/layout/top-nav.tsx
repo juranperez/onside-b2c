@@ -4,25 +4,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Search, Bell, Menu, X, Sparkles } from "lucide-react";
+import { Search, Bell, Menu, X, Sparkles, Scale } from "lucide-react";
 import { OnsideMark } from "@/components/ui/logo";
 import { createClient } from "@/lib/db/supabase-browser";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { CmdK } from "./CmdK";
-
-// Surface the real destinations (Clubs, Leagues) and drop the not-yet-live
-// Community dead ends. Watchlist lives on the user avatar.
-const NAV_ITEMS: { href: string; label: string; special?: boolean; ai?: boolean }[] = [
-  { href: "/discover", label: "Discover" },
-  { href: "/players", label: "Players" },
-  { href: "/clubs", label: "Clubs" },
-  { href: "/leagues", label: "Leagues" },
-  { href: "/transfers", label: "Transfers" },
-  { href: "/insights", label: "Insights" },
-  { href: "/worldcup", label: "World Cup", special: true },
-  { href: "/ask", label: "Ask", ai: true },
-  { href: "/compare", label: "Compare" },
-];
+import { getNavItems, getSecondaryItems } from "@/lib/nav-items";
+import { REPORTS } from "@/lib/reports";
 
 function Logo() {
   return (
@@ -35,11 +23,14 @@ function Logo() {
   );
 }
 
-export function TopNav() {
+export function TopNav({ wcActive }: { wcActive: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<{ email: string } | null>(null);
+
+  const navItems = getNavItems(wcActive);
+  const secondaryItems = getSecondaryItems(wcActive);
 
   useEffect(() => {
     const sb = createClient();
@@ -58,38 +49,43 @@ export function TopNav() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-line bg-ink-900/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-line bg-ink-900/80 backdrop-blur-xl">
       <div className="max-w-[1440px] mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-8">
             <Logo />
-            <div className="hidden md:flex items-center gap-1">
-              {NAV_ITEMS.map((item) => {
-                const active = pathname.startsWith(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-[13px] font-medium transition inline-flex items-center gap-1.5",
-                      item.special || item.ai
-                        ? active
-                          ? "text-acc bg-acc/10"
-                          : "text-acc hover:bg-acc/10"
-                        : active
-                          ? "text-fg bg-overlay/5"
-                          : "text-mute hover:text-fg hover:bg-overlay/[0.03]"
-                    )}
-                  >
-                    {item.ai && <Sparkles size={12} className="shrink-0" />}
-                    {item.label}
-                    {item.special && (
-                      <span className="text-[9px] font-bold leading-none rounded bg-acc text-ink-950 px-1 py-[3px] num">26</span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
+            <nav aria-label="Primary">
+              <ul className="hidden md:flex items-center gap-1">
+                {navItems.map((item) => {
+                  const active = pathname.startsWith(item.href);
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-[13px] font-medium transition inline-flex items-center gap-1.5",
+                          item.special || item.ai
+                            ? active
+                              ? "text-acc bg-acc/10"
+                              : "text-acc hover:bg-acc/10"
+                            : active
+                              ? "text-fg bg-overlay/5"
+                              : "text-mute hover:text-fg hover:bg-overlay/[0.03]"
+                        )}
+                      >
+                        {item.ai && <Sparkles size={12} className="shrink-0" />}
+                        {item.label}
+                        {item.special && (
+                          <span className="text-[9px] font-bold leading-none rounded bg-acc text-ink-950 px-1 py-[3px] num">
+                            LIVE
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
           </div>
 
           <div className="flex items-center gap-3">
@@ -109,6 +105,14 @@ export function TopNav() {
               <kbd className="text-[9px] num text-mute-soft border border-line rounded px-1 py-0.5 shrink-0">⌘K</kbd>
             </form>
             <CmdK />
+            <Link
+              href="/compare"
+              title="Compare players"
+              aria-label="Compare players"
+              className="hidden md:block p-2 rounded-lg text-mute hover:text-fg hover:bg-overlay/5 transition"
+            >
+              <Scale size={16} />
+            </Link>
             <ThemeToggle />
             <Link
               href="/notifications"
@@ -143,6 +147,7 @@ export function TopNav() {
             )}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
               className="md:hidden p-2 rounded-lg text-mute hover:text-fg hover:bg-overlay/5 transition"
             >
               {mobileOpen ? <X size={18} /> : <Menu size={18} />}
@@ -168,7 +173,7 @@ export function TopNav() {
               className="w-full bg-transparent outline-none text-[14px] text-fg placeholder:text-mute-soft"
             />
           </form>
-          {NAV_ITEMS.map((item) => {
+          {secondaryItems.map((item) => {
             const active = pathname.startsWith(item.href);
             return (
               <Link
@@ -177,17 +182,47 @@ export function TopNav() {
                 onClick={() => setMobileOpen(false)}
                 className={cn(
                   "block px-3 py-2.5 rounded-lg text-[14px] font-medium transition",
-                  active
-                    ? "text-fg bg-overlay/5"
-                    : "text-mute hover:text-fg"
+                  active ? "text-fg bg-overlay/5" : "text-mute hover:text-fg"
                 )}
               >
                 {item.label}
               </Link>
             );
           })}
+          <div className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-[0.14em] text-mute-soft num">Reports</div>
+          {REPORTS.map((r) => (
+            <Link
+              key={r.href}
+              href={r.href}
+              onClick={() => setMobileOpen(false)}
+              className="block px-3 py-2.5 rounded-lg text-[14px] font-medium text-mute hover:text-fg transition"
+            >
+              {r.title}
+            </Link>
+          ))}
+          <div className="border-t border-line pt-2 mt-2">
+            {user ? (
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  void handleSignOut();
+                }}
+                className="block w-full text-left px-3 py-2.5 rounded-lg text-[14px] font-medium text-mute hover:text-fg transition cursor-pointer"
+              >
+                Sign out
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setMobileOpen(false)}
+                className="block px-3 py-2.5 rounded-lg text-[14px] font-semibold text-acc"
+              >
+                Sign in
+              </Link>
+            )}
+          </div>
         </div>
       )}
-    </nav>
+    </header>
   );
 }
