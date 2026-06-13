@@ -104,8 +104,11 @@ export async function watchRomano(db: SupabaseClient<Database>): Promise<RomanoW
         res.published++;
       }
     } else if (decision.kind === "upgrade-break" && pm) {
+      // status: "rumour" PROMOTES a candidate to live — a Romano break that
+      // cleared the strong clean-parse gate is auto-publish-eligible, so it must
+      // not stay stuck in the review queue (off the Wire) after the upgrade.
       await db.from("rumours").update({
-        source_tier: 0, primary_source: "Fabrizio Romano", to_club: club, summary, url: post.uri, last_update: now,
+        source_tier: 0, primary_source: "Fabrizio Romano", to_club: club, summary, url: post.uri, last_update: now, status: "rumour",
       }).eq("id", decision.targetId);
       await db.from("rumour_sources").upsert(
         { url: post.uri, rumour_id: decision.targetId, source: "Fabrizio Romano", tier: 0 },
