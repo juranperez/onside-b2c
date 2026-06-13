@@ -4,6 +4,7 @@ import { ArrowRight, Sparkles, TrendingUp, Trophy } from "lucide-react";
 import { Card, Avatar, Delta, Button, LiveDot } from "@/components/ui";
 import { MoversBoard } from "@/components/discover/MoversBoard";
 import { WelcomeRail } from "@/components/discover/WelcomeRail";
+import { ReportsRail } from "@/components/discover/ReportsRail";
 import { getMovers, getTopPlayers, getCounts, getMoverReasons } from "@/lib/queries";
 import type { PlayerListItem } from "@/lib/queries/map";
 
@@ -208,6 +209,7 @@ export default async function DiscoverPage() {
           </Card>
         </div>
       </div>
+      <ReportsRail />
     </div>
   );
 }
