@@ -116,6 +116,7 @@ export function TopNav({ wcActive }: { wcActive: boolean }) {
             <ThemeToggle />
             <Link
               href="/notifications"
+              aria-label="Notifications"
               className="p-2 rounded-lg text-mute hover:text-fg hover:bg-overlay/5 transition relative"
             >
               <Bell size={16} />
@@ -126,6 +127,7 @@ export function TopNav({ wcActive }: { wcActive: boolean }) {
                 <Link
                   href="/watchlist"
                   title={user.email}
+                  aria-label={`Watchlist — signed in as ${user.email}`}
                   className="w-8 h-8 rounded-full bg-acc/20 text-acc grid place-items-center text-[12px] font-bold uppercase"
                 >
                   {user.email.slice(0, 1) || "U"}
@@ -169,7 +171,7 @@ export function TopNav({ wcActive }: { wcActive: boolean }) {
               name="q"
               placeholder="Search players, clubs…"
               autoComplete="off"
-              aria-label="Search"
+              aria-label="Search players, clubs and leagues"
               className="w-full bg-transparent outline-none text-[14px] text-fg placeholder:text-mute-soft"
             />
           </form>
