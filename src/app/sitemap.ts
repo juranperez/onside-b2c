@@ -19,7 +19,7 @@ const STATIC_ROUTES: Array<{
   { path: "/worldcup", changeFrequency: "daily", priority: 0.95 },
   { path: "/worldcup/groups", changeFrequency: "weekly", priority: 0.7 },
   { path: "/worldcup/bracket", changeFrequency: "weekly", priority: 0.7 },
-  { path: "/worldcup/schedule", changeFrequency: "daily", priority: 0.8 },
+  { path: "/worldcup/schedule", changeFrequency: "hourly", priority: 0.8 },
   { path: "/pricing", changeFrequency: "monthly", priority: 0.5 },
   { path: "/methodology", changeFrequency: "monthly", priority: 0.5 },
   { path: "/data-sources", changeFrequency: "monthly", priority: 0.4 },
