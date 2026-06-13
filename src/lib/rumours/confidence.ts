@@ -104,6 +104,17 @@ export function confidence(input: ConfidenceInput): ConfidenceResult {
     return { pct: 0, band: "low", factors: [{ key: "dead", label: "Collapsed", score: 0, weight: 1, detail: "Deal is off / player moved elsewhere" }] };
   }
 
+  // Romano "Here We Go" (source_tier 0) is journalist-confirmed — pinned high,
+  // distinct from club-official 100, until the official feed upgrades it. (A
+  // retracted break is status "dead" above, so it never reaches here.)
+  if (input.sourceTier === 0) {
+    return {
+      pct: 95,
+      band: "high",
+      factors: [{ key: "here_we_go", label: "Romano: Here We Go", score: 0.95, weight: 1, detail: "Confirmed break by Fabrizio Romano — not yet club-official" }],
+    };
+  }
+
   const fee = input.reportedFeeEur;
   const ratio = fee != null && fee > 0 && input.onsideValueEur ? fee / input.onsideValueEur : null;
   const yearsLeft = input.contractUntil != null ? input.contractUntil - SEASON_YEAR : null;
