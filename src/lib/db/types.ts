@@ -764,6 +764,59 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_seen: string
+          p256dh: string
+          profile_id: string | null
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_seen?: string
+          p256dh: string
+          profile_id?: string | null
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_seen?: string
+          p256dh?: string
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pushed_goals: {
+        Row: {
+          pushed_at: string
+          signature: string
+        }
+        Insert: {
+          pushed_at?: string
+          signature: string
+        }
+        Update: {
+          pushed_at?: string
+          signature?: string
+        }
+        Relationships: []
+      }
       rumour_comments: {
         Row: {
           author_name: string | null
