@@ -23,7 +23,7 @@ export default async function RumourManagePage() {
     );
   }
 
-  const [rumours, candidates] = await Promise.all([getRumours(100), getCandidates(50)]);
+  const [rumours, candidates] = await Promise.all([getRumours(100, { includeDead: true }), getCandidates(50)]);
 
   return (
     <div className="max-w-[900px] mx-auto px-6 py-8">

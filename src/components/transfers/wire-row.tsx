@@ -41,6 +41,13 @@ export function WireRow({ r, comments = 0, now, following = false }: { r: Rumour
         dead && "opacity-55",
       )}
     >
+      {/* Whole-card click target → the story page. Interactive children below sit
+          above this (relative z-10); clicks on empty space / club text hit this. */}
+      <Link
+        href={`/transfers/${r.id}`}
+        aria-label={`Open ${r.player.name} transfer story`}
+        className="absolute inset-0 z-[1] rounded-xl"
+      />
       {hereWeGo ? (
         <span className="absolute -top-2 left-3 inline-flex items-center gap-1 rounded-full bg-acc text-ink-950 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider animate-pulse">
           <Zap size={9} strokeWidth={3} /> Here We Go
@@ -57,7 +64,7 @@ export function WireRow({ r, comments = 0, now, following = false }: { r: Rumour
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
             <Link
               href={`/players/${r.player.slug}`}
-              className={cn("text-[13.5px] font-semibold hover:text-acc transition truncate", dead && "line-through")}
+              className={cn("relative z-10 text-[13.5px] font-semibold hover:text-acc transition truncate", dead && "line-through")}
             >
               {r.player.name}
             </Link>
@@ -79,7 +86,7 @@ export function WireRow({ r, comments = 0, now, following = false }: { r: Rumour
                 href={r.url ?? "#"}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="truncate max-w-[260px] text-mute hover:text-acc transition"
+                className="relative z-10 truncate max-w-[260px] text-mute hover:text-acc transition"
               >
                 {r.source} · not yet club-official
               </a>
@@ -89,7 +96,7 @@ export function WireRow({ r, comments = 0, now, following = false }: { r: Rumour
             {r.corroborations > 1 && <span className="num">+{r.corroborations - 1} sources</span>}
             {r.league && <span className="truncate max-w-[110px]">{r.league}</span>}
             <span className="num">{timeAgo(r.lastUpdate, now)} ago</span>
-            <span className="ml-auto inline-flex items-center gap-3">
+            <span className="ml-auto inline-flex items-center gap-3 relative z-10">
               {r.status === "rumour" && <TrackDealButton rumourId={r.id} initialFollowing={following} />}
               <Link href={`/transfers/${r.id}`} className="inline-flex items-center gap-1 text-mute hover:text-acc transition">
                 <MessageSquare size={11} />

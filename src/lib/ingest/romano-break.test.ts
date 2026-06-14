@@ -38,4 +38,18 @@ describe("decideRomanoBreak", () => {
     });
     expect(d.kind).toBe("skip");
   });
+  it("revives a dead saga for the same destination instead of duplicating", () => {
+    const d = decideRomanoBreak({
+      ...base,
+      existingForPlayer: [{ id: "r1", status: "dead", to_club: "Liverpool" }],
+    });
+    expect(d).toEqual({ kind: "upgrade-break", targetId: "r1" });
+  });
+  it("revives a dead saga even for a different destination (Here We Go is definitive)", () => {
+    const d = decideRomanoBreak({
+      ...base,
+      existingForPlayer: [{ id: "r1", status: "dead", to_club: "Chelsea" }],
+    });
+    expect(d).toEqual({ kind: "upgrade-break", targetId: "r1" });
+  });
 });

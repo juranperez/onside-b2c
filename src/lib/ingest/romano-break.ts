@@ -23,18 +23,23 @@ export type BreakDecision =
 
 /**
  * Clean-parse gate: a Romano break only auto-publishes with a STRONG player
- * match AND a resolved destination. Anything softer is held for review. An
- * existing live saga for the player is upgraded in place (never duplicated);
- * an already-confirmed saga is left alone (the club beat Romano to it).
+ * match AND a resolved destination. Anything softer is held for review. To avoid
+ * duplicate cards: an existing live/queued saga for the player is upgraded in
+ * place; a previously-dead saga is REVIVED (a Here We Go is definitive); an
+ * already-confirmed saga is left alone (the club beat Romano to it).
  */
 export function decideRomanoBreak(input: BreakInput): BreakDecision {
   const clean = input.playerId !== null && input.strength === "strong" && input.toClub !== "—";
   if (!clean) return { kind: "hold" };
 
-  const live = input.existingForPlayer.filter((s) => s.status !== "dead");
-  const confirmed = live.find((s) => s.status === "confirmed");
+  const confirmed = input.existingForPlayer.find((s) => s.status === "confirmed");
   if (confirmed) return { kind: "skip" };
-  const upgradable = live.find((s) => s.status === "rumour" || s.status === "candidate");
+  const upgradable = input.existingForPlayer.find((s) => s.status === "rumour" || s.status === "candidate");
   if (upgradable) return { kind: "upgrade-break", targetId: upgradable.id };
+  // Revive rather than duplicate — prefer the same destination, else any dead card.
+  const sameDestDead = input.existingForPlayer.find((s) => s.status === "dead" && s.to_club === input.toClub);
+  if (sameDestDead) return { kind: "upgrade-break", targetId: sameDestDead.id };
+  const anyDead = input.existingForPlayer.find((s) => s.status === "dead");
+  if (anyDead) return { kind: "upgrade-break", targetId: anyDead.id };
   return { kind: "publish-break" };
 }

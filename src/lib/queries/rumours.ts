@@ -144,14 +144,12 @@ export async function getCommentCounts(): Promise<Map<string, number>> {
   return counts;
 }
 
-/** Live rumour feed, newest first. Excludes unreviewed ingestion candidates. */
-export async function getRumours(limit = 60): Promise<RumourItem[]> {
-  const { data, error } = await readDb()
-    .from("rumours")
-    .select(RUMOUR_SELECT)
-    .neq("status", "candidate")
-    .order("last_update", { ascending: false })
-    .limit(limit);
+/** Live rumour feed, newest first. Excludes unreviewed ingestion candidates, and
+ *  (by default) retracted/dead sagas — those only surface on the curator desk. */
+export async function getRumours(limit = 60, opts: { includeDead?: boolean } = {}): Promise<RumourItem[]> {
+  let q = readDb().from("rumours").select(RUMOUR_SELECT).neq("status", "candidate");
+  if (!opts.includeDead) q = q.neq("status", "dead");
+  const { data, error } = await q.order("last_update", { ascending: false }).limit(limit);
   if (error) return [];
   const now = new Date();
   return (data ?? [])
