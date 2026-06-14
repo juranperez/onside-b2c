@@ -743,22 +743,31 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          current_period_end: string | null
           display_name: string | null
           id: string
+          stripe_customer_id: string | null
+          subscription_status: string | null
           tier: string
           username: string | null
         }
         Insert: {
           created_at?: string | null
+          current_period_end?: string | null
           display_name?: string | null
           id: string
+          stripe_customer_id?: string | null
+          subscription_status?: string | null
           tier?: string
           username?: string | null
         }
         Update: {
           created_at?: string | null
+          current_period_end?: string | null
           display_name?: string | null
           id?: string
+          stripe_customer_id?: string | null
+          subscription_status?: string | null
           tier?: string
           username?: string | null
         }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui";
+import { startCheckout } from "@/lib/billing/checkout-client";
 
 /**
  * Monetization v1 (see docs/monetization-v1.md): two tiers only — Free + Pro.
@@ -77,6 +78,9 @@ const FAQ = [
 export default function PricingPage() {
   const router = useRouter();
   const [annual, setAnnual] = useState(true);
+  // Billing is dormant until the Jun-27 soft launch: until then the Pro CTA drives
+  // account creation; once NEXT_PUBLIC_BILLING_ENABLED=1 it starts real checkout.
+  const billingEnabled = process.env.NEXT_PUBLIC_BILLING_ENABLED === "1";
   const proPrice = annual ? PRO_ANNUAL : PRO_MONTHLY;
   const proUnit = annual ? "/ year" : "/ month";
 
@@ -164,7 +168,15 @@ export default function PricingPage() {
               </div>
             ))}
           </div>
-          <Button kind="primary" className="w-full" onClick={() => router.push("/login")}>
+          <Button
+            kind="primary"
+            className="w-full"
+            onClick={() =>
+              billingEnabled
+                ? startCheckout(annual ? "pro_annual" : "pro_monthly")
+                : router.push("/login")
+            }
+          >
             Get founding access
           </Button>
           <p className="mt-2.5 text-[11px] text-mute-soft text-center leading-relaxed">
