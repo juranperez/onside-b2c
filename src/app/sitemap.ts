@@ -1,7 +1,13 @@
 import type { MetadataRoute } from "next";
-import { getTopPlayers, getClubsRanked, getLeagues, getNationalTeams } from "@/lib/queries";
+import { getLeagues, getNationalTeams } from "@/lib/queries";
+import { getAllPlayerSlugs, getAllClubSlugs, getAllRumourIds } from "@/lib/queries/enumerate";
 
 const BASE_URL = "https://onsidemarket.com";
+
+// Regenerate at most daily — the enumerators walk full tables, so we don't want
+// this recomputed per request. (If total entries ever exceed ~50k, shard with
+// Next's generateSitemaps instead of a single file.)
+export const revalidate = 86400;
 
 /** Static routes, highest-priority surfaces first. */
 const STATIC_ROUTES: Array<{
@@ -29,11 +35,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
   // Each query is isolated: a failure in one entity type must not blank the sitemap.
-  const [players, clubs, leagues, nations] = await Promise.all([
-    getTopPlayers(200).catch(() => []),
-    getClubsRanked(300).catch(() => []),
+  // Players, clubs and rumours are now enumerated in full (not top-N) so every
+  // indexable page is exposed to crawlers; leagues/nations already return all rows.
+  const [playerSlugs, clubSlugs, leagues, nations, rumours] = await Promise.all([
+    getAllPlayerSlugs().catch(() => []),
+    getAllClubSlugs().catch(() => []),
     getLeagues().catch(() => []),
     getNationalTeams().catch(() => []),
+    getAllRumourIds().catch(() => []),
   ]);
 
   const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((r) => ({
@@ -43,15 +52,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: r.priority,
   }));
 
-  const playerEntries: MetadataRoute.Sitemap = players.map((p) => ({
-    url: `${BASE_URL}/players/${p.slug}`,
+  const playerEntries: MetadataRoute.Sitemap = playerSlugs.map((slug) => ({
+    url: `${BASE_URL}/players/${slug}`,
     lastModified: now,
     changeFrequency: "daily",
     priority: 0.7,
   }));
 
-  const clubEntries: MetadataRoute.Sitemap = clubs.map((c) => ({
-    url: `${BASE_URL}/clubs/${c.slug}`,
+  const clubEntries: MetadataRoute.Sitemap = clubSlugs.map((slug) => ({
+    url: `${BASE_URL}/clubs/${slug}`,
     lastModified: now,
     changeFrequency: "weekly",
     priority: 0.6,
@@ -71,5 +80,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
-  return [...staticEntries, ...playerEntries, ...clubEntries, ...leagueEntries, ...nationEntries];
+  // Transfer rumour detail pages — real `lastModified` from each rumour's last update.
+  const rumourEntries: MetadataRoute.Sitemap = rumours.map((r) => ({
+    url: `${BASE_URL}/transfers/${r.id}`,
+    lastModified: r.lastUpdate ? new Date(r.lastUpdate) : now,
+    changeFrequency: "daily",
+    priority: 0.6,
+  }));
+
+  return [
+    ...staticEntries,
+    ...playerEntries,
+    ...clubEntries,
+    ...leagueEntries,
+    ...nationEntries,
+    ...rumourEntries,
+  ];
 }
