@@ -1,12 +1,12 @@
-// Applies the ported B2B fallback formula to B2C players that have no B2B record
-// (model_version != 'b2b-sios-v2.1'), so every valuation follows B2B methodology.
+// Applies the ported B2B fallback formula to B2C players that aren't anchored —
+// neither the B2B anchored sync (model_version 'b2b-sios-v2.1') nor the manual
+// Transfermarkt marquee overrides ('tm-refresh-2026-06'; see PROTECTED_MODEL_VERSIONS) —
+// so every valuation follows B2B methodology without clobbering hand-set marquee values.
 // Run AFTER sync:b2b-valuations. Run: npm run value:fallback
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../src/lib/db/types";
 import { fallbackValuation, type CoarsePosition } from "../src/lib/valuation/b2b-fallback";
-
-const B2B = "b2b-sios-v2.1";
-const FALLBACK = "b2b-sios-v2.1-fallback";
+import { PROTECTED_MODEL_VERSIONS, FALLBACK_MODEL_VERSION } from "../src/lib/valuation/fallback-target";
 
 function chunk<T>(a: T[], n: number): T[][] {
   const o: T[][] = [];
@@ -23,16 +23,16 @@ async function main() {
   }
   const db = createClient<Database>(url, key, { auth: { persistSession: false } });
 
-  // 1) Collect every player not sourced from the B2B (anchored) sync.
+  // 1) Collect every fallback-eligible player: exclude both the B2B anchored sync
+  //    AND the manual tm-refresh marquee overrides (PROTECTED_MODEL_VERSIONS) so the
+  //    re-value can never overwrite a hand-set marquee valuation.
   const unmatched: string[] = [];
   let from = 0;
   const PAGE = 1000;
   for (;;) {
-    const { data, error } = await db
-      .from("player_valuations")
-      .select("player_id")
-      .neq("model_version", B2B)
-      .range(from, from + PAGE - 1);
+    let q = db.from("player_valuations").select("player_id");
+    for (const mv of PROTECTED_MODEL_VERSIONS) q = q.neq("model_version", mv);
+    const { data, error } = await q.range(from, from + PAGE - 1);
     if (error) throw new Error(error.message);
     if (!data || data.length === 0) break;
     for (const r of data) unmatched.push(r.player_id);
@@ -71,7 +71,7 @@ async function main() {
         band_high: r.bandHigh,
         confidence_pct: r.confidencePct,
         pillar_scores: {},
-        model_version: FALLBACK,
+        model_version: FALLBACK_MODEL_VERSION,
       });
     }
   }
@@ -83,7 +83,7 @@ async function main() {
     if (error) throw new Error(error.message);
     done += c.length;
   }
-  console.log(`[done] wrote ${done} fallback valuations (model ${FALLBACK}).`);
+  console.log(`[done] wrote ${done} fallback valuations (model ${FALLBACK_MODEL_VERSION}).`);
 }
 
 main().catch((e) => {
