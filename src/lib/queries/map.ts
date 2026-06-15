@@ -3,6 +3,14 @@ import { liveValue, valueOnDay, dayIndexFor } from "../valuation/pulse";
 
 const DAY = 86_400_000;
 
+/**
+ * Minimum minutes in a season before its per-90/% advanced data is trustworthy.
+ * Below this, dividing by a tiny sample inflates per-90 rates into nonsense (a
+ * 14-minute sub with one shot reads as 5+ xG/90), so the performance radar is
+ * suppressed. ~5 full matches; ~60% of players with advanced data clear it.
+ */
+export const RADAR_MIN_MINUTES = 450;
+
 // ─────────────────────────── Player listing ───────────────────────────
 
 export interface PlayerListItem {
@@ -108,7 +116,9 @@ export interface PlayerProfile {
   stats: { season: number; apps: number; minutes: number; goals: number; assists: number; rating: number | null; xg: number | null } | null;
   /** All seasons newest-first (historical backfill + current) — powers the Seasons tab. */
   seasonHistory: { season: number; apps: number; minutes: number; goals: number; assists: number; rating: number | null; xg: number | null }[];
-  radar: Record<string, number> | null; // Sportmonks advanced per-90/% for the performance radar
+  radar: Record<string, number> | null; // Sportmonks advanced per-90/% — newest season clearing the minutes floor (null if none qualify)
+  radarSeason: number | null;            // season the radar is drawn from (may predate current when the current season is low-sample)
+  radarLowSample: boolean;               // advanced data exists but no season clears RADAR_MIN_MINUTES → show an honest "not enough minutes" note
   series: { label: string; v: number }[]; // millions, ~12 monthly points
 }
 
@@ -163,8 +173,19 @@ export function toPlayerProfile(r: PlayerProfileRow, now: Date = new Date()): Pl
     .filter(([k]) => typeof scores[k] === "number")
     .map(([k, label]) => ({ label, value: Math.round(scores[k]) }));
 
-  const stat = (r.player_stats ?? []).slice().sort((a, b) => b.season - a.season)[0] ?? null;
-  const radar = stat?.advanced && typeof stat.advanced === "object" ? stat.advanced : null;
+  const statsDesc = (r.player_stats ?? []).slice().sort((a, b) => b.season - a.season);
+  const stat = statsDesc[0] ?? null;
+
+  // Performance radar: per-90/% rates are only meaningful with a real minutes sample.
+  // Use the newest season whose advanced sample clears the floor; if a player has advanced
+  // data but no season qualifies (e.g. a fringe sub), suppress the radar and flag it so the
+  // profile shows an honest "not enough minutes" note instead of an extrapolated-noise chart.
+  const radarRow = statsDesc.find(
+    (s) => s.advanced && typeof s.advanced === "object" && Number(s.advanced.mins ?? 0) >= RADAR_MIN_MINUTES,
+  );
+  const radar = radarRow?.advanced ?? null;
+  const radarSeason = radarRow?.season ?? null;
+  const radarLowSample = !radarRow && statsDesc.some((s) => s.advanced && typeof s.advanced === "object");
 
   // Confidence band derived from the LIVE value + confidence (the stored band_low/high
   // are static-to-anchor and degenerate; this tracks the value and widens as confidence drops).
@@ -231,6 +252,8 @@ export function toPlayerProfile(r: PlayerProfileRow, now: Date = new Date()): Pl
         xg: s.xg,
       })),
     radar,
+    radarSeason,
+    radarLowSample,
     series,
   };
 }

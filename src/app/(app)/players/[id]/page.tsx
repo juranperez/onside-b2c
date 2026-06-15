@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtVal, fmtDelta } from "@/lib/format";
+import { fmtVal } from "@/lib/format";
 import { Card, Avatar, Delta, Chip, SectionHead, Button } from "@/components/ui";
 import { JsonLd } from "@/components/seo/json-ld";
 import { WatchButton } from "@/components/players/WatchButton";
@@ -10,7 +10,7 @@ import { ShareButton } from "@/components/ui/share-button";
 import { RumourCard } from "@/components/transfers/rumour-card";
 import { PerformanceRadar, radarRows } from "@/components/players/PerformanceRadar";
 import { getRumoursForPlayer } from "@/lib/queries/rumours";
-import { getPlayerBySlug, getSimilarPlayers, getActiveInjury } from "@/lib/queries";
+import { getPlayerBySlug, getSimilarPlayers, getActiveInjury, currentSeasonYear } from "@/lib/queries";
 
 export const revalidate = 3600;
 
@@ -46,6 +46,10 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   const maxV = Math.max(...player.series.map((s) => s.v), 1);
   const minV = Math.min(...player.series.map((s) => s.v), 0);
   const range = maxV - minV || 1;
+  const radarSeasonLabel =
+    player.radarSeason == null || player.radarSeason === currentSeasonYear()
+      ? "this season"
+      : `${player.radarSeason}/${String((player.radarSeason + 1) % 100).padStart(2, "0")}`;
 
   return (
     <div>
@@ -150,8 +154,8 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                 </div>
               </div>
             )}
-            {/* Performance radar — real Sportmonks per-90 data */}
-            {player.radar && (
+            {/* Performance radar — real Sportmonks per-90 data, minutes-gated (RADAR_MIN_MINUTES) */}
+            {player.radar ? (
               <Card className="p-6">
                 <SectionHead eyebrow="Performance profile" title="How they play" />
                 <div className="flex flex-col sm:flex-row items-center gap-6 mt-1">
@@ -165,9 +169,16 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                     ))}
                   </dl>
                 </div>
-                <p className="text-[10px] text-mute-soft mt-4">Per-90 and percentages, this season &middot; Onside data engine</p>
+                <p className="text-[10px] text-mute-soft mt-4">Per-90 and percentages, {radarSeasonLabel} &middot; Onside data engine</p>
               </Card>
-            )}
+            ) : player.radarLowSample ? (
+              <Card className="p-6">
+                <SectionHead eyebrow="Performance profile" title="How they play" />
+                <p className="text-[13px] text-mute mt-1">
+                  {player.displayName} hasn&apos;t played enough minutes this season for a reliable performance profile yet — we hold the radar back rather than chart noise off a small sample.
+                </p>
+              </Card>
+            ) : null}
 
             {/* Season-by-season history (historical backfill) */}
             {player.seasonHistory.length > 1 && (
