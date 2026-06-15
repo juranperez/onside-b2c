@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Search, ShieldCheck, X, Bookmark, Banknote } from "lucide-react";
+import { Search, ShieldCheck, X, Bookmark, Banknote, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LeagueOpt {
@@ -23,6 +23,7 @@ export function FilterRail({ leagues, mineAvailable = false }: { leagues: League
   const params = useSearchParams();
   const [, startTransition] = useTransition();
   const [club, setClub] = useState(params.get("club") ?? "");
+  const [open, setOpen] = useState(false); // mobile: collapse secondary filters behind a toggle
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setParam = (key: string, value: string | null) => {
@@ -53,6 +54,7 @@ export function FilterRail({ leagues, mineAvailable = false }: { leagues: League
 
   return (
     <div className="space-y-2.5 mb-5">
+      {/* Always visible: status chips + a mobile "Filters" toggle for the rest. */}
       <div className="flex items-center gap-2 flex-wrap">
         {STATUSES.map((s) => (
           <button
@@ -67,53 +69,16 @@ export function FilterRail({ leagues, mineAvailable = false }: { leagues: League
           </button>
         ))}
 
-        {mineAvailable && (
-          <button
-            onClick={() => setParam("mine", mine ? null : "1")}
-            className={cn(
-              "h-7 px-3 rounded-full text-[12px] font-medium transition cursor-pointer border inline-flex items-center gap-1.5",
-              mine ? "bg-acc text-ink-950 border-acc" : "bg-overlay/5 text-mute border-line hover:text-fg",
-            )}
-          >
-            <Bookmark size={12} /> My Market
-          </button>
-        )}
-
         <button
-          onClick={() => setParam("sort", feeSort ? null : "fee")}
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
           className={cn(
-            "h-7 px-3 rounded-full text-[12px] font-medium transition cursor-pointer border inline-flex items-center gap-1.5",
-            feeSort ? "bg-acc text-ink-950 border-acc" : "bg-overlay/5 text-mute border-line hover:text-fg",
+            "md:hidden h-7 px-3 rounded-full text-[12px] font-medium transition cursor-pointer border inline-flex items-center gap-1.5",
+            open || hasFilters ? "bg-acc/15 text-acc border-acc/30" : "bg-overlay/5 text-mute border-line hover:text-fg",
           )}
         >
-          <Banknote size={12} /> Highest fee
+          <SlidersHorizontal size={12} /> Filters{hasFilters ? " ·" : ""}
         </button>
-
-        <button
-          onClick={() => setParam("min", credible ? null : "70")}
-          className={cn(
-            "h-7 px-3 rounded-full text-[12px] font-medium transition cursor-pointer border inline-flex items-center gap-1.5",
-            credible ? "bg-up/15 text-up border-up/30" : "bg-overlay/5 text-mute border-line hover:text-fg",
-          )}
-        >
-          <ShieldCheck size={12} /> Credible only
-        </button>
-
-        <div className="flex items-center gap-2 h-7 px-3 rounded-full bg-overlay/5 border border-line focus-within:border-mute transition min-w-[180px]">
-          <Search size={12} className="text-mute-soft shrink-0" />
-          <input
-            value={club}
-            onChange={(e) => setClub(e.target.value)}
-            placeholder="Filter by club…"
-            aria-label="Filter rumours by club"
-            className="w-full bg-transparent outline-none text-[12px] placeholder:text-mute-soft"
-          />
-          {club && (
-            <button onClick={() => setClub("")} aria-label="Clear club filter" className="text-mute-soft hover:text-fg cursor-pointer">
-              <X size={11} />
-            </button>
-          )}
-        </div>
 
         {hasFilters && (
           <button
@@ -128,22 +93,75 @@ export function FilterRail({ leagues, mineAvailable = false }: { leagues: League
         )}
       </div>
 
-      {leagues.length > 0 && (
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {leagues.map((l) => (
+      {/* Secondary filters — collapsed on mobile (tap Filters), always shown on desktop. */}
+      <div className={cn("space-y-2.5", open ? "block" : "hidden md:block")}>
+        <div className="flex items-center gap-2 flex-wrap">
+          {mineAvailable && (
             <button
-              key={l.slug}
-              onClick={() => setParam("league", league === l.slug ? null : l.slug)}
+              onClick={() => setParam("mine", mine ? null : "1")}
               className={cn(
-                "h-6 px-2.5 rounded-full text-[11px] transition cursor-pointer border",
-                league === l.slug ? "bg-acc/15 text-acc border-acc/30 font-semibold" : "bg-transparent text-mute-soft border-line/60 hover:text-fg",
+                "h-7 px-3 rounded-full text-[12px] font-medium transition cursor-pointer border inline-flex items-center gap-1.5",
+                mine ? "bg-acc text-ink-950 border-acc" : "bg-overlay/5 text-mute border-line hover:text-fg",
               )}
             >
-              {l.name}
+              <Bookmark size={12} /> My Market
             </button>
-          ))}
+          )}
+
+          <button
+            onClick={() => setParam("sort", feeSort ? null : "fee")}
+            className={cn(
+              "h-7 px-3 rounded-full text-[12px] font-medium transition cursor-pointer border inline-flex items-center gap-1.5",
+              feeSort ? "bg-acc text-ink-950 border-acc" : "bg-overlay/5 text-mute border-line hover:text-fg",
+            )}
+          >
+            <Banknote size={12} /> Highest fee
+          </button>
+
+          <button
+            onClick={() => setParam("min", credible ? null : "70")}
+            className={cn(
+              "h-7 px-3 rounded-full text-[12px] font-medium transition cursor-pointer border inline-flex items-center gap-1.5",
+              credible ? "bg-up/15 text-up border-up/30" : "bg-overlay/5 text-mute border-line hover:text-fg",
+            )}
+          >
+            <ShieldCheck size={12} /> Credible only
+          </button>
+
+          <div className="flex items-center gap-2 h-7 px-3 rounded-full bg-overlay/5 border border-line focus-within:border-mute transition min-w-[180px]">
+            <Search size={12} className="text-mute-soft shrink-0" />
+            <input
+              value={club}
+              onChange={(e) => setClub(e.target.value)}
+              placeholder="Filter by club…"
+              aria-label="Filter rumours by club"
+              className="w-full bg-transparent outline-none text-[12px] placeholder:text-mute-soft"
+            />
+            {club && (
+              <button onClick={() => setClub("")} aria-label="Clear club filter" className="text-mute-soft hover:text-fg cursor-pointer">
+                <X size={11} />
+              </button>
+            )}
+          </div>
         </div>
-      )}
+
+        {leagues.length > 0 && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {leagues.map((l) => (
+              <button
+                key={l.slug}
+                onClick={() => setParam("league", league === l.slug ? null : l.slug)}
+                className={cn(
+                  "h-6 px-2.5 rounded-full text-[11px] transition cursor-pointer border",
+                  league === l.slug ? "bg-acc/15 text-acc border-acc/30 font-semibold" : "bg-transparent text-mute-soft border-line/60 hover:text-fg",
+                )}
+              >
+                {l.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

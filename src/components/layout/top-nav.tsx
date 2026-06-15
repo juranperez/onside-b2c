@@ -115,14 +115,15 @@ export function TopNav({ wcActive }: { wcActive: boolean }) {
               <Scale size={16} />
             </Link>
             <ThemeToggle />
-            <Link
-              href="/notifications"
-              aria-label="Notifications"
-              className="p-2 rounded-lg text-mute hover:text-fg hover:bg-overlay/5 transition relative"
-            >
-              <Bell size={16} />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-acc" />
-            </Link>
+            {user && (
+              <Link
+                href="/notifications"
+                aria-label="Notifications"
+                className="p-2 rounded-lg text-mute hover:text-fg hover:bg-overlay/5 transition relative"
+              >
+                <Bell size={16} />
+              </Link>
+            )}
             {user ? (
               <div className="hidden md:flex items-center gap-2">
                 <Link
