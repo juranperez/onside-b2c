@@ -2,12 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, BadgeCheck, XCircle } from "lucide-react";
 import { Card, Avatar, SectionHead, Button } from "@/components/ui";
-import { cn } from "@/lib/utils";
 import { ConfidenceBadge } from "@/components/transfers/confidence-badge";
 import { DiscussionThread } from "@/components/transfers/discussion-thread";
-import { OnsideBrief, SourceTrail } from "@/components/transfers/onside-brief";
+import { OnsideBrief } from "@/components/transfers/onside-brief";
+import { StageProgress } from "@/components/transfers/stage-progress";
+import { FeeValueBar } from "@/components/transfers/fee-value-bar";
+import { JourneyTimeline } from "@/components/transfers/journey-timeline";
+import { TrackDealButton } from "@/components/transfers/TrackDealButton";
 import { ShareButton } from "@/components/ui/share-button";
+import { stageOf } from "@/lib/rumours/stage";
 import { getRumourById, getRumourComments, getRumourSources, type RumourSourceItem } from "@/lib/queries/rumours";
+import { getFollowedRumourIds } from "@/lib/rumours/follow-actions";
 import { getSessionUser } from "@/lib/db/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -38,10 +43,11 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
     );
   }
 
-  const [comments, user, trail] = await Promise.all([
+  const [comments, user, trail, followedIds] = await Promise.all([
     getRumourComments(id).catch(() => []),
     getSessionUser().catch(() => null),
     getRumourSources(id).catch(() => [] as RumourSourceItem[]),
+    getFollowedRumourIds().catch(() => [] as string[]),
   ]);
   // Older rumours predate the sources table — fall back to the primary link.
   const sources: RumourSourceItem[] =
@@ -50,9 +56,10 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
       : r.url
         ? [{ url: r.url, source: r.source, tier: r.sourceTier, seenAt: r.lastUpdate }]
         : [];
-  const nowTs = new Date().getTime();
   const confirmed = r.status === "confirmed";
   const dead = r.status === "dead";
+  const stage = stageOf(r.summary, r.status);
+  const following = followedIds.includes(id);
 
   return (
     <div className="max-w-[760px] mx-auto px-6 py-8">
@@ -60,6 +67,7 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
         <ArrowLeft size={14} /> Transfer room
       </Link>
 
+      {/* Hero */}
       <div className="flex items-start gap-4">
         <Avatar name={r.player.name} clubBg={r.player.clubBg} clubColor={r.player.clubColor} src={r.player.photoUrl} size={56} ring />
         <div className="flex-1 min-w-0">
@@ -69,7 +77,7 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
           <div className="flex items-center gap-2 text-[14px] text-mute mt-1 min-w-0">
             <span className="truncate">{r.player.fromClub}</span>
             <ArrowRight size={14} className="text-mute-soft shrink-0" />
-            <span className="truncate text-fg font-medium">{r.toClub}</span>
+            <span className="truncate text-fg font-medium">{r.toClub === "—" ? "destination open" : r.toClub}</span>
           </div>
         </div>
         {confirmed ? (
@@ -85,35 +93,35 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
         )}
       </div>
 
-      <p className="text-[15px] text-mute mt-4 leading-relaxed">{r.summary}</p>
+      {/* The evolving lifecycle rail */}
+      <StageProgress stage={stage} dead={dead} />
 
-      <div className="flex items-center gap-2 mt-4 text-[13px] flex-wrap">
-        {r.reportedFeeM === 0 ? (
-          <span className="num font-semibold text-up">Free transfer</span>
-        ) : r.reportedFeeM != null ? (
-          <span className="num font-semibold">€{r.reportedFeeM}M reported</span>
-        ) : (
-          <span className="text-mute-soft">Fee undisclosed</span>
-        )}
-        <span className="text-mute-soft">vs</span>
-        <span className="num text-mute">€{r.onsideValueM}M Onside value</span>
-        <span className="mx-1 text-mute-soft">·</span>
-        <span className="text-mute-soft">
-          {r.source}
-          {r.corroborations > 1 ? ` +${r.corroborations - 1}` : ""}
-        </span>
-        <span className="ml-auto">
-          <ShareButton title={`${r.player.name} → ${r.toClub} — ${r.confidence.pct}% Onside Confidence`} />
-        </span>
+      {/* One-line state of play */}
+      <p className="text-[15px] text-mute mt-5 leading-relaxed">{r.summary}</p>
+
+      {/* Actions */}
+      <div className="flex items-center gap-5 mt-4">
+        {r.status === "rumour" && <TrackDealButton rumourId={id} initialFollowing={following} />}
+        <ShareButton title={`${r.player.name} → ${r.toClub} — ${r.confidence.pct}% Onside Confidence`} />
       </div>
 
-      {/* The Onside Brief — our own read on the saga, from tracked data */}
+      {/* The money read — reported fee vs the live valuation */}
+      <div className="mt-6 rounded-xl border border-line bg-ink-850 p-5">
+        <div className="text-[11px] uppercase tracking-wider text-mute-soft num mb-3">The money read</div>
+        <FeeValueBar feeM={r.reportedFeeM} valueM={r.onsideValueM} />
+        <div className="mt-3 text-[11px] text-mute-soft">
+          {r.source}
+          {r.corroborations > 1 ? ` · +${r.corroborations - 1} more ${r.corroborations === 2 ? "source" : "sources"}` : ""}
+        </div>
+      </div>
+
+      {/* The Onside Brief — our written read on the saga, from tracked data */}
       <OnsideBrief r={r} />
 
-      {/* Confidence breakdown */}
+      {/* Why we rate it — the confidence factors */}
       {!confirmed && !dead && (
         <Card className="p-6 mt-6">
-          <SectionHead eyebrow="How we scored it" title={`Onside Confidence ${r.confidence.pct}%`} />
+          <SectionHead eyebrow="Why we rate it" title={`Onside Confidence ${r.confidence.pct}%`} />
           <div className="mt-1">
             {r.confidence.factors.map((f) => (
               <div key={f.key} className="py-2.5 border-b border-line last:border-0">
@@ -134,8 +142,8 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
         </Card>
       )}
 
-      {/* The reporting trail — best sources, linked out */}
-      <SourceTrail sources={sources} now={nowTs} />
+      {/* The journey — the reporting arc, oldest to newest */}
+      <JourneyTimeline sources={sources} />
 
       {/* Discussion */}
       <div className="mt-8">
