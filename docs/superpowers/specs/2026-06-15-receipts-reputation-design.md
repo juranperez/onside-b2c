@@ -7,6 +7,25 @@ scoring added). The MLS-counsel read is the one external gate; the non-fixture b
 **Provenance:** brainstorm + 5-lens research (`wf_d91dd5dd-c2f`, `wf_c049b736-d88`) + spec
 adversarial review (`wf_b79c5c1f-343`)
 
+## ⛔ Amendment 2026-06-16 (PM) — fixtures CUT; transfer-only v1; no counsel
+**Perez's call: avoid the counsel ask and play it safe.** Consequence: the **fixture /
+match-result substrate is removed from the product** (predicting who wins a match is the
+betting-adjacent surface that needed legal clearance). This **eliminates the gambling-adjacency
+existential risk** — transfer calls are not betting — so the **§Jurisdiction master gate and the
+MLS-counsel read are no longer required for v1**, and the age-framing decision is moot (no
+match-outcome calls to age-gate).
+- **Cut:** WC fixture H/D/A calls, domestic "Match of the Day", the post-WC domestic fixture
+  sync, Plan 4 in its fixture form. The `fixture` `subject_type` is **not built** in v1.
+- **Cadence consequence (addressed):** fixtures were the fast-resolving substrate; transfer
+  sagas resolve in days–weeks, so the daily streak can't be resolution-paced. The daily habit
+  becomes a **participation-day streak** ("you made a call today"), decoupled from resolution
+  speed; "Call of the Day" = the hottest live saga to call; the reveal loop still fires on saga
+  resolution. **"You vs the house" cold-start is unchanged** (every Wire row's Confidence % is
+  the ever-present counterparty).
+- **Net v1 substrate = transfer calls only:** outcome (Will/Won't) + fee (higher/lower than
+  Onside's value). Everywhere below that says "fixture", "WC fixture", or a fixture "Call of the
+  Day" is **superseded by this amendment.**
+
 ## Review pass (2026-06-15) — what changed from the first draft
 
 A 4-critic review (product/cold-start · compliance · engineering · anti-abuse) found the v1
