@@ -2,7 +2,8 @@
 
 **Date:** 2026-06-15
 **Status:** Design approved (Perez, 2026-06-15); hardened by a 4-critic adversarial review
-(2026-06-15); **3 items still need Perez's call — tagged `NEEDS PEREZ`**
+(2026-06-15); **refined 2026-06-16 (decision memo — decisions 1–3 resolved, symmetric-divergence
+scoring added). The MLS-counsel read is the one external gate; the non-fixture build proceeds now.**
 **Provenance:** brainstorm + 5-lens research (`wf_d91dd5dd-c2f`, `wf_c049b736-d88`) + spec
 adversarial review (`wf_b79c5c1f-343`)
 
@@ -58,19 +59,21 @@ Brier). Two mechanics: (1) **pace the streak on FAST-resolving fixtures** (resol
 the #1 risk in 4/5 lenses); (2) one curated daily **Call of the Day**, never 50 open sagas.
 Seed the benchmark with the **anonymous "Onside house"** record published openly.
 
-### ⚠️ Post-WC cadence cliff (Jul 19) — `NEEDS PEREZ`
+### ⚠️ Post-WC cadence cliff (Jul 19) — DECIDED 2026-06-16: (a), PRE-WC critical path
 The fast-cadence engine is **WC-fixture-only** in the current code (`syncWcFixtures` is
 hard-coded to `WC_LEAGUE_ID=1 / WC_SEASON=2026`; the 30+ domestic leagues are *player/valuation*
 ingest, not fixture ingest). The day after the final the "Call of the Day" has no fixtures and
-the streak loop goes dark — exactly when retention should compound. **Pick one:**
-- **(a) Recommended — generalize the fixture resolver to a domestic "Match of the Day"** (same
-  resolver, new `subject_type`; leagues already exist; needs a domestic fixture sync). Summer-
-  calendar leagues (MLS/Brazil/Liga MX/Argentina) restart ~Jul 16, so this dovetails.
-- **(b)** Re-scope to "Call of the Week" / saga-driven daily; streak counts **participation-
-  days**, not fixture-days.
-- **(c)** Ship the streak as a **documented WC-window experiment** with a sunset on Jul 19.
-
-This must be a named milestone in the plan, not an unstated assumption.
+the streak loop goes dark — exactly when retention should compound and the once-only WC
+acquisition spike should be paying off.
+**Decision:** generalize the fixture resolver to a domestic **"Match of the Day"** (same
+resolver, new `subject_type`; leagues already exist; net-new piece = a domestic fixture sync).
+Summer-calendar leagues (MLS/Brazil/Liga MX/Argentina) restart ~Jul 16, so the resolver has live
+fixtures immediately. **This ships INSIDE the WC window as a pre-WC-final critical-path build,
+NOT a post-WC fast-follow** — domestic cadence arriving after Jul 19 loses the cohort the
+tournament paid to acquire. The domestic fixture sync is therefore a v1 critical-path item and
+the most schedule-sensitive line in the spec. (Legal note: domestic fixture calls are the *same
+legal animal* as WC fixture calls, so the §Jurisdiction counsel read must cover fixture calls
+**generally**, not WC-only.)
 
 ## The mechanic — one engine, pluggable resolvers
 
@@ -124,8 +127,21 @@ resolution.** (Sagas pause/revive — `romano-break.ts` revives dead sagas in pl
   band `high ≥ 70` per `confidence.ts band()`.
 - **Small-sample guardrail:** minimum-volume floor + shrink-to-mean + participation-rate
   multiplier, so a 2-for-2 streak can't top a 40–15 grinder.
-- **Difficulty weight** = f(distance of pick from house, earliness/stage at lock, value-gap),
+- **Difficulty weight** = f(divergence `d` from the house, earliness/stage at lock, value-gap),
   **capped + abuse-monitored from day one.**
+- **Symmetric in divergence (added 2026-06-16 — closes a variance-farming hole).** Let `d` =
+  normalized distance between the user's pick and the house lean at lock (`d=0` echoes the house,
+  `d=1` = maximally against a confident house). A win at high `d` pays large; a **loss at high
+  `d` must penalise symmetrically.** Otherwise capped downside + large upside = a lottery ticket
+  that is both farmable (eat floored losses, ride the occasional rocket) and the single most
+  gambling-flavoured behaviour, sitting in the surface meant to signal expertise. So: gain scales
+  with `d`, **penalty also scales with `d`**, the per-call contribution is **two-sided-capped**,
+  and break-even is calibrated against `confidence.ts` band accuracy (picking against a 70+ band
+  has **negative** expected rank unless the user beats the house's miss-rate). Contrarianism pays
+  only when calibrated — and this ties scoring to the published model (the cleanest "is this just
+  luck" defense). Start symmetric; tilt the downside steeper only if farming shows in the data.
+  **Farming-regression test (required):** N high-`d` calls at house-miss-rate accuracy must net
+  **negative** rank over the floor.
 - **Push/void are streak-neutral, excluded from the accuracy denominator, and zero hidden-score**
   — for *every* metric. Cap deliberate void-farming (a record dominated by push/void on
   free/undisclosed-prone subjects → those subjects drop out of streak eligibility).
@@ -176,27 +192,39 @@ Gambling-adjacency is **existential** (founder's MLS employment). FootballIndex/
   1X2 probability triplet beside a pickable outcome.** On the call surface render the house
   **lean qualitatively** ("Onside leans HOME") — keep the full forecast triplet on analysis
   pages only.
-- **WC/fixture calls** — `NEEDS PEREZ`: **v1 drops the "18+ / predictions-not-betting" self-
-  label** and makes fixture calls structurally identical to transfer calls. *Why:* `profiles`
-  has **no DOB field** and there's no age gate, so a self-applied "18+" is **unenforceable** —
-  and an unenforced age-restriction label is *worse* than none to a compliance reviewer (it
-  proves you classified the activity as restricted, then didn't restrict it). The free-prediction
-  framing (no stakes/odds/payouts) stays; the age-restriction language goes. **If you want real
-  age-gating instead, that's option (b): add a DOB affirmation to `profiles` + server-side gate
-  at lock — a v1 build item.** Pick one.
+- **WC/fixture calls** — `NEEDS PEREZ`, **contingent on §Jurisdiction (counsel), not pre-decided**
+  (refined 2026-06-16). Dropping the "18+" self-label is right *in isolation* — `profiles` has
+  **no DOB field**, so a self-applied "18+" is unenforceable, and an unenforced age-restriction
+  reads *worse* to a reviewer than a no-stakes free-prediction game. But the correct answer
+  depends on the counsel read, so **scope both branches now:** **Branch A** (counsel: no-stakes
+  framing holds, no US restriction) → drop the label, no DOB, ship structurally identical to
+  transfer calls. **Branch B** (counsel: US exposure) → add a DOB affirmation to `profiles` +
+  server-side gate at lock, possibly a geo carve-out. Counsel selects the branch.
 - **Editorial seeding = the anonymous institutional "Onside house" account only.** **No named
   human staff or the founder publishing personal match/fee predictions** (league
   integrity/gambling policy hazard for an employee, money or not).
 - **Publish "Resolution Rules v1"** (below) — a rule you haven't written can't be enforced, and
   ad-hoc resolution is the Romano credibility-crater.
 
-### Jurisdiction — `NEEDS PEREZ` (counsel)
-- The Terms governing-law is a literal placeholder (`terms/page.tsx:178`); no geo/IP infra
-  exists. Gambling-adjacency is jurisdiction-specific and exposure runs through a **US MLS**
-  club; US state DFS/contest law varies. **Before fixture calls go live:** fill the governing-law
-  clause, get the founder's MLS-side counsel a one-line written read on US exposure, and decide
-  whether fixture-outcome calls are offered to US users (a geo carve-out would be a v1 build —
-  none exists today).
+### Jurisdiction — `NEEDS PEREZ` (counsel) — THE MASTER GATE
+This decision **gates the entire fixture-call substrate** (the fast-cadence engine), **selects
+Branch A/B of the age-framing decision, and sets the legal scope of the domestic Match-of-the-Day
+build** — the one external dependency that unblocks the most downstream work. The Terms
+governing-law is a literal placeholder (`terms/page.tsx:178`); no geo/IP infra exists;
+gambling-adjacency is jurisdiction-specific and exposure runs through a **US MLS** club (US state
+DFS/contest law varies). **Before any fixture call ships, three artifacts must exist:** (1) the
+governing-law clause filled (a fast copy fix), (2) a one-line written read from MLS-side counsel
+on US exposure for **fixture-outcome calls GENERALLY (WC *and* domestic — same legal animal, so
+ask once)**, (3) an explicit decision on whether fixture calls are offered to US users (a geo
+carve-out is a real build; none exists today). Fold the Resolution-Rules-v1 sign-off into the
+same ask. **The read must return before the WC window or the daily streak can't launch.**
+
+### Footnote — the domain literally says "market"
+`onsidemarket.com` contains "market," which the compliance posture bans down to a lint gate.
+Tempered read: the risk is the trading-floor **silhouette** (order books, prices, tradable
+positions), **not the noun** — FootballIndex/Sorare died on tradable monetary positions, not the
+word. Defensible **as long as the product never shows tradable positions** (already forbidden).
+A deliberate brand call, not a v1 blocker: own it as "a market of **opinions**, not positions."
 
 ## Resolution Rules v1 (named, versioned, in-product — a v1 deliverable)
 
@@ -295,14 +323,20 @@ Resolution Rules v1 page, compliance lint gate, Sybil controls, activation instr
 standalone valuation call, scored interim credit, any global ranking, any monetary/tradable
 element, named-human editorial predictions.
 
-## Open decisions for Perez (resolve before the plan)
+## Decisions (resolved 2026-06-16 via decision memo)
 
-1. **Post-WC cadence** — (a) domestic Match-of-the-Day [recommended], (b) participation-day
-   streak, or (c) WC-window experiment with a sunset.
-2. **Fixture-call age framing** — (a) drop the 18+ self-label [recommended], or (b) build a real
-   DOB gate.
-3. **Jurisdiction/counsel** — governing-law clause + a one-line MLS-counsel read on US exposure
-   + whether fixture calls are offered to US users (geo carve-out = a build).
+1. **Post-WC cadence → (a) domestic Match-of-the-Day, as a PRE-WC critical-path build** (not a
+   post-WC fast-follow). The domestic fixture sync is on the critical path.
+2. **Fixture-call age framing → not pre-decided; contingent on counsel.** Both branches scoped
+   (A: drop label / no DOB; B: DOB gate + maybe geo). Counsel (Decision 3) selects.
+3. **Jurisdiction → the master gate.** Counsel read scoped to fixture calls *generally* (WC +
+   domestic). Nothing fixture-facing ships until the 3 artifacts exist.
+
+**The one external action (Perez): send MLS-side counsel the scoped one-line read** — it selects
+Decision 2's branch, sets Decision 1's legal scope, and gates the whole fixture-call engine.
+**Everything non-fixture (transfer outcome + fee calls, the receipts hub, the reputation/scoring
+engine, the inline chip, share→acquisition) proceeds in parallel, unblocked** — that is the v1
+build that starts now; the fixture-call surface is an isolated, counsel-gated branch.
 
 ## Risks (carried + review-confirmed)
 
