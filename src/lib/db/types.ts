@@ -740,6 +740,62 @@ export type Database = {
           },
         ]
       }
+      predictions: {
+        Row: {
+          call_type: string
+          earliness: number
+          house_confidence_pct: number | null
+          house_value_eur: number | null
+          id: string
+          locked_at: string
+          pick: string
+          points: number
+          resolved_at: string | null
+          status: string
+          subject_id: string
+          subject_type: string
+          user_id: string
+        }
+        Insert: {
+          call_type: string
+          earliness?: number
+          house_confidence_pct?: number | null
+          house_value_eur?: number | null
+          id?: string
+          locked_at?: string
+          pick: string
+          points?: number
+          resolved_at?: string | null
+          status?: string
+          subject_id: string
+          subject_type?: string
+          user_id: string
+        }
+        Update: {
+          call_type?: string
+          earliness?: number
+          house_confidence_pct?: number | null
+          house_value_eur?: number | null
+          id?: string
+          locked_at?: string
+          pick?: string
+          points?: number
+          resolved_at?: string | null
+          status?: string
+          subject_id?: string
+          subject_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "predictions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -825,6 +881,50 @@ export type Database = {
           signature?: string
         }
         Relationships: []
+      }
+      reputation: {
+        Row: {
+          accuracy_pct: number | null
+          losses: number
+          pushes: number
+          rank_score: number | null
+          scout_badge: boolean
+          streak: number
+          updated_at: string
+          user_id: string
+          wins: number
+        }
+        Insert: {
+          accuracy_pct?: number | null
+          losses?: number
+          pushes?: number
+          rank_score?: number | null
+          scout_badge?: boolean
+          streak?: number
+          updated_at?: string
+          user_id: string
+          wins?: number
+        }
+        Update: {
+          accuracy_pct?: number | null
+          losses?: number
+          pushes?: number
+          rank_score?: number | null
+          scout_badge?: boolean
+          streak?: number
+          updated_at?: string
+          user_id?: string
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reputation_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rumour_comments: {
         Row: {
