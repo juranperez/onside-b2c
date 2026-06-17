@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../db/types";
 import { notifyFollowers } from "../rumours/notify";
+import { resolveSubject } from "../receipts/resolve-subject";
 
 /**
  * Official confirmed transfers from Sportmonks (/transfers/latest — entitled on
@@ -198,6 +199,7 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
     const isFree = kind.includes("free");
     // 0 = free transfer (renders "Free"); null = fee unknown/undisclosed.
     const feeEur = isFree ? 0 : t.amount && t.amount > 0 ? Math.round(t.amount) : null;
+    const feeKind: "disclosed" | "free" | "undisclosed" = isFree ? "free" : feeEur != null ? "disclosed" : "undisclosed";
 
     // 1) System of record.
     const { error: trErr } = await db.from("transfers").upsert(
@@ -280,6 +282,8 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
       if (!error) {
         out.competingKilled++;
         await notifyFollowers(db, c.id, `Saga over — ${display} joined ${toName} instead`, { kind: "dead" });
+        // The player moved elsewhere — resolve receipts on this dead saga ('will' loses; 'wont' voids, never a free win).
+        await resolveSubject(c.id, { terminal: "killed_by_competing", confirmedFeeEur: null, feeKind: "undisclosed" }, db);
       }
     }
 
@@ -288,6 +292,8 @@ export async function syncOfficialTransfers(db: SupabaseClient<Database>): Promi
         { url: marker, rumour_id: rumourId, source: "Sportmonks official", tier: 1 },
         { onConflict: "url", ignoreDuplicates: true },
       );
+      // Resolve any receipts on the now-confirmed saga (idempotent — only open calls are scored).
+      await resolveSubject(rumourId, { terminal: "confirmed", confirmedFeeEur: feeEur, feeKind }, db);
     }
   }
 
