@@ -3,6 +3,10 @@ import { getTopPlayers, getClubsRanked, getLeagues, getNationalTeams } from "@/l
 
 const BASE_URL = "https://onsidemarket.com";
 
+// Regenerate at most once a day. The per-entity queries are cached at the read
+// layer too, so crawler hits on sitemap.xml don't re-run ~500 rows of reads.
+export const revalidate = 86400;
+
 /** Static routes, highest-priority surfaces first. */
 const STATIC_ROUTES: Array<{
   path: string;

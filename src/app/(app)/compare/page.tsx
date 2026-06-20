@@ -154,7 +154,7 @@ function Picker({ players, firstPick }: { players: PlayerListItem[]; firstPick: 
             return isPicked ? (
               <div key={p.id}>{card}</div>
             ) : (
-              <Link key={p.id} href={href}>
+              <Link key={p.id} href={href} prefetch={false}>
                 {card}
               </Link>
             );
