@@ -14,6 +14,8 @@ import { stageOf } from "@/lib/rumours/stage";
 import { getRumourById, getRumourComments, getRumourSources, type RumourSourceItem } from "@/lib/queries/rumours";
 import { getFollowedRumourIds } from "@/lib/rumours/follow-actions";
 import { getSessionUser } from "@/lib/db/supabase-server";
+import { CallChip } from "@/components/transfers/CallChip";
+import { getMyOutcomeCall } from "@/lib/receipts/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +62,7 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
   const dead = r.status === "dead";
   const stage = stageOf(r.summary, r.status);
   const following = followedIds.includes(id);
+  const myCall = user ? await getMyOutcomeCall(id, user.id).catch(() => null) : null;
 
   return (
     <div className="max-w-[760px] mx-auto px-6 py-8">
@@ -114,6 +117,11 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
           {r.corroborations > 1 ? ` · +${r.corroborations - 1} more ${r.corroborations === 2 ? "source" : "sources"}` : ""}
         </div>
       </div>
+
+      {/* Your call — inline "you vs the house" receipt (live sagas only, not Here We Go) */}
+      {r.status === "rumour" && r.sourceTier !== 0 && (
+        <CallChip subjectId={id} houseConfidencePct={r.confidence.pct} signedIn={!!user} myCall={myCall} />
+      )}
 
       {/* The Onside Brief — our written read on the saga, from tracked data */}
       <OnsideBrief r={r} />
