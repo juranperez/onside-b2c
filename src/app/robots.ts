@@ -2,8 +2,12 @@ import type { MetadataRoute } from "next";
 
 const BASE_URL = "https://onsidemarket.com";
 
-/** Non-content surfaces: internal API helpers and auth — not useful to crawl/index. */
-const DISALLOW = ["/api/", "/auth/", "/watchlist"];
+/**
+ * Non-content + permutation surfaces, not useful to crawl/index. `/compare?a=&b=`
+ * is a combinatorial space and `/search` is query-driven — letting bots stampede
+ * them hammered the uncached read path and blew the Supabase egress quota (402).
+ */
+const DISALLOW = ["/api/", "/auth/", "/watchlist", "/compare", "/search"];
 
 /**
  * AI assistant + answer-engine crawlers we explicitly welcome (AEO/GEO).

@@ -698,10 +698,12 @@ export async function getWcFixtures(): Promise<WcFixture[]> {
     const h = f.home_id ? metaBySlug.get(f.home_id) : null;
     const a = f.away_id ? metaBySlug.get(f.away_id) : null;
     const status = (f.status as FixtureStatus) ?? "scheduled";
-    // Pre-match forecast whenever both squads are valued — squad values don't
-    // move with the result, so it stays honest to recompute it after the fact.
+    // Pre-match forecast whenever both teams are known. Squad value leads the
+    // model, but a missing/zero value (a squad we couldn't price, e.g. Qatar)
+    // falls back to the FIFA-rank anchor rather than hiding the forecast. Values
+    // don't move with the result, so it stays honest to recompute it after.
     const forecast =
-      h?.value && a?.value
+      h && a
         ? onsideForecast({ homeValueEur: Number(h.value), awayValueEur: Number(a.value), homeRank: h.rank, awayRank: a.rank, neutral: true })
         : null;
     const live =

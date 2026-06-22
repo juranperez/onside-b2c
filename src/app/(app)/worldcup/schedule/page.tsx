@@ -113,8 +113,7 @@ function MatchRow({ f }: { f: WcFixture }) {
             {f.verdict.hit ? "✓ Onside called it" : "✗ Against the forecast"}
           </span>
           <span className="num text-[10.5px] text-mute-soft tabular-nums">
-            had {f.verdict.predicted === "home" ? homeCode : f.verdict.predicted === "away" ? awayCode : "draw"}{" "}
-            {f.verdict.predictedPct}% · {homeCode} {f.forecast.home}% / draw {f.forecast.draw}% / {awayCode} {f.forecast.away}%
+            {homeCode} {f.forecast.home}% / draw {f.forecast.draw}% / {awayCode} {f.forecast.away}%
           </span>
         </div>
       )}
