@@ -171,7 +171,7 @@ function Picker({ players, picked }: { players: PlayerListItem[]; picked: string
             return isPicked || full ? (
               <div key={p.id}>{card}</div>
             ) : (
-              <Link key={p.id} href={href}>
+              <Link key={p.id} href={href} prefetch={false}>
                 {card}
               </Link>
             );

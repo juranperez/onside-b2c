@@ -201,3 +201,25 @@ describe("matchDestClub — phrase tokens make the giants reachable", () => {
     expect(matchDestClub("Arsenal and Tottenham battle for defender", clubIdx, "Bournemouth")).toBeNull();
   });
 });
+
+describe("matchDestClub — Here We Go seller exclusion (the romano-watch '—' bug)", () => {
+  // A Romano break always names the SELLING club next to the destination, so a
+  // match that doesn't exclude the seller sees two clubs and bails to null — which
+  // stranded Saibari→Bayern, Moreira→Leverkusen et al. as candidates off the Wire.
+  const HWG = [
+    { id: "bayern", name: "Bayern München", name_norm: "bayern munchen", short_name: "Bayern" },
+    { id: "psv", name: "PSV Eindhoven", name_norm: "psv eindhoven", short_name: "PSV" },
+    { id: "leverkusen", name: "Bayer Leverkusen", name_norm: "bayer 04 leverkusen", short_name: null },
+    { id: "lyon", name: "Olympique Lyon", name_norm: "olympique lyon", short_name: "Lyon" },
+  ];
+  const hwgIdx = buildClubIndex(HWG);
+
+  it("collapses to null when the seller is not excluded (the bug)", () => {
+    expect(matchDestClub("Ismael Saibari to FC Bayern, here we go! €55m fee to PSV Eindhoven.", hwgIdx, null)).toBeNull();
+  });
+
+  it("resolves the destination once the seller (current club) is excluded", () => {
+    expect(matchDestClub("Ismael Saibari to FC Bayern, here we go! €55m fee to PSV Eindhoven.", hwgIdx, "PSV Eindhoven")).toBe("Bayern München");
+    expect(matchDestClub("Afonso Moreira to Bayer Leverkusen, here we go! Olympique Lyon receive €32m.", hwgIdx, "Olympique Lyon")).toBe("Bayer Leverkusen");
+  });
+});

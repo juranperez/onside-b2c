@@ -10,6 +10,7 @@ export const WC_COMPETITION = "World Cup 2026";
 // Everything else maps by exact (case-insensitive) name.
 const NAME_ALIASES: Record<string, string> = {
   "cape verde islands": "cape-verde",
+  czechia: "czech-republic",
   "türkiye": "turkey",
   "turkiye": "turkey",
   "congo dr": "dr-congo",

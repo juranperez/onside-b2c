@@ -69,13 +69,19 @@ export async function watchRomano(db: SupabaseClient<Database>): Promise<RomanoW
   const { data: clubRows } = await db.from("clubs").select("id,name,name_norm,short_name");
   const cIdx = buildClubIndex((clubRows ?? []) as { id: string; name: string; name_norm: string | null; short_name: string | null }[]);
   const nameById = new Map(players.map((p) => [p.id, p.known_as || p.name_norm || p.id] as const));
+  // Exclude the player's current (selling) club from destination matching. A Here
+  // We Go always names the seller too ("€55m fee to PSV", "from Benfica", "Lyon
+  // receive €32m"); with nothing excluded that second club makes matchDestClub
+  // ambiguous and it collapses to "—", stranding the break in the review queue.
+  // Mirrors ingestRumours, which already passes the seller via currentClub.
+  const clubByPlayerId = new Map(players.map((p) => [p.id, p.clubs?.name ?? null]));
 
   for (const post of posts) {
     if (seen.has(post.uri)) { res.skipped++; continue; }
     if (!isHereWeGo(post)) { res.skipped++; continue; }
     const text = breakText(post);
     const pm = matchPlayer(text, pIdx);
-    const club = matchDestClub(text, cIdx, null) ?? "—";
+    const club = matchDestClub(text, cIdx, pm ? clubByPlayerId.get(pm.playerId) ?? null : null) ?? "—";
     const existing = pm
       ? (((await db.from("rumours").select("id,status,to_club").eq("player_id", pm.playerId)).data ?? []) as { id: string; status: SagaStatus; to_club: string }[])
       : [];
