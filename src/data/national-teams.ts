@@ -106,6 +106,7 @@ const SOUTH_AFRICA: NationalTeamData = {
   fifaRanking: 56,
   manager: "Hugo Broos",
   wcTitles: 0,
+  group: "F",
   stage: "Round of 32",
   odds: "+25000",
   note: "Player values reflect Transfermarkt market values with a +50% uplift after Bafana Bafana reached the Round of 32.",
@@ -215,4 +216,107 @@ export function groupSquad(t: NationalTeamData) {
     ...g,
     players: t.squad.filter((p) => p.pos === g.key),
   })).filter((g) => g.players.length > 0);
+}
+
+// Lightweight directory of every team in the tournament, used to link the
+// group stage and to render a basic profile for teams without a full squad
+// yet. South Africa take the Group F berth on their run to the Round of 32.
+export interface WorldCupTeam {
+  code: string;
+  name: string;
+  flag: string;
+  fifaRanking: number;
+}
+
+export interface WorldCupGroup {
+  letter: string;
+  teams: WorldCupTeam[];
+}
+
+export const WORLD_CUP_GROUPS: WorldCupGroup[] = [
+  { letter: "A", teams: [
+    { code: "usa", name: "USA", flag: "🇺🇸", fifaRanking: 11 },
+    { code: "mar", name: "Morocco", flag: "🇲🇦", fifaRanking: 13 },
+    { code: "sco", name: "Scotland", flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", fifaRanking: 38 },
+    { code: "per", name: "Peru", flag: "🇵🇪", fifaRanking: 32 },
+  ] },
+  { letter: "B", teams: [
+    { code: "eng", name: "England", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", fifaRanking: 4 },
+    { code: "den", name: "Denmark", flag: "🇩🇰", fifaRanking: 21 },
+    { code: "par", name: "Paraguay", flag: "🇵🇾", fifaRanking: 42 },
+    { code: "svn", name: "Slovenia", flag: "🇸🇮", fifaRanking: 52 },
+  ] },
+  { letter: "C", teams: [
+    { code: "arg", name: "Argentina", flag: "🇦🇷", fifaRanking: 1 },
+    { code: "mex", name: "Mexico", flag: "🇲🇽", fifaRanking: 15 },
+    { code: "jpn", name: "Japan", flag: "🇯🇵", fifaRanking: 18 },
+    { code: "hon", name: "Honduras", flag: "🇭🇳", fifaRanking: 72 },
+  ] },
+  { letter: "D", teams: [
+    { code: "fra", name: "France", flag: "🇫🇷", fifaRanking: 2 },
+    { code: "col", name: "Colombia", flag: "🇨🇴", fifaRanking: 12 },
+    { code: "kor", name: "South Korea", flag: "🇰🇷", fifaRanking: 23 },
+    { code: "bhr", name: "Bahrain", flag: "🇧🇭", fifaRanking: 81 },
+  ] },
+  { letter: "E", teams: [
+    { code: "esp", name: "Spain", flag: "🇪🇸", fifaRanking: 3 },
+    { code: "ned", name: "Netherlands", flag: "🇳🇱", fifaRanking: 7 },
+    { code: "aus", name: "Australia", flag: "🇦🇺", fifaRanking: 24 },
+    { code: "idn", name: "Indonesia", flag: "🇮🇩", fifaRanking: 89 },
+  ] },
+  { letter: "F", teams: [
+    { code: "ger", name: "Germany", flag: "🇩🇪", fifaRanking: 8 },
+    { code: "uru", name: "Uruguay", flag: "🇺🇾", fifaRanking: 9 },
+    { code: "can", name: "Canada", flag: "🇨🇦", fifaRanking: 33 },
+    { code: "rsa", name: "South Africa", flag: "🇿🇦", fifaRanking: 56 },
+  ] },
+  { letter: "G", teams: [
+    { code: "bra", name: "Brazil", flag: "🇧🇷", fifaRanking: 5 },
+    { code: "srb", name: "Serbia", flag: "🇷🇸", fifaRanking: 29 },
+    { code: "sui", name: "Switzerland", flag: "🇨🇭", fifaRanking: 19 },
+    { code: "cmr", name: "Cameroon", flag: "🇨🇲", fifaRanking: 44 },
+  ] },
+  { letter: "H", teams: [
+    { code: "por", name: "Portugal", flag: "🇵🇹", fifaRanking: 6 },
+    { code: "ita", name: "Italy", flag: "🇮🇹", fifaRanking: 10 },
+    { code: "ecu", name: "Ecuador", flag: "🇪🇨", fifaRanking: 30 },
+    { code: "bol", name: "Bolivia", flag: "🇧🇴", fifaRanking: 78 },
+  ] },
+  { letter: "I", teams: [
+    { code: "bel", name: "Belgium", flag: "🇧🇪", fifaRanking: 14 },
+    { code: "cro", name: "Croatia", flag: "🇭🇷", fifaRanking: 16 },
+    { code: "chi", name: "Chile", flag: "🇨🇱", fifaRanking: 35 },
+    { code: "nga", name: "Nigeria", flag: "🇳🇬", fifaRanking: 40 },
+  ] },
+  { letter: "J", teams: [
+    { code: "pol", name: "Poland", flag: "🇵🇱", fifaRanking: 22 },
+    { code: "sen", name: "Senegal", flag: "🇸🇳", fifaRanking: 20 },
+    { code: "crc", name: "Costa Rica", flag: "🇨🇷", fifaRanking: 48 },
+    { code: "ksa", name: "Saudi Arabia", flag: "🇸🇦", fifaRanking: 56 },
+  ] },
+  { letter: "K", teams: [
+    { code: "tur", name: "Turkey", flag: "🇹🇷", fifaRanking: 26 },
+    { code: "aut", name: "Austria", flag: "🇦🇹", fifaRanking: 25 },
+    { code: "egy", name: "Egypt", flag: "🇪🇬", fifaRanking: 34 },
+    { code: "jam", name: "Jamaica", flag: "🇯🇲", fifaRanking: 61 },
+  ] },
+  { letter: "L", teams: [
+    { code: "swe", name: "Sweden", flag: "🇸🇪", fifaRanking: 17 },
+    { code: "ukr", name: "Ukraine", flag: "🇺🇦", fifaRanking: 28 },
+    { code: "gha", name: "Ghana", flag: "🇬🇭", fifaRanking: 43 },
+    { code: "pan", name: "Panama", flag: "🇵🇦", fifaRanking: 47 },
+  ] },
+];
+
+export interface WorldCupTeamInfo extends WorldCupTeam {
+  group: string;
+}
+
+export function getTeamInfo(code: string): WorldCupTeamInfo | undefined {
+  const lc = code.toLowerCase();
+  for (const g of WORLD_CUP_GROUPS) {
+    const t = g.teams.find((x) => x.code === lc);
+    if (t) return { ...t, group: g.letter };
+  }
+  return undefined;
 }

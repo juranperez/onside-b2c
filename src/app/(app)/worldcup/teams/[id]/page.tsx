@@ -3,20 +3,27 @@
 import { use } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Trophy, Star, TrendingUp } from "lucide-react";
+import { ArrowLeft, Trophy, Star, TrendingUp, Users } from "lucide-react";
 import { Card, SectionHead, Avatar, ClubBadge, Chip } from "@/components/ui";
 import { fmtVal } from "@/lib/utils";
 import {
   getNationalTeam,
+  getTeamInfo,
   teamSquadValue,
   teamAvgAge,
   groupSquad,
+  type WorldCupTeamInfo,
 } from "@/data/national-teams";
 
 export default function NationalTeamPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const team = getNationalTeam(id);
-  if (!team) notFound();
+
+  if (!team) {
+    const info = getTeamInfo(id);
+    if (!info) notFound();
+    return <TeamComingSoon info={info} />;
+  }
 
   const squadVal = teamSquadValue(team);
   const avgAge = teamAvgAge(team);
@@ -33,7 +40,8 @@ export default function NationalTeamPage({ params }: { params: Promise<{ id: str
         <div>
           <h1 className="display text-[clamp(28px,4vw,40px)] tracking-tight">{team.name}</h1>
           <div className="flex items-center gap-3 mt-1 text-[13px] text-mute">
-            <Chip tone="acc">{team.group ? `Group ${team.group}` : team.stage}</Chip>
+            {team.group && <Chip tone="acc">Group {team.group}</Chip>}
+            {team.stage && <Chip tone="up">{team.stage}</Chip>}
             <span>FIFA #{team.fifaRanking}</span>
             <span className="w-1 h-1 rounded-full bg-line" />
             <span>{team.confederation}</span>
@@ -148,6 +156,39 @@ export default function NationalTeamPage({ params }: { params: Promise<{ id: str
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function TeamComingSoon({ info }: { info: WorldCupTeamInfo }) {
+  return (
+    <div className="max-w-[1440px] mx-auto px-6 py-8">
+      <Link href="/worldcup" className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-white transition mb-6">
+        <ArrowLeft size={14} /> World Cup 2026
+      </Link>
+
+      <div className="flex items-center gap-5 mb-8">
+        <span className="text-[64px]">{info.flag}</span>
+        <div>
+          <h1 className="display text-[clamp(28px,4vw,40px)] tracking-tight">{info.name}</h1>
+          <div className="flex items-center gap-3 mt-1 text-[13px] text-mute">
+            <Chip tone="acc">Group {info.group}</Chip>
+            <span>FIFA #{info.fifaRanking}</span>
+          </div>
+        </div>
+      </div>
+
+      <Card className="p-10 text-center">
+        <Users size={22} className="mx-auto text-mute-soft mb-3" />
+        <div className="text-[15px] font-semibold">Full squad profile coming soon</div>
+        <p className="text-[13px] text-mute mt-2 max-w-[420px] mx-auto leading-relaxed">
+          We&apos;re still valuing {info.name}&apos;s 26-man roster. Check back closer to kickoff for the
+          complete squad and ONSIDE valuations.
+        </p>
+        <Link href="/worldcup/groups" className="inline-flex items-center gap-1.5 text-[13px] text-acc hover:underline mt-5">
+          Browse all groups <ArrowLeft size={13} className="rotate-180" />
+        </Link>
+      </Card>
     </div>
   );
 }
