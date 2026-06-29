@@ -56,3 +56,73 @@ export async function getReputation(userId: string): Promise<ReputationView> {
 export function reputationFromCalls(calls: ResolvedCall[]): ReturnType<typeof aggregateReputation> {
   return aggregateReputation(calls);
 }
+
+/** One of the user's calls, joined to the saga it was made on — for the receipts hub. */
+export interface ReceiptCall {
+  id: string;
+  callType: "outcome" | "fee";
+  pick: string; // will | wont | higher | lower
+  status: string; // open | won | lost | push | void
+  points: number;
+  houseConfidencePct: number | null;
+  houseValueEur: number | null;
+  lockedAt: string;
+  resolvedAt: string | null;
+  subject: {
+    id: string;
+    player: string;
+    playerSlug: string;
+    fromClub: string;
+    toClub: string;
+    photoUrl: string | null;
+  } | null;
+}
+
+/** Every call a user has made, newest first, joined to the saga for display. Powers the receipts hub. */
+export async function getMyCalls(userId: string): Promise<ReceiptCall[]> {
+  const { data: preds } = await adminDb()
+    .from("predictions")
+    .select("id, call_type, pick, status, points, house_confidence_pct, house_value_eur, locked_at, resolved_at, subject_id")
+    .eq("user_id", userId)
+    .order("locked_at", { ascending: false });
+  if (!preds?.length) return [];
+
+  // subject_id is a polymorphic text key (no FK), so resolve the sagas in a second batched read.
+  const ids = [...new Set(preds.map((p) => p.subject_id))];
+  const { data: rows } = await adminDb()
+    .from("rumours")
+    .select("id, to_club, players(name, known_as, slug, photo_url, clubs(name))")
+    .in("id", ids);
+  type RumourRow = {
+    id: string;
+    to_club: string | null;
+    players: { name: string; known_as: string | null; slug: string; photo_url: string | null; clubs: { name: string } | null } | null;
+  };
+  const byId = new Map(((rows ?? []) as unknown as RumourRow[]).map((r) => [r.id, r] as const));
+
+  return preds.map((p) => {
+    const r = byId.get(p.subject_id);
+    const pl = r?.players ?? null;
+    return {
+      id: p.id,
+      callType: p.call_type as "outcome" | "fee",
+      pick: p.pick,
+      status: p.status,
+      points: p.points,
+      houseConfidencePct: p.house_confidence_pct,
+      houseValueEur: p.house_value_eur,
+      lockedAt: p.locked_at,
+      resolvedAt: p.resolved_at,
+      subject: pl
+        ? {
+            id: p.subject_id,
+            player: pl.known_as ?? pl.name,
+            playerSlug: pl.slug,
+            fromClub: pl.clubs?.name ?? "Free agent",
+            toClub: r?.to_club ?? "—",
+            photoUrl: pl.photo_url ?? null,
+          }
+        : null,
+    };
+  });
+}

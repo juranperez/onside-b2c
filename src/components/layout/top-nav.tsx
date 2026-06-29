@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Search, Bell, Menu, X, Sparkles, Scale } from "lucide-react";
+import { Search, Bell, Menu, X, Sparkles, Scale, Trophy } from "lucide-react";
 import { OnsideMark } from "@/components/ui/logo";
 import { createClient } from "@/lib/db/supabase-browser";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -117,6 +117,16 @@ export function TopNav({ wcActive }: { wcActive: boolean }) {
             <ThemeToggle />
             {user && (
               <Link
+                href="/record"
+                aria-label="Your record"
+                title="Your record"
+                className="p-2 rounded-lg text-mute hover:text-fg hover:bg-overlay/5 transition"
+              >
+                <Trophy size={16} />
+              </Link>
+            )}
+            {user && (
+              <Link
                 href="/notifications"
                 aria-label="Notifications"
                 className="p-2 rounded-lg text-mute hover:text-fg hover:bg-overlay/5 transition relative"
@@ -206,15 +216,24 @@ export function TopNav({ wcActive }: { wcActive: boolean }) {
           ))}
           <div className="border-t border-line pt-2 mt-2">
             {user ? (
-              <button
-                onClick={() => {
-                  setMobileOpen(false);
-                  void handleSignOut();
-                }}
-                className="block w-full text-left px-3 py-2.5 rounded-lg text-[14px] font-medium text-mute hover:text-fg transition cursor-pointer"
-              >
-                Sign out
-              </button>
+              <>
+                <Link
+                  href="/record"
+                  onClick={() => setMobileOpen(false)}
+                  className="block px-3 py-2.5 rounded-lg text-[14px] font-medium text-mute hover:text-fg transition"
+                >
+                  My record
+                </Link>
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    void handleSignOut();
+                  }}
+                  className="block w-full text-left px-3 py-2.5 rounded-lg text-[14px] font-medium text-mute hover:text-fg transition cursor-pointer"
+                >
+                  Sign out
+                </button>
+              </>
             ) : (
               <Link
                 href="/login"

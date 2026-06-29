@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, X, Lock } from "lucide-react";
+import { Check, X, Lock, ArrowRight } from "lucide-react";
 import { lockCall } from "@/lib/receipts/lock-action";
 
 export interface MyCallView {
@@ -58,7 +58,12 @@ export function CallChip({
       <div className="text-[11px] uppercase tracking-wider text-mute-soft num mb-3">Your call</div>
 
       {call ? (
-        <Locked call={call} />
+        <>
+          <Locked call={call} />
+          <Link href="/record" className="mt-3 inline-flex items-center gap-1 text-[11.5px] text-mute-soft hover:text-acc transition">
+            View your record <ArrowRight size={11} />
+          </Link>
+        </>
       ) : !signedIn ? (
         <p className="text-[13px] text-mute">
           <Link href="/login" className="text-acc hover:underline">Sign in</Link> to put your call on the record —

@@ -3,6 +3,7 @@ import type { Database } from "../db/types";
 import { fold, buildPlayerIndex, buildClubIndex, matchPlayer, matchDestClub, stripJournalists, type MatchStrength } from "./match";
 import { doneLanguage } from "../rumours/stage";
 import { notifyFollowers } from "../rumours/notify";
+import { resolveSubject } from "../receipts/resolve-subject";
 
 export interface FeedSource {
   name: string; // fallback source label
@@ -268,6 +269,8 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
       if (!error) {
         c.status = "dead";
         await notifyFollowers(db, c.id, `Saga over — deal done with ${toName} instead`, { kind: "dead" });
+        // Player moved elsewhere — score receipts on the dead saga ('will' loses, 'wont' voids, never a free win).
+        await resolveSubject(c.id, { terminal: "killed_by_competing", confirmedFeeEur: null, feeKind: "undisclosed" }, db);
       }
     }
   };
@@ -343,6 +346,9 @@ export async function ingestRumours(db: SupabaseClient<Database>, feeds: FeedSou
             confirmedPlayers.add(hit.playerId);
             await notifyFollowers(db, t.id, `Deal done: ${resolved.summary.slice(0, 120)}`, { kind: "confirmed" });
             await killCompeting(hit.playerId, t.id, t.to_club);
+            // Press-consensus confirm settles outcome calls ('will' wins); fee calls void here —
+            // only the official-records feed carries the authoritative fee. Idempotent re-run later is a no-op.
+            await resolveSubject(t.id, { terminal: "confirmed", confirmedFeeEur: null, feeKind: "undisclosed" }, db);
           } else if (action.promote) {
             t.status = "rumour";
           }
