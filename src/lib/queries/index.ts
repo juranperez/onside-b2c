@@ -2,6 +2,7 @@ import "server-only";
 import { readDb } from "../db/server";
 import { clubStyle, monogram } from "../club-style";
 import { onsideForecast, liveForecast, forecastVerdict, type Forecast, type ForecastVerdict } from "../forecast/onside-forecast";
+import { buildBracket, type Bracket, type BracketFixture, type BracketTeamMeta } from "../worldcup/bracket";
 import {
   toPlayerListItem,
   toPlayerProfile,
@@ -731,4 +732,22 @@ export async function getWcFixtures(): Promise<WcFixture[]> {
       verdict,
     };
   });
+}
+
+/** The live World Cup knockout bracket — R32 from real fixtures, later rounds auto-fill as the sync adds them. */
+export async function getWcBracket(): Promise<Bracket> {
+  const db = readDb();
+  const [fxRes, ntRes] = await Promise.all([
+    db
+      .from("fixtures")
+      .select("round,home_id,away_id,score_home,score_away,status,kickoff")
+      .eq("competition", "World Cup 2026")
+      .not("round", "ilike", "%group%")
+      .order("kickoff", { ascending: true }),
+    db.from("national_teams").select("slug,name,squad_value,fifa_rank"),
+  ]);
+  const teams: BracketTeamMeta = new Map(
+    (ntRes.data ?? []).map((n) => [n.slug, { name: n.name, valueEur: Number(n.squad_value ?? 0), rank: n.fifa_rank }] as const),
+  );
+  return buildBracket((fxRes.data ?? []) as unknown as BracketFixture[], teams);
 }

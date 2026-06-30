@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Globe, Calendar, Trophy } from "lucide-react";
 import { Button, Card, SectionHead, LiveDot, Chip } from "@/components/ui";
-import { getNationalTeams, getWcFixtures, getWatchPlayers, type NationalTeamSummary, type WcFixture } from "@/lib/queries";
+import { getNationalTeams, getWcFixtures, getWatchPlayers, getWcBracket, type NationalTeamSummary, type WcFixture } from "@/lib/queries";
 import { matchdaySlate } from "@/lib/wc-day";
 import { MatchdaySlate } from "@/components/worldcup/MatchdaySlate";
+import { BracketView } from "@/components/worldcup/Bracket";
 import { cn } from "@/lib/utils";
 import { CodeTile } from "@/components/worldcup/CodeTile";
 import { GoalAlertsPrompt } from "@/components/push/GoalAlertsPrompt";
@@ -58,6 +59,7 @@ export default async function WorldCupPage() {
   } catch (e) {
     console.error("[worldcup] fixtures unavailable:", e);
   }
+  const bracket = await getWcBracket().catch(() => null);
   const slate = matchdaySlate(fixtures, new Date());
   const slateSlugs = [...new Set(slate.fixtures.flatMap((f) => [f.home.slug, f.away.slug]).filter(Boolean))];
   const watch = slateSlugs.length ? await getWatchPlayers(slateSlugs).catch(() => ({})) : {};
@@ -84,54 +86,32 @@ export default async function WorldCupPage() {
   return (
     <div className="max-w-[1440px] mx-auto px-6 py-8">
       <GoalAlertsPrompt />
-      {/* Hero */}
-      <div className="relative rounded-2xl bg-ink-850 border border-line overflow-hidden mb-8">
-        <div className="absolute inset-0 grid-bg opacity-40 pointer-events-none" />
-        <div
-          className="absolute -top-20 -right-10 w-[400px] h-[400px] rounded-full pointer-events-none"
-          style={{ background: "radial-gradient(circle, rgba(232,255,90,0.1) 0%, transparent 60%)" }}
-        />
-        <div className="relative p-8 md:p-12">
-          <div className="flex items-center gap-2 mb-4">
-            <Trophy size={16} className="text-acc" />
-            <span className="text-[11px] uppercase tracking-[0.18em] text-acc num font-semibold">
-              World Cup 2026
-            </span>
-          </div>
-          <h1 className="display text-[clamp(32px,5vw,56px)] tracking-tight leading-[1.05] max-w-[640px]">
-            48 nations. <span className="num">{money(totalValueM)}</span> in talent.{" "}
-            <span className="font-serif italic text-acc">One trophy.</span>
-          </h1>
-          <p className="mt-4 text-mute text-[16px] max-w-[520px]">
-            The first 48-team tournament, with every squad valued by the Onside engine. Combined value, the
-            group of death, and where the talent really sits.
-          </p>
-
-          <div className="mt-8 flex items-center gap-6 flex-wrap">
-            <div className="text-center">
-              <div className="display text-[28px] num text-acc leading-none">{slate.label || "World Cup"}</div>
-              <div className="text-[11px] text-mute-soft uppercase tracking-wider mt-1">{slate.isToday ? "Today" : slate.label ? "Up next" : "2026"}</div>
+      {/* Knockout bracket — the hero, now the cup is in the knockouts */}
+      <div className="mb-10">
+        <div className="flex items-end justify-between mb-5 flex-wrap gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Trophy size={15} className="text-acc" />
+              <span className="text-[11px] uppercase tracking-[0.18em] text-acc num font-semibold">World Cup 2026 · Knockouts</span>
             </div>
-            <div className="w-px h-12 bg-line hidden md:block" />
-            <div className="flex items-center gap-8">
-              <Stat label="Nations" value={String(nations.length)} />
-              <Stat label="Groups" value={String(byGroup.size)} />
-              <Stat label="Total value" value={money(totalValueM)} />
-            </div>
+            <h1 className="display text-[clamp(28px,4.5vw,46px)] tracking-tight leading-[1.02]">
+              The bracket, <span className="font-serif italic text-acc">valued live.</span>
+            </h1>
+            <p className="text-mute text-[14px] mt-2 max-w-[500px]">
+              Every tie priced by the Onside engine — <span className="num text-fg font-semibold">{money(totalValueM)}</span> of
+              talent across the draw, our forecast on each game, scores as they land.
+            </p>
           </div>
-
-          <div className="mt-8 flex items-center gap-3 flex-wrap">
-            <Link href="/worldcup/schedule">
-              <Button kind="primary" icon={<Calendar size={14} />}>Match schedule</Button>
-            </Link>
-            <Link href="/worldcup/groups">
-              <Button kind="outline" icon={<Globe size={14} />}>View all groups</Button>
-            </Link>
-            <Link href="/worldcup/bracket">
-              <Button kind="outline" icon={<Trophy size={14} />}>Projected bracket</Button>
-            </Link>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link href="/worldcup/schedule"><Button kind="outline" size="sm" icon={<Calendar size={13} />}>Schedule</Button></Link>
+            <Link href="/worldcup/groups"><Button kind="outline" size="sm" icon={<Globe size={13} />}>Groups</Button></Link>
           </div>
         </div>
+        {bracket && bracket.rounds.length > 0 ? (
+          <BracketView bracket={bracket} />
+        ) : (
+          <Card className="p-10 text-center text-mute text-[13px]">The knockout bracket fills in as the group stage resolves.</Card>
+        )}
       </div>
 
       <MatchdaySlate label={slate.label} isToday={slate.isToday} fixtures={slate.fixtures} watch={watch} />
@@ -234,15 +214,6 @@ export default async function WorldCupPage() {
         Squad value is the sum of live Onside valuations across each nation&apos;s called-up players — a model
         estimate, not a market quote.
       </p>
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="display text-[24px] num">{value}</div>
-      <div className="text-[10px] text-mute-soft uppercase tracking-wider">{label}</div>
     </div>
   );
 }
