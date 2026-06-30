@@ -120,15 +120,16 @@ export function TopNav({ wcActive }: { wcActive: boolean }) {
                 href="/record"
                 aria-label="Your record"
                 title="Your record"
-                className="p-2 rounded-lg text-mute hover:text-fg hover:bg-overlay/5 transition"
+                className="hidden md:inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-acc/10 text-acc text-[12px] font-semibold hover:bg-acc/15 transition"
               >
-                <Trophy size={16} />
+                <Trophy size={14} /> Record
               </Link>
             )}
             {user && (
               <Link
                 href="/notifications"
                 aria-label="Notifications"
+                title="Notifications"
                 className="p-2 rounded-lg text-mute hover:text-fg hover:bg-overlay/5 transition relative"
               >
                 <Bell size={16} />
