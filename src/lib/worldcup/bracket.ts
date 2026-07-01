@@ -81,7 +81,8 @@ export function buildBracket(fixtures: BracketFixture[], teams: BracketTeamMeta)
       round, index,
       home: team(f.home_id), away: team(f.away_id),
       scoreHome: f.score_home, scoreAway: f.score_away, status, kickoff: f.kickoff,
-      forecast: status !== "finished" ? forecastFor(f.home_id, f.away_id) : null,
+      // Forecast is a pre-match read — drop it once the tie is live or settled so live games show LIVE + score.
+      forecast: status === "scheduled" ? forecastFor(f.home_id, f.away_id) : null,
     };
   };
 
