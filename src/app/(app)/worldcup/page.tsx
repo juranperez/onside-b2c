@@ -5,7 +5,7 @@ import { Button, Card, SectionHead, LiveDot, Chip } from "@/components/ui";
 import { getNationalTeams, getWcFixtures, getWatchPlayers, getWcBracket, type NationalTeamSummary, type WcFixture } from "@/lib/queries";
 import { matchdaySlate } from "@/lib/wc-day";
 import { MatchdaySlate } from "@/components/worldcup/MatchdaySlate";
-import { BracketView } from "@/components/worldcup/Bracket";
+import { BracketPredictor } from "@/components/worldcup/BracketPredictor";
 import { cn } from "@/lib/utils";
 import { CodeTile } from "@/components/worldcup/CodeTile";
 import { GoalAlertsPrompt } from "@/components/push/GoalAlertsPrompt";
@@ -97,9 +97,9 @@ export default async function WorldCupPage() {
             <h1 className="display text-[clamp(28px,4.5vw,46px)] tracking-tight leading-[1.02]">
               The bracket, <span className="font-serif italic text-acc">valued live.</span>
             </h1>
-            <p className="text-mute text-[14px] mt-2 max-w-[500px]">
+            <p className="text-mute text-[14px] mt-2 max-w-[520px]">
               Every tie priced by the Onside engine — <span className="num text-fg font-semibold">{money(totalValueM)}</span> of
-              talent across the draw, our forecast on each game, scores as they land.
+              talent across the draw. Tap your winners, build your bracket, and share it.
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -108,7 +108,7 @@ export default async function WorldCupPage() {
           </div>
         </div>
         {bracket && bracket.rounds.length > 0 ? (
-          <BracketView bracket={bracket} />
+          <BracketPredictor initial={bracket} />
         ) : (
           <Card className="p-10 text-center text-mute text-[13px]">The knockout bracket fills in as the group stage resolves.</Card>
         )}
