@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { adminDb } from "@/lib/db/admin";
 import { generateNews } from "@/lib/news/generate";
 
@@ -14,7 +15,14 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, disabled: true, reason: "set NEWS_ENGINE_ENABLED=1 to publish briefings" });
   }
   try {
-    return NextResponse.json({ ok: true, ...(await generateNews(adminDb())) });
+    const result = await generateNews(adminDb());
+    // Public reads go through the Next Data Cache (30-min window in readDb, which
+    // exists to protect the Supabase egress quota). Without an explicit purge a
+    // fresh briefing stays invisible for up to half an hour — unacceptable for a
+    // news surface. Purge only when content actually changed, so the safeguard
+    // still holds during quiet runs.
+    if (result.published > 0 || result.corrected > 0) revalidateTag("supabase-read");
+    return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
   }
