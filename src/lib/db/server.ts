@@ -15,9 +15,17 @@ import { publicEnv } from "../env";
  */
 const READ_REVALIDATE_SECONDS = 1800;
 
-/** Read-only anon client for Server Components (public data; RLS applies). */
-export function readDb() {
+/**
+ * Read-only anon client for Server Components (public data; RLS applies).
+ *
+ * `revalidate` may be shortened for surfaces where staleness is a defect rather
+ * than a saving — the news index is the freshest thing on the site, and a
+ * half-hour-old copy of it is simply wrong. Every entry keeps the shared
+ * "supabase-read" tag so a single purge still flushes everything.
+ */
+export function readDb(opts: { revalidate?: number } = {}) {
   const e = publicEnv();
+  const revalidate = opts.revalidate ?? READ_REVALIDATE_SECONDS;
   return createClient<Database>(e.NEXT_PUBLIC_SUPABASE_URL, e.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
     auth: { persistSession: false },
     global: {
@@ -25,7 +33,7 @@ export function readDb() {
       fetch: (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
         fetch(input, {
           ...init,
-          next: { revalidate: READ_REVALIDATE_SECONDS, tags: ["supabase-read"] },
+          next: { revalidate, tags: ["supabase-read"] },
         }),
     },
   });

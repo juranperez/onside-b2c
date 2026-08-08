@@ -1,6 +1,10 @@
 import { readDb } from "@/lib/db/server";
 import type { ArticleBody } from "./generate";
 
+/** News is the freshest surface on the site — a stale index is a defect, not a saving. */
+const NEWS_REVALIDATE_SECONDS = 60;
+const newsDb = () => readDb({ revalidate: NEWS_REVALIDATE_SECONDS });
+
 export interface ArticleListItem {
   slug: string;
   title: string;
@@ -50,7 +54,7 @@ function toListItem(r: Row): ArticleListItem {
 
 /** Newest-first briefings for the /news index and the homepage. */
 export async function listArticles(limit = 40): Promise<ArticleListItem[]> {
-  const { data } = await readDb()
+  const { data } = await newsDb()
     .from("news_articles")
     .select(SELECT)
     .order("published_at", { ascending: false })
@@ -59,7 +63,7 @@ export async function listArticles(limit = 40): Promise<ArticleListItem[]> {
 }
 
 export async function getArticleBySlug(slug: string): Promise<ArticleDetail | null> {
-  const { data } = await readDb().from("news_articles").select(SELECT).eq("slug", slug).maybeSingle();
+  const { data } = await newsDb().from("news_articles").select(SELECT).eq("slug", slug).maybeSingle();
   if (!data) return null;
   const row = data as Row;
   const body = row.body as ArticleBody;
@@ -75,7 +79,7 @@ export async function getArticleBySlug(slug: string): Promise<ArticleDetail | nu
 
 /** Slugs + timestamps for the sitemap. */
 export async function articleSitemapEntries(): Promise<{ slug: string; updatedAt: string }[]> {
-  const { data } = await readDb()
+  const { data } = await newsDb()
     .from("news_articles")
     .select("slug,updated_at")
     .order("published_at", { ascending: false })
