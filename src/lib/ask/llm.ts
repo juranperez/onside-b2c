@@ -102,7 +102,12 @@ export async function askStream(system: string, messages: ChatMessage[]): Promis
 
 export type CompleteResult = { text: string; provider: "groq" | "gemini" } | null;
 
-async function completeGroq(system: string, messages: ChatMessage[], maxTokens: number): Promise<string | null> {
+async function completeGroq(
+  system: string,
+  messages: ChatMessage[],
+  maxTokens: number,
+  json: boolean,
+): Promise<string | null> {
   const key = process.env.GROQ_API_KEY;
   if (!key) return null;
   const res = await fetch(GROQ_URL, {
@@ -112,6 +117,9 @@ async function completeGroq(system: string, messages: ChatMessage[], maxTokens: 
       model: GROQ_MODEL,
       temperature: 0.4,
       max_tokens: maxTokens,
+      // Server-side JSON mode: the API guarantees syntactically valid JSON, which
+      // models otherwise break by emitting raw newlines inside string values.
+      ...(json ? { response_format: { type: "json_object" } } : {}),
       ...(GROQ_MODEL.includes("gpt-oss") ? { reasoning_effort: "low" } : {}),
       messages: [{ role: "system", content: system }, ...messages],
     }),
@@ -121,7 +129,12 @@ async function completeGroq(system: string, messages: ChatMessage[], maxTokens: 
   return j.choices?.[0]?.message?.content?.trim() ?? null;
 }
 
-async function completeGemini(system: string, messages: ChatMessage[], maxTokens: number): Promise<string | null> {
+async function completeGemini(
+  system: string,
+  messages: ChatMessage[],
+  maxTokens: number,
+  json: boolean,
+): Promise<string | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
@@ -131,7 +144,11 @@ async function completeGemini(system: string, messages: ChatMessage[], maxTokens
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
-      generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens },
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: maxTokens,
+        ...(json ? { responseMimeType: "application/json" } : {}),
+      },
     }),
   });
   if (!res.ok) return null;
@@ -145,15 +162,20 @@ async function completeGemini(system: string, messages: ChatMessage[], maxTokens
  * cascade and free-tier-first doctrine as askStream, minus the SSE plumbing.
  * Returns null when every provider fails so callers can skip rather than throw.
  */
-export async function complete(system: string, messages: ChatMessage[], maxTokens = 900): Promise<CompleteResult> {
+export async function complete(
+  system: string,
+  messages: ChatMessage[],
+  opts: { maxTokens?: number; json?: boolean } = {},
+): Promise<CompleteResult> {
+  const { maxTokens = 900, json = false } = opts;
   try {
-    const groq = await completeGroq(system, messages, maxTokens);
+    const groq = await completeGroq(system, messages, maxTokens, json);
     if (groq) return { text: groq, provider: "groq" };
   } catch {
     // fall through to Gemini
   }
   try {
-    const gemini = await completeGemini(system, messages, maxTokens);
+    const gemini = await completeGemini(system, messages, maxTokens, json);
     if (gemini) return { text: gemini, provider: "gemini" };
   } catch {
     // fall through to null

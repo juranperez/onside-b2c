@@ -30,6 +30,21 @@ describe("compose", () => {
     }
   });
 
+  it("separates the lead source from the all-outlet report count", () => {
+    const p = buildPrompt(facts);
+    expect(p).toMatch(/Lead source[^\n]*The Athletic/);
+    expect(p).toMatch(/across ALL outlets[^\n]*3/);
+  });
+
+  it("never leaks the internal trigger into the prompt", () => {
+    expect(buildPrompt(facts)).not.toContain("stage_advance");
+  });
+
+  it("instructs a specific, keyword-rich headline and bans process talk", () => {
+    expect(SYSTEM).toMatch(/name the player AND the destination club/i);
+    expect(SYSTEM).toMatch(/never explain why this briefing is being published/i);
+  });
+
   it("names the source so the draft can satisfy the attribution check", () => {
     expect(buildPrompt(facts)).toContain("The Athletic");
   });

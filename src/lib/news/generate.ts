@@ -8,7 +8,8 @@ import { complete } from "@/lib/ask/llm";
 import { detectArticleEvents, type ArticleEvent } from "./events";
 import { newsworthiness, selectForPublication } from "./rank";
 import { buildSlug } from "./slug";
-import { validateArticle, type ArticleDraft } from "./validate";
+import { validateArticle } from "./validate";
+import { parseDraft } from "./parse";
 import { buildPrompt, SYSTEM, type ArticleFacts } from "./compose";
 
 const GLOBAL_CAP = 25;
@@ -63,20 +64,6 @@ function factsFor(r: RumourItem, e: ArticleEvent): ArticleFacts {
   };
 }
 
-/** Pull the JSON object out of a model response that may be fenced or padded. */
-function parseDraft(text: string): ArticleDraft | null {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start < 0 || end <= start) return null;
-  try {
-    const o = JSON.parse(text.slice(start, end + 1)) as Partial<ArticleDraft>;
-    if (typeof o.title !== "string" || typeof o.dek !== "string" || typeof o.body !== "string") return null;
-    return { title: o.title.trim(), dek: o.dek.trim(), body: o.body.trim() };
-  } catch {
-    return null;
-  }
-}
-
 /**
  * The news pipeline: detect → rank → cap → generate → validate → publish.
  *
@@ -129,7 +116,7 @@ export async function generateNews(db: SupabaseClient<Database>): Promise<Genera
     const r = byId.get(e.rumourId);
     if (!r) continue;
 
-    const gen = await complete(SYSTEM, [{ role: "user", content: buildPrompt(factsFor(r, e)) }]);
+    const gen = await complete(SYSTEM, [{ role: "user", content: buildPrompt(factsFor(r, e)) }], { json: true });
     if (!gen) {
       drop("llm-unavailable");
       continue;
