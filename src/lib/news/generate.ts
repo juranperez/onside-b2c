@@ -7,7 +7,7 @@ import { feeVerdict } from "@/lib/rumours/fee-verdict";
 import { complete } from "@/lib/ask/llm";
 import { detectArticleEvents, type ArticleEvent } from "./events";
 import { newsworthiness, selectForPublication } from "./rank";
-import { buildSlug } from "./slug";
+import { buildSlug, slugify } from "./slug";
 import { validateArticle } from "./validate";
 import { parseDraft } from "./parse";
 import { buildPrompt, SYSTEM, type ArticleFacts } from "./compose";
@@ -15,6 +15,11 @@ import { buildPrompt, SYSTEM, type ArticleFacts } from "./compose";
 const GLOBAL_CAP = 25;
 const PER_SAGA_CAP = 4;
 const SCAN_LIMIT = 200;
+/** Spacing between generations — a burst of 25 trips the free-tier rate limit. */
+const THROTTLE_MS = 1200;
+const RETRIES = 2;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Stored article body — prose plus the fact snapshot the page renders around it. */
 export interface ArticleBody {
@@ -70,7 +75,12 @@ function factsFor(r: RumourItem, e: ArticleEvent): ArticleFacts {
  * Every rejection path is counted rather than swallowed, so a run that publishes
  * nothing is diagnosable from the cron response alone.
  */
-export async function generateNews(db: SupabaseClient<Database>): Promise<GenerateResult> {
+export async function generateNews(
+  db: SupabaseClient<Database>,
+  opts: { globalCap?: number; perSagaCap?: number } = {},
+): Promise<GenerateResult> {
+  const globalCap = opts.globalCap ?? GLOBAL_CAP;
+  const perSagaCap = opts.perSagaCap ?? PER_SAGA_CAP;
   const result: GenerateResult = { scanned: 0, detected: 0, selected: 0, published: 0, corrected: 0, rejected: {} };
   const drop = (reason: string) => {
     result.rejected[reason] = (result.rejected[reason] ?? 0) + 1;
@@ -105,18 +115,20 @@ export async function generateNews(db: SupabaseClient<Database>): Promise<Genera
   }
   result.detected = candidates.length;
 
-  const selected = selectForPublication(candidates, {
-    globalCap: GLOBAL_CAP,
-    perSagaCap: PER_SAGA_CAP,
-    publishedPerSaga,
-  });
+  const selected = selectForPublication(candidates, { globalCap, perSagaCap, publishedPerSaga });
   result.selected = selected.length;
 
   for (const e of selected) {
     const r = byId.get(e.rumourId);
     if (!r) continue;
 
-    const gen = await complete(SYSTEM, [{ role: "user", content: buildPrompt(factsFor(r, e)) }], { json: true });
+    // Rate limits are transient; retry with backoff before giving up on a briefing.
+    const prompt = buildPrompt(factsFor(r, e));
+    let gen = await complete(SYSTEM, [{ role: "user", content: prompt }], { json: true });
+    for (let attempt = 1; !gen && attempt <= RETRIES; attempt++) {
+      await sleep(THROTTLE_MS * attempt * 2);
+      gen = await complete(SYSTEM, [{ role: "user", content: prompt }], { json: true });
+    }
     if (!gen) {
       drop("llm-unavailable");
       continue;
@@ -126,7 +138,11 @@ export async function generateNews(db: SupabaseClient<Database>): Promise<Genera
       drop("unparseable");
       continue;
     }
-    const verdict = validateArticle(draft, { sourceName: r.source, status: r.status });
+    const verdict = validateArticle(draft, {
+      sourceName: r.source,
+      status: r.status,
+      reportedFeeM: r.reportedFeeM,
+    });
     if (!verdict.ok) {
       drop(verdict.reason);
       continue;
@@ -152,7 +168,10 @@ export async function generateNews(db: SupabaseClient<Database>): Promise<Genera
     };
 
     const { error } = await db.from("news_articles").insert({
-      slug: buildSlug(r.player.slug, r.toClub, e.angle),
+      // Built from the DISPLAY name, not player.slug: the stored slug carries the
+      // provider id and full legal name ("ronald-federico-araujo-da-silva-101814"),
+      // which makes an ugly, keyword-poor URL.
+      slug: buildSlug(slugify(r.player.name), r.toClub, e.angle),
       rumour_id: r.id,
       player_id: r.player.id,
       event_type: e.type,
@@ -169,6 +188,7 @@ export async function generateNews(db: SupabaseClient<Database>): Promise<Genera
     }
     publishedKeys.add(e.eventKey);
     result.published++;
+    await sleep(THROTTLE_MS);
   }
 
   result.corrected = await applyCorrections(db, rumours);

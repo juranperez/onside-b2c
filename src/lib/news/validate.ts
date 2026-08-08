@@ -7,6 +7,8 @@ export interface ArticleDraft {
 export interface ValidateContext {
   sourceName: string;
   status: "rumour" | "confirmed" | "dead";
+  /** Reported fee in millions; null when undisclosed. Guards the free-transfer claim. */
+  reportedFeeM?: number | null;
 }
 
 export type ValidationResult = { ok: true } | { ok: false; reason: string };
@@ -25,12 +27,25 @@ const QUOTE = /["“][^"”]{12,}["”]/;
  */
 const MARKUP = /[<>]/;
 
-/** Completed-deal assertions — only legitimate once the status really is confirmed. */
+/**
+ * Completed-deal assertions — only legitimate once the status really is confirmed.
+ * Bare present-tense verbs ("joins", "signs for") matter as much as the perfect
+ * forms: headlines overwhelmingly use them, and "Araujo joins Liverpool" states an
+ * unconfirmed rumour as fact just as strongly as "has joined".
+ */
 const UNHEDGED = [
-  /\bhas (?:signed|joined|completed)\b/i,
+  /\b(?:has|have) (?:signed|joined|completed|sealed)\b/i,
+  /\b(?:joins|signs|seals|completes)\b/i,
   /\bis (?:now )?an? [\w\s]{2,30} player\b/i,
-  /\bofficially signed\b/i,
+  /\bofficially (?:signed|announced|completed)\b/i,
 ];
+
+/**
+ * "Free transfer" is a specific factual claim. An undisclosed fee is NOT a free
+ * transfer, and the model conflated the two — so the phrase is only allowed when
+ * the reported fee is actually zero.
+ */
+const FREE_CLAIM = /\bfree (?:transfer|agent)\b|\bon a free\b/i;
 
 const MIN_BODY = 180;
 
@@ -51,6 +66,9 @@ export function validateArticle(d: ArticleDraft, ctx: ValidateContext): Validati
   if (QUOTE.test(all)) return { ok: false, reason: "fabricated-quote" };
   if (ctx.status !== "confirmed" && UNHEDGED.some((re) => re.test(all))) {
     return { ok: false, reason: "unhedged-claim" };
+  }
+  if (ctx.reportedFeeM !== 0 && FREE_CLAIM.test(all)) {
+    return { ok: false, reason: "false-free-transfer" };
   }
   // Every briefing must credit the reporting it is built on.
   if (!d.body.toLowerCase().includes(ctx.sourceName.toLowerCase())) {

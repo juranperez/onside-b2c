@@ -33,7 +33,7 @@ describe("compose", () => {
   it("separates the lead source from the all-outlet report count", () => {
     const p = buildPrompt(facts);
     expect(p).toMatch(/Lead source[^\n]*The Athletic/);
-    expect(p).toMatch(/across ALL outlets[^\n]*3/);
+    expect(p).toMatch(/outlets following this story in total[^\n]*3/);
   });
 
   it("never leaks the internal trigger into the prompt", () => {
