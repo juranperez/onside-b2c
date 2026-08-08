@@ -2,19 +2,20 @@ import { describe, it, expect } from "vitest";
 import { getNavItems, getBottomNavItems, getSecondaryItems } from "./nav-items";
 
 describe("getNavItems (desktop)", () => {
-  it("leads with World Cup during the window, 7 tabs total", () => {
+  it("leads with World Cup during the window, News next, 8 tabs total", () => {
     const items = getNavItems(true);
     expect(items.map((i) => i.label)).toEqual([
-      "World Cup", "Today", "Players", "Clubs", "Competitions", "Transfers", "Ask",
+      "World Cup", "News", "Today", "Players", "Clubs", "Competitions", "Transfers", "Ask",
     ]);
     expect(items[0]).toMatchObject({ href: "/worldcup", special: true });
-    expect(items[6]).toMatchObject({ href: "/ask", ai: true });
+    expect(items[7]).toMatchObject({ href: "/ask", ai: true });
   });
-  it("drops World Cup post-final, Today resumes first", () => {
+  it("drops World Cup post-final, News leads", () => {
     const items = getNavItems(false);
     expect(items.map((i) => i.label)).toEqual([
-      "Today", "Players", "Clubs", "Competitions", "Transfers", "Ask",
+      "News", "Today", "Players", "Clubs", "Competitions", "Transfers", "Ask",
     ]);
+    expect(items[0]).toMatchObject({ href: "/news" });
   });
   it("keeps label-only renames on existing routes", () => {
     const items = getNavItems(false);
@@ -31,22 +32,27 @@ describe("getNavItems (desktop)", () => {
 });
 
 describe("getBottomNavItems (mobile)", () => {
-  it("is 5 slots, WC-first during the window", () => {
+  it("is exactly 5 slots in both windows", () => {
+    expect(getBottomNavItems(true)).toHaveLength(5);
+    expect(getBottomNavItems(false)).toHaveLength(5);
+  });
+  it("is WC-first during the window", () => {
     expect(getBottomNavItems(true).map((i) => i.label)).toEqual([
       "World Cup", "Today", "Players", "Wire", "Ask",
     ]);
   });
-  it("swaps WC for Competitions post-final", () => {
+  it("swaps WC for News post-final (News takes the fifth slot, not Competitions)", () => {
     expect(getBottomNavItems(false).map((i) => i.label)).toEqual([
-      "Today", "Players", "Wire", "Competitions", "Ask",
+      "News", "Today", "Players", "Wire", "Ask",
     ]);
   });
 });
 
 describe("getSecondaryItems (hamburger)", () => {
-  it("includes Competitions only during the window (it moves to the bar after)", () => {
-    expect(getSecondaryItems(true).map((i) => i.label)).toContain("Competitions");
-    expect(getSecondaryItems(false).map((i) => i.label)).not.toContain("Competitions");
+  it("always carries Competitions — News holds the tab-bar slot it used to occupy", () => {
+    for (const active of [true, false]) {
+      expect(getSecondaryItems(active).map((i) => i.label)).toContain("Competitions");
+    }
   });
   it("always carries Clubs, Compare, Watchlist, Notifications", () => {
     for (const active of [true, false]) {

@@ -54,4 +54,15 @@ describe("validateArticle", () => {
   it("rejects drafts too short to be useful", () => {
     expect(validateArticle({ ...ok, body: "Short." }, ctx)).toMatchObject({ ok: false, reason: "too-short" });
   });
+
+  it("rejects angle brackets so untrusted text can never reach a script block", () => {
+    expect(validateArticle({ ...ok, title: "Bloggs </script><img onerror=x>" }, ctx)).toMatchObject({
+      ok: false,
+      reason: "markup",
+    });
+    expect(validateArticle({ ...ok, body: `${ok.body} <b>bold</b>` }, ctx)).toMatchObject({
+      ok: false,
+      reason: "markup",
+    });
+  });
 });

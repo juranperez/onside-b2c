@@ -39,6 +39,10 @@
     {
       "path": "/api/cron/wc-goals",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/news-generate",
+      "schedule": "*/30 * * * *"
     }
   ]
 }

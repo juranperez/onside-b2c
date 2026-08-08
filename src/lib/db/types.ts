@@ -493,6 +493,72 @@ export type Database = {
           },
         ]
       }
+      news_articles: {
+        Row: {
+          body: Json
+          correction: string | null
+          dek: string
+          event_key: string
+          event_type: string
+          id: string
+          newsworthiness: number
+          player_id: string | null
+          published_at: string
+          rumour_id: string | null
+          slug: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: Json
+          correction?: string | null
+          dek: string
+          event_key: string
+          event_type: string
+          id?: string
+          newsworthiness?: number
+          player_id?: string | null
+          published_at?: string
+          rumour_id?: string | null
+          slug: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: Json
+          correction?: string | null
+          dek?: string
+          event_key?: string
+          event_type?: string
+          id?: string
+          newsworthiness?: number
+          player_id?: string | null
+          published_at?: string
+          rumour_id?: string | null
+          slug?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_articles_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "news_articles_rumour_id_fkey"
+            columns: ["rumour_id"]
+            isOneToOne: false
+            referencedRelation: "rumours"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string | null

@@ -17,6 +17,14 @@ const BANNED = [/sportmonks/i, /\bfifa\b/i, /api[-\s]?football/i];
 /** Quoted speech. We pass the model no quotes, so any quotation is invented. */
 const QUOTE = /["“][^"”]{12,}["”]/;
 
+/**
+ * Angle brackets never belong in plain prose, and model output is untrusted text
+ * that later lands in JSON-LD inside a <script> block. Rejecting them at the trust
+ * boundary means nothing downstream has to escape — the unsafe string never
+ * reaches the database at all.
+ */
+const MARKUP = /[<>]/;
+
 /** Completed-deal assertions — only legitimate once the status really is confirmed. */
 const UNHEDGED = [
   /\bhas (?:signed|joined|completed)\b/i,
@@ -38,6 +46,7 @@ export function validateArticle(d: ArticleDraft, ctx: ValidateContext): Validati
   const all = `${d.title}\n${d.dek}\n${d.body}`;
 
   if (d.body.trim().length < MIN_BODY) return { ok: false, reason: "too-short" };
+  if (MARKUP.test(all)) return { ok: false, reason: "markup" };
   if (BANNED.some((re) => re.test(all))) return { ok: false, reason: "banned-token" };
   if (QUOTE.test(all)) return { ok: false, reason: "fabricated-quote" };
   if (ctx.status !== "confirmed" && UNHEDGED.some((re) => re.test(all))) {

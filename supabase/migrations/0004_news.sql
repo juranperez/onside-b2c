@@ -6,7 +6,8 @@ create table if not exists public.news_articles (
   id uuid primary key default gen_random_uuid(),
   slug text not null unique,
   rumour_id uuid references public.rumours(id) on delete set null,
-  player_id uuid references public.players(id) on delete set null,
+  -- players.id is TEXT (upstream provider ids), not uuid — match it exactly.
+  player_id text references public.players(id) on delete set null,
   -- break | stage_advance | fee_divergence | confidence_swing | confirmed | dead
   event_type text not null,
   -- Stateless dedup key from src/lib/news/events.ts — one article per saga+angle.

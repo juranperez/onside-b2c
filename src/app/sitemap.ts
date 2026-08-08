@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getLeagues, getNationalTeams } from "@/lib/queries";
 import { getAllPlayerSlugs, getAllClubSlugs, getAllRumourIds } from "@/lib/queries/enumerate";
+import { articleSitemapEntries } from "@/lib/news/queries";
 
 const BASE_URL = "https://onsidemarket.com";
 
@@ -16,6 +17,7 @@ const STATIC_ROUTES: Array<{
   priority: number;
 }> = [
   { path: "/", changeFrequency: "daily", priority: 1.0 },
+  { path: "/news", changeFrequency: "hourly", priority: 0.95 },
   { path: "/discover", changeFrequency: "daily", priority: 0.85 },
   { path: "/players", changeFrequency: "daily", priority: 0.9 },
   { path: "/clubs", changeFrequency: "daily", priority: 0.8 },
@@ -37,12 +39,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Each query is isolated: a failure in one entity type must not blank the sitemap.
   // Players, clubs and rumours are now enumerated in full (not top-N) so every
   // indexable page is exposed to crawlers; leagues/nations already return all rows.
-  const [playerSlugs, clubSlugs, leagues, nations, rumours] = await Promise.all([
+  const [playerSlugs, clubSlugs, leagues, nations, rumours, articles] = await Promise.all([
     getAllPlayerSlugs().catch(() => []),
     getAllClubSlugs().catch(() => []),
     getLeagues().catch(() => []),
     getNationalTeams().catch(() => []),
     getAllRumourIds().catch(() => []),
+    articleSitemapEntries().catch(() => []),
   ]);
 
   const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((r) => ({
@@ -80,6 +83,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }));
 
+  // News briefings — freshest surface on the site, so crawlers get a real
+  // `lastModified` and a high change frequency.
+  const newsEntries: MetadataRoute.Sitemap = articles.map((a) => ({
+    url: `${BASE_URL}/news/${a.slug}`,
+    lastModified: a.updatedAt ? new Date(a.updatedAt) : now,
+    changeFrequency: "daily",
+    priority: 0.75,
+  }));
+
   // Transfer rumour detail pages — real `lastModified` from each rumour's last update.
   const rumourEntries: MetadataRoute.Sitemap = rumours.map((r) => ({
     url: `${BASE_URL}/transfers/${r.id}`,
@@ -90,6 +102,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...staticEntries,
+    ...newsEntries,
     ...playerEntries,
     ...clubEntries,
     ...leagueEntries,

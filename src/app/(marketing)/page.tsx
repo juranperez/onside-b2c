@@ -6,6 +6,7 @@ import type { PlayerListItem } from "@/lib/queries/map";
 import type { ClubSummary } from "@/lib/queries";
 import { isWcWindow } from "@/lib/wc-window";
 import { WorldCupHero } from "@/components/worldcup/WorldCupHero";
+import { listArticles, type ArticleListItem } from "@/lib/news/queries";
 
 export const revalidate = 1800;
 
@@ -30,12 +31,23 @@ export default async function LandingPage() {
     console.error("[landing] counts unavailable:", e);
   }
 
+  // News leads the page when the desk has published; the hero carries the value
+  // prop below it. Empty list → the hero leads exactly as before, so the homepage
+  // can never render an empty news rail.
+  let articles: ArticleListItem[] = [];
+  try {
+    articles = await listArticles(5);
+  } catch (e) {
+    console.error("[landing] news unavailable:", e);
+  }
+
   const risers = movers.filter((m) => m.dWeek > 0).sort((a, b) => b.dWeek - a.dWeek);
   const fallers = movers.filter((m) => m.dWeek < 0).sort((a, b) => a.dWeek - b.dWeek);
   const wcActive = isWcWindow(new Date());
 
   return (
     <div className="relative">
+      {articles.length > 0 && <NewsLead articles={articles} />}
       {wcActive ? <WorldCupHero /> : <HeroSection counts={counts} />}
       <TickerStrip />
       <ValueProps />
@@ -44,6 +56,52 @@ export default async function LandingPage() {
       <SocialProof />
       <PricingTeaser />
     </div>
+  );
+}
+
+/** The freshest thing we have, front and centre — lead briefing plus the next four. */
+function NewsLead({ articles }: { articles: ArticleListItem[] }) {
+  const [lead, ...rest] = articles;
+  return (
+    <section className="border-b border-line">
+      <div className="max-w-[1100px] mx-auto px-6 py-10">
+        <div className="flex items-center gap-2 mb-5">
+          <LiveDot />
+          <span className="text-[11px] uppercase tracking-[0.18em] text-mute-soft num">Onside News</span>
+          <Link href="/news" className="ml-auto text-[12px] text-mute hover:text-acc transition inline-flex items-center gap-1">
+            All briefings <ArrowRight size={12} />
+          </Link>
+        </div>
+
+        <div className="grid lg:grid-cols-[1.5fr_1fr] gap-4">
+          <Link
+            href={`/news/${lead.slug}`}
+            className="block rounded-2xl border border-acc/30 bg-ink-850 p-7 hover:bg-ink-800 transition"
+          >
+            <h2 className="display text-[clamp(22px,3.4vw,34px)] tracking-tight leading-[1.08]">{lead.title}</h2>
+            <p className="text-[14.5px] text-mute mt-3 leading-relaxed line-clamp-3">{lead.dek}</p>
+            <div className="mt-4 text-[12px] text-mute-soft">
+              {lead.player} → {lead.toClub}
+            </div>
+          </Link>
+
+          <div className="flex flex-col gap-3">
+            {rest.slice(0, 4).map((a) => (
+              <Link
+                key={a.slug}
+                href={`/news/${a.slug}`}
+                className="block rounded-xl border border-line bg-ink-850 px-4 py-3 hover:bg-ink-800 transition"
+              >
+                <div className="text-[13.5px] font-semibold leading-snug line-clamp-2">{a.title}</div>
+                <div className="text-[11px] text-mute-soft mt-1 truncate">
+                  {a.player} → {a.toClub}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
