@@ -99,3 +99,64 @@ export async function askStream(system: string, messages: ChatMessage[]): Promis
   }
   return { stream: null, provider: "none" };
 }
+
+export type CompleteResult = { text: string; provider: "groq" | "gemini" } | null;
+
+async function completeGroq(system: string, messages: ChatMessage[], maxTokens: number): Promise<string | null> {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return null;
+  const res = await fetch(GROQ_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      temperature: 0.4,
+      max_tokens: maxTokens,
+      ...(GROQ_MODEL.includes("gpt-oss") ? { reasoning_effort: "low" } : {}),
+      messages: [{ role: "system", content: system }, ...messages],
+    }),
+  });
+  if (!res.ok) return null;
+  const j = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  return j.choices?.[0]?.message?.content?.trim() ?? null;
+}
+
+async function completeGemini(system: string, messages: ChatMessage[], maxTokens: number): Promise<string | null> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
+      generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens },
+    }),
+  });
+  if (!res.ok) return null;
+  const j = (await res.json()) as GeminiEvent;
+  const text = j.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim();
+  return text || null;
+}
+
+/**
+ * Non-streaming completion for batch jobs (news generation). Same Groq→Gemini
+ * cascade and free-tier-first doctrine as askStream, minus the SSE plumbing.
+ * Returns null when every provider fails so callers can skip rather than throw.
+ */
+export async function complete(system: string, messages: ChatMessage[], maxTokens = 900): Promise<CompleteResult> {
+  try {
+    const groq = await completeGroq(system, messages, maxTokens);
+    if (groq) return { text: groq, provider: "groq" };
+  } catch {
+    // fall through to Gemini
+  }
+  try {
+    const gemini = await completeGemini(system, messages, maxTokens);
+    if (gemini) return { text: gemini, provider: "gemini" };
+  } catch {
+    // fall through to null
+  }
+  return null;
+}
