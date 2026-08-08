@@ -21,7 +21,10 @@ export async function GET(req: Request) {
     // fresh briefing stays invisible for up to half an hour — unacceptable for a
     // news surface. Purge only when content actually changed, so the safeguard
     // still holds during quiet runs.
-    if (result.published > 0 || result.corrected > 0) revalidateTag("supabase-read");
+    // "seconds" = the shortest stale window (30s), so a new briefing is visible
+    // almost immediately. This is a one-shot purge, not a standing policy, so it
+    // costs nothing between publishing runs.
+    if (result.published > 0 || result.corrected > 0) revalidateTag("supabase-read", "seconds");
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
