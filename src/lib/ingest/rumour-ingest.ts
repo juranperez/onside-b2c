@@ -4,6 +4,7 @@ import { fold, buildPlayerIndex, buildClubIndex, matchPlayer, matchDestClub, str
 import { doneLanguage } from "../rumours/stage";
 import { notifyFollowers } from "../rumours/notify";
 import { resolveSubject } from "../receipts/resolve-subject";
+import { extractFeeEur, isFreeTransfer } from "./fee";
 
 export interface FeedSource {
   name: string; // fallback source label
@@ -80,18 +81,6 @@ function parseFeed(xml: string): { title: string; link: string }[] {
     if (title) out.push({ title, link });
   }
   return out;
-}
-
-function extractFeeEur(title: string): number | null {
-  const m = title.match(/[€£]\s?(\d+(?:\.\d+)?)\s?(m|million|bn|billion)/i);
-  if (!m) return null;
-  const n = parseFloat(m[1]);
-  return /b/i.test(m[2]) ? Math.round(n * 1e9) : Math.round(n * 1e6);
-}
-
-/** Fee 0 = free transfer (display "Free"); null = no fee reported yet. */
-function isFreeTransfer(title: string): boolean {
-  return /\bfree transfer\b|\bon a free\b|\bfree agent\b/i.test(title);
 }
 
 // Per-item {source, tier, summary} depending on the feed kind.

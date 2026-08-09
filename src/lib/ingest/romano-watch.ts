@@ -5,6 +5,7 @@ import { isHereWeGo, breakText } from "./here-we-go";
 import { decideRomanoBreak, type SagaStatus } from "./romano-break";
 import { matchPlayer, matchDestClub, buildPlayerIndex, buildClubIndex } from "./match";
 import { loadAllPlayers } from "./rumour-ingest";
+import { extractFeeEur, isFreeTransfer } from "./fee";
 import { notifyFollowers } from "@/lib/rumours/notify";
 import { sendBreakAlert } from "@/lib/rumours/admin-alert";
 
@@ -95,9 +96,14 @@ export async function watchRomano(db: SupabaseClient<Database>): Promise<RomanoW
     const summary = breakSummary(club, post.text).slice(0, 280);
     const pName = pm ? (nameById.get(pm.playerId) ?? "player") : "player";
 
+    // Breaks routinely carry the fee ("€25m release clause", "£40m club record").
+    // Without this the whole tier-0 lane stored a null fee, which silently stripped
+    // the fee-vs-value verdict — our core differentiator — from every break.
+    const breakFee = isFreeTransfer(post.text) ? 0 : extractFeeEur(post.text);
+
     if (decision.kind === "publish-break" && pm) {
       const { data: ins } = await db.from("rumours").insert({
-        player_id: pm.playerId, to_club: club, summary,
+        player_id: pm.playerId, to_club: club, summary, reported_fee_eur: breakFee,
         primary_source: "Fabrizio Romano", source_tier: 0, status: "rumour",
         corroborations: 1, url: post.uri, first_seen: now, last_update: now,
       }).select("id").single();
@@ -115,6 +121,8 @@ export async function watchRomano(db: SupabaseClient<Database>): Promise<RomanoW
       // not stay stuck in the review queue (off the Wire) after the upgrade.
       await db.from("rumours").update({
         source_tier: 0, primary_source: "Fabrizio Romano", to_club: club, summary, url: post.uri, last_update: now, status: "rumour",
+        // Only when the break actually names a fee — never clobber a known fee with null.
+        ...(breakFee != null ? { reported_fee_eur: breakFee } : {}),
       }).eq("id", decision.targetId);
       await db.from("rumour_sources").upsert(
         { url: post.uri, rumour_id: decision.targetId, source: "Fabrizio Romano", tier: 0 },
@@ -126,7 +134,7 @@ export async function watchRomano(db: SupabaseClient<Database>): Promise<RomanoW
     } else if (decision.kind === "hold" && pm) {
       // A real player but an ambiguous/unstrong parse → BREAKING review candidate + alert.
       const { data: ins } = await db.from("rumours").insert({
-        player_id: pm.playerId, to_club: club, summary,
+        player_id: pm.playerId, to_club: club, summary, reported_fee_eur: breakFee,
         primary_source: "Fabrizio Romano", source_tier: 0, status: "candidate",
         corroborations: 1, url: post.uri, first_seen: now, last_update: now,
       }).select("id").single();
