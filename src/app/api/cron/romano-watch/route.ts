@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/db/admin";
-import { watchRomano } from "@/lib/ingest/romano-watch";
+import { watchBreaks } from "@/lib/ingest/romano-watch";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, disabled: true });
   }
   try {
-    const result = await watchRomano(adminDb());
+    const result = await watchBreaks(adminDb());
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });

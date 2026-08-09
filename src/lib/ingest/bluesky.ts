@@ -36,8 +36,8 @@ export function parseAuthorFeed(payload: unknown): BskyPost[] {
   return out;
 }
 
-/** Fetch Romano's recent posts. Best-effort: throws on a non-OK response so callers can catch. */
-export async function fetchRomanoPosts(handle = ROMANO_HANDLE, limit = 15): Promise<BskyPost[]> {
+/** Fetch a reporter's recent posts. Best-effort: throws on a non-OK response so callers can catch. */
+export async function fetchAuthorPosts(handle: string, limit = 15): Promise<BskyPost[]> {
   const res = await fetch(`${APPVIEW}?actor=${encodeURIComponent(handle)}&limit=${limit}`, {
     headers: { accept: "application/json" },
     cache: "no-store",
