@@ -4,7 +4,7 @@
  * these lookup keys in sync with the Stripe dashboard (prices created 2026-06-13).
  */
 
-export type PlanKey = "pro_monthly" | "pro_annual" | "founding_annual";
+export type PlanKey = "plus_monthly" | "plus_annual" | "pro_monthly" | "pro_annual";
 
 export interface Plan {
   key: PlanKey;
@@ -16,27 +16,10 @@ export interface Plan {
 }
 
 export const PLANS: Record<PlanKey, Plan> = {
-  pro_monthly: {
-    key: "pro_monthly",
-    lookupKey: "pro_monthly",
-    label: "Pro Monthly",
-    amountCents: 599,
-    interval: "month",
-  },
-  pro_annual: {
-    key: "pro_annual",
-    lookupKey: "pro_annual",
-    label: "Pro Annual",
-    amountCents: 4900,
-    interval: "year",
-  },
-  founding_annual: {
-    key: "founding_annual",
-    lookupKey: "founding_annual",
-    label: "Founding Annual",
-    amountCents: 3900,
-    interval: "year",
-  },
+  plus_monthly: { key: "plus_monthly", lookupKey: "plus_monthly", label: "Plus Monthly", amountCents: 400, interval: "month" },
+  plus_annual: { key: "plus_annual", lookupKey: "plus_annual", label: "Plus Annual", amountCents: 3600, interval: "year" },
+  pro_monthly: { key: "pro_monthly", lookupKey: "pro_monthly", label: "Pro Monthly", amountCents: 2000, interval: "month" },
+  pro_annual: { key: "pro_annual", lookupKey: "pro_annual", label: "Pro Annual", amountCents: 18000, interval: "year" },
 };
 
 export function isPlanKey(value: unknown): value is PlanKey {

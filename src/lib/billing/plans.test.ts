@@ -3,10 +3,12 @@ import { PLANS, isPlanKey } from "./plans";
 
 describe("billing plans", () => {
   it("has exactly the three v1 plans with the published amounts", () => {
-    expect(Object.keys(PLANS).sort()).toEqual(["founding_annual", "pro_annual", "pro_monthly"]);
-    expect(PLANS.pro_monthly.amountCents).toBe(599);
-    expect(PLANS.pro_annual.amountCents).toBe(4900);
-    expect(PLANS.founding_annual.amountCents).toBe(3900);
+    expect(Object.keys(PLANS).sort()).toEqual(["plus_annual", "plus_monthly", "pro_annual", "pro_monthly"]);
+    // Perez's prices: Plus $4/mo, Pro $20/mo, annual at -25%.
+    expect(PLANS.plus_monthly.amountCents).toBe(400);
+    expect(PLANS.pro_monthly.amountCents).toBe(2000);
+    expect(PLANS.plus_annual.amountCents).toBe(3600);
+    expect(PLANS.pro_annual.amountCents).toBe(18000);
   });
 
   it("each plan's lookupKey matches its Stripe lookup_key convention", () => {
@@ -18,7 +20,7 @@ describe("billing plans", () => {
 
   it("isPlanKey accepts known plans and rejects everything else", () => {
     expect(isPlanKey("pro_monthly")).toBe(true);
-    expect(isPlanKey("founding_annual")).toBe(true);
+    expect(isPlanKey("plus_monthly")).toBe(true);
     expect(isPlanKey("enterprise")).toBe(false);
     expect(isPlanKey("")).toBe(false);
     expect(isPlanKey(null)).toBe(false);
