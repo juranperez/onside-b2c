@@ -6,7 +6,7 @@ import { stageOf } from "@/lib/rumours/stage";
 import { feeVerdict } from "@/lib/rumours/fee-verdict";
 import { complete } from "@/lib/ask/llm";
 import { detectArticleEvents, type ArticleEvent } from "./events";
-import { newsworthiness, selectForPublication } from "./rank";
+import { newsworthiness, selectForPublication, type Candidate } from "./rank";
 import { buildSlug, slugify } from "./slug";
 import { validateArticle } from "./validate";
 import { parseDraft } from "./parse";
@@ -99,10 +99,13 @@ export async function generateNews(
   result.scanned = rumours.length;
 
   const byId = new Map(rumours.map((r) => [r.id, r]));
-  const candidates: { event: ArticleEvent; score: number }[] = [];
+  const candidates: Candidate[] = [];
   for (const r of rumours) {
     for (const e of detectArticleEvents(r, publishedKeys)) {
       candidates.push({
+        // Lead source drives the per-source diversity quota — without it a single
+        // reporter's breaks fill the whole run.
+        source: r.source,
         event: e,
         score: newsworthiness(e, {
           sourceTier: r.sourceTier,

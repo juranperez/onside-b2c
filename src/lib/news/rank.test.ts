@@ -68,4 +68,57 @@ describe("selectForPublication", () => {
     });
     expect(out).toHaveLength(1);
   });
+
+  describe("diversity", () => {
+    // Breaks outscore everything (35 type + 40 tier), so without a quota a whole
+    // run is one reporter saying the same thing.
+    const mixed = () => [
+      ...Array.from({ length: 20 }, (_, i) => ({
+        event: ev(`b${i}`, "break", `b${i}:break`),
+        score: 90 - i,
+        source: "Fabrizio Romano",
+      })),
+      ...Array.from({ length: 20 }, (_, i) => ({
+        event: ev(`f${i}`, "fee_divergence", `f${i}:fee`),
+        score: 50 - i,
+        source: "The Athletic",
+      })),
+    ];
+
+    it("stops one event type from taking the whole run", () => {
+      const out = selectForPublication(mixed(), { globalCap: 10, perSagaCap: 4, publishedPerSaga: new Map() });
+      const breaks = out.filter((e) => e.type === "break").length;
+      expect(out).toHaveLength(10);
+      expect(breaks).toBeLessThan(10);
+      expect(out.some((e) => e.type === "fee_divergence")).toBe(true);
+    });
+
+    it("stops one lead source from taking the whole run", () => {
+      const out = selectForPublication(mixed(), { globalCap: 10, perSagaCap: 4, publishedPerSaga: new Map() });
+      // 40% share of 10 => at most 4 from Romano in the quota pass.
+      const romanoKeys = new Set(mixed().filter((c) => c.source === "Fabrizio Romano").map((c) => c.event.eventKey));
+      expect(out.filter((e) => romanoKeys.has(e.eventKey)).length).toBeLessThanOrEqual(10);
+      expect(out.filter((e) => !romanoKeys.has(e.eventKey)).length).toBeGreaterThan(0);
+    });
+
+    it("still fills the run on a one-note day rather than publishing less", () => {
+      const onlyBreaks = Array.from({ length: 12 }, (_, i) => ({
+        event: ev(`b${i}`, "break", `b${i}:break`),
+        score: 90 - i,
+        source: "Fabrizio Romano",
+      }));
+      const out = selectForPublication(onlyBreaks, { globalCap: 10, perSagaCap: 4, publishedPerSaga: new Map() });
+      expect(out).toHaveLength(10); // variety is a preference, not a constraint
+    });
+
+    it("keeps the highest-scoring item overall, quotas notwithstanding", () => {
+      const out = selectForPublication(mixed(), { globalCap: 10, perSagaCap: 4, publishedPerSaga: new Map() });
+      expect(out[0].eventKey).toBe("b0:break");
+    });
+
+    it("never returns the same event twice across the two passes", () => {
+      const out = selectForPublication(mixed(), { globalCap: 25, perSagaCap: 4, publishedPerSaga: new Map() });
+      expect(new Set(out.map((e) => e.eventKey)).size).toBe(out.length);
+    });
+  });
 });
