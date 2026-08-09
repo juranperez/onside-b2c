@@ -48,12 +48,16 @@ export default async function LandingPage() {
   return (
     <div className="relative">
       {articles.length > 0 && <NewsLead articles={articles} />}
-      {wcActive ? <WorldCupHero /> : <HeroSection counts={counts} />}
+      {wcActive ? <WorldCupHero /> : <HeroSection counts={counts} featured={risers[0] ?? movers[0]} />}
       <TickerStrip />
       <ValueProps />
       <MoversPreview risers={risers} fallers={fallers} />
       <SquadsPreview clubs={clubs} />
-      <SocialProof />
+      {/* SocialProof is UNRENDERED on purpose (2026-08-08). Its three quotes were
+          invented — including "Head of Recruitment, Top-five Bundesliga club: we use
+          the engine internally", a false claim of a commercial relationship — under a
+          heading ("Said about ONSIDE") that asserts they were really said, with no
+          disclaimer. Restore only with real, attributable, permissioned quotes. */}
       <PricingTeaser />
     </div>
   );
@@ -105,7 +109,7 @@ function NewsLead({ articles }: { articles: ArticleListItem[] }) {
   );
 }
 
-function HeroSection({ counts }: { counts: { players: number; clubs: number; leagues: number } }) {
+function HeroSection({ counts, featured }: { counts: { players: number; clubs: number; leagues: number }; featured?: PlayerListItem }) {
   return (
     <section className="relative overflow-hidden border-b border-line noise">
       <div className="absolute inset-0 grid-bg opacity-60 pointer-events-none" />
@@ -146,7 +150,7 @@ function HeroSection({ counts }: { counts: { players: number; clubs: number; lea
             </h1>
             <p className="rise mt-7 text-[18px] text-mute max-w-[520px] leading-relaxed text-pretty" style={{ animationDelay: "200ms" }}>
               The same valuation engine that top-flight clubs pay six figures for — now
-              open to the fans, the bettors, and football twitter who actually saw it first.
+              open to the fans, the analysts, and football twitter who actually saw it first.
             </p>
 
             <div className="rise mt-9 flex items-center gap-3 flex-wrap" style={{ animationDelay: "280ms" }}>
@@ -184,89 +188,79 @@ function HeroSection({ counts }: { counts: { players: number; clubs: number; lea
             </div>
           </div>
 
-          <FeaturedPlayerCard />
+          {featured && <FeaturedPlayerCard p={featured} />}
         </div>
       </div>
     </section>
   );
 }
 
-function FeaturedPlayerCard() {
+function FeaturedPlayerCard({ p }: { p: PlayerListItem }) {
+  // Every figure here is REAL, read from the same valuation the rest of the site
+  // uses. This card previously hardcoded a named player and an invented valuation
+  // and weekly delta — a fabricated number on the marketing surface is exactly what
+  // a credibility brand cannot ship.
+  const [first, ...restName] = p.displayName.split(" ");
+  const last = restName.join(" ");
+  const spark = p.spark.length > 1 ? p.spark : [p.val, p.val];
+  const lo = Math.min(...spark);
+  const hi = Math.max(...spark);
+  const span = hi - lo || 1;
+  const pts = spark
+    .map((v, i) => `${(i / (spark.length - 1)) * 140},${58 - ((v - lo) / span) * 52}`)
+    .join(" ");
+  const up = p.dWeek >= 0;
+
   return (
     <div className="rise lift rounded-2xl bg-ink-850 border border-line shadow-ring overflow-hidden hover:border-up/30 hover:shadow-[0_0_44px_rgba(0,229,153,0.16)]" style={{ animationDelay: "220ms" }}>
-      <div
-        className="relative h-[200px] overflow-hidden"
-        style={{ background: "linear-gradient(135deg, #A50044 0%, #0A0A0B 90%)" }}
-      >
+      <div className="relative h-[200px] overflow-hidden" style={{ background: `linear-gradient(135deg, ${p.clubBg} 0%, #0A0A0B 90%)` }}>
         <div className="absolute inset-0 grid-bg opacity-30" />
         <div className="absolute top-4 left-4 flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium bg-up/10 text-up border border-up/20">
             <span className="w-1.5 h-1.5 rounded-full bg-up pulse-dot" />
-            How it looks
+            Live valuation
           </span>
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-5 flex items-end justify-between">
-          <div>
-            <div className="font-serif text-[44px] leading-[0.92] tracking-tight text-fg">Lamine</div>
-            <div className="display text-[44px] leading-[0.92] tracking-[-0.04em]">Yamal</div>
-          </div>
-          <div className="text-right num">
-            <div className="text-[11px] text-mute uppercase tracking-wider">#19</div>
-            <div className="text-[34px] font-light text-fg opacity-80">17</div>
+          <div className="min-w-0">
+            <div className="font-serif text-[44px] leading-[0.92] tracking-tight text-fg truncate">{first}</div>
+            {last && <div className="display text-[44px] leading-[0.92] tracking-[-0.04em] truncate">{last}</div>}
           </div>
         </div>
       </div>
       <div className="p-5">
         <div className="flex items-center gap-2 text-[12px] mb-3">
-          <div className="w-[18px] h-[18px] rounded-[4px] bg-[#A50044] grid place-items-center text-[8px] font-bold text-fg num">
-            BAR
+          <div className="w-[18px] h-[18px] rounded-[4px] grid place-items-center text-[8px] font-bold num" style={{ background: p.clubBg, color: p.clubColor }}>
+            {p.clubShort}
           </div>
-          <span className="text-mute">Barcelona</span>
+          <span className="text-mute truncate">{p.club}</span>
           <span className="text-mute-soft">&middot;</span>
-          <span className="text-mute num">RW</span>
+          <span className="text-mute num">{p.detailedPos ?? p.pos}</span>
         </div>
         <div className="flex items-end justify-between">
           <div>
             <div className="text-[10px] uppercase tracking-[0.18em] text-mute-soft mb-1">ONSIDE Valuation</div>
             <div className="display text-[44px] leading-none num">
-              €215.0<span className="text-mute text-[18px] ml-1">M</span>
+              €{p.val.toFixed(1)}<span className="text-mute text-[18px] ml-1">M</span>
             </div>
             <div className="mt-2 flex items-center gap-2">
-              <span className="num inline-flex items-center gap-1 tracking-tight text-up text-base font-semibold">
-                <span className="inline-block w-2 h-2 bg-up" style={{ clipPath: "polygon(50% 0,100% 100%,0 100%)" }} />
-                +9.3M
+              <span className={`num inline-flex items-center gap-1 tracking-tight text-base font-semibold ${up ? "text-up" : "text-down"}`}>
+                <span className={`inline-block w-2 h-2 ${up ? "bg-up" : "bg-down"}`} style={{ clipPath: up ? "polygon(50% 0,100% 100%,0 100%)" : "polygon(0 0,100% 0,50% 100%)" }} />
+                {up ? "+" : ""}{p.dWeek.toFixed(1)}M
               </span>
               <span className="text-mute text-[11px]">this week</span>
             </div>
           </div>
           <div className="w-[140px] h-[64px]">
-            <svg viewBox="0 0 140 64" className="w-full h-full">
-              <path
-                d="M0,58 L10,52 L20,48 L30,44 L40,38 L50,35 L60,30 L70,28 L80,22 L90,18 L100,15 L110,12 L120,8 L130,6 L140,4"
-                fill="none"
-                stroke="#00E599"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-              <path
-                d="M0,58 L10,52 L20,48 L30,44 L40,38 L50,35 L60,30 L70,28 L80,22 L90,18 L100,15 L110,12 L120,8 L130,6 L140,4 L140,64 L0,64 Z"
-                fill="#00E599"
-                fillOpacity="0.12"
-              />
-              <circle cx="140" cy="4" r="2.5" fill="#00E599" />
+            <svg viewBox="0 0 140 64" className="w-full h-full" aria-hidden>
+              <polyline points={pts} fill="none" stroke={up ? "var(--up)" : "var(--down)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
         </div>
-        <Link href="/players" className="block mt-4">
-          <Button kind="ghost" size="md" className="w-full" icon={<ArrowRight size={13} />}>
-            Open live profiles
-          </Button>
-        </Link>
       </div>
     </div>
   );
 }
-
 function TickerStrip() {
   return (
     <div className="relative border-b border-line bg-ink-850/40 overflow-hidden">
