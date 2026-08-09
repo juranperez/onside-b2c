@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createSupabaseServer, getSessionUser } from "@/lib/db/supabase-server";
 import { toPlayerListItem, type PlayerListItem, type PlayerRowDB } from "@/lib/queries/map";
+import { enforcementEnabled, isOverLimit, limitMessage } from "@/lib/billing/entitlements";
+import { getUserTier } from "@/lib/billing/tier";
 
 export type ToggleResult = { watched: boolean } | { error: string };
 
@@ -24,6 +26,19 @@ export async function toggleWatch(playerId: string): Promise<ToggleResult> {
     revalidatePath("/watchlist");
     return { watched: false };
   }
+  // Adding, not removing — this is where the tier cap bites. Counted server-side
+  // against the live row count so it cannot be spoofed from the client.
+  if (enforcementEnabled()) {
+    const tier = await getUserTier(user.id);
+    const { count } = await supabase
+      .from("watchlist_items")
+      .select("player_id", { count: "exact", head: true })
+      .eq("profile_id", user.id);
+    if (isOverLimit(tier, "watchlistPlayers", count ?? 0)) {
+      return { error: limitMessage("watchlistPlayers", tier) };
+    }
+  }
+
   const { error } = await supabase.from("watchlist_items").insert({ profile_id: user.id, player_id: playerId });
   if (error) return { error: error.message };
   revalidatePath("/watchlist");

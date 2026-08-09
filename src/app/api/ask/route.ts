@@ -2,11 +2,18 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSessionUser } from "@/lib/db/supabase-server";
 import { rateLimit } from "@/lib/ratelimit";
+import { enforcementEnabled, limitsFor } from "@/lib/billing/entitlements";
+import { getUserTier } from "@/lib/billing/tier";
 import { buildAskContext } from "@/lib/ask/context";
 import { askStream, type ChatMessage } from "@/lib/ask/llm";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+/** Cost-control cap that applies when tier enforcement is off (pre-existing behaviour). */
+const DEFAULT_DAILY_CAP = 40;
+/** Fair-use ceiling applied even to "unlimited" Pro, purely as abuse protection. */
+const ABUSE_CEILING = 300;
 
 const bodySchema = z.object({
   messages: z
@@ -47,10 +54,31 @@ export async function POST(req: Request) {
     const ipGate = rateLimit(`ask:ip:${ip}`, 20, 60_000);
     // Per-user quotas: short window for bursts, daily cap for cost control.
     const minuteGate = rateLimit(`ask:u:${user.id}:m`, 6, 60_000);
-    const dayGate = rateLimit(`ask:u:${user.id}:d`, 40, 86_400_000);
+
+    // Unlimited Ask is Pro's headline benefit, so the daily cap is tier-driven.
+    // With enforcement off, the pre-existing cost-control cap stands unchanged —
+    // shipping this must not silently raise LLM spend. ABUSE_CEILING keeps even
+    // "unlimited" within fair use.
+    let dailyCap = DEFAULT_DAILY_CAP;
+    let tierLimited = false;
+    if (enforcementEnabled()) {
+      const tier = await getUserTier(user.id);
+      dailyCap = Math.min(limitsFor(tier).askPerDay, ABUSE_CEILING);
+      tierLimited = limitsFor(tier).askPerDay !== Infinity;
+    }
+    const dayGate = rateLimit(`ask:u:${user.id}:d`, dailyCap, 86_400_000);
+
     const gate = !ipGate.ok ? ipGate : !minuteGate.ok ? minuteGate : dayGate;
     if (!gate.ok) {
-      return NextResponse.json({ error: "rate-limited", retryAfterSec: gate.retryAfterSec }, { status: 429 });
+      const hitDailyTierCap = !dayGate.ok && tierLimited;
+      return NextResponse.json(
+        {
+          error: hitDailyTierCap ? "tier-limit" : "rate-limited",
+          retryAfterSec: gate.retryAfterSec,
+          ...(hitDailyTierCap ? { message: "That's your questions for today. Go Pro for unlimited.", upgrade: "/pricing" } : {}),
+        },
+        { status: 429 },
+      );
     }
   }
 

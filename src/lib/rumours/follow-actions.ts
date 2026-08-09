@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServer, getSessionUser } from "@/lib/db/supabase-server";
+import { enforcementEnabled, isOverLimit, limitMessage } from "@/lib/billing/entitlements";
+import { getUserTier } from "@/lib/billing/tier";
 
 export type FollowResult = { following: boolean } | { error: string };
 
@@ -23,6 +25,18 @@ export async function toggleFollowRumour(rumourId: string): Promise<FollowResult
     revalidatePath("/transfers");
     return { following: false };
   }
+  // Adding, not removing — the tier cap bites here, counted server-side.
+  if (enforcementEnabled()) {
+    const tier = await getUserTier(user.id);
+    const { count } = await supabase
+      .from("rumour_follows")
+      .select("rumour_id", { count: "exact", head: true })
+      .eq("profile_id", user.id);
+    if (isOverLimit(tier, "trackedDeals", count ?? 0)) {
+      return { error: limitMessage("trackedDeals", tier) };
+    }
+  }
+
   const { error } = await supabase.from("rumour_follows").insert({ profile_id: user.id, rumour_id: rumourId });
   if (error) return { error: error.message };
   revalidatePath("/transfers");
