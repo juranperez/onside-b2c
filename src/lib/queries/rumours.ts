@@ -2,6 +2,7 @@ import { readDb } from "../db/server";
 import { liveValue } from "../valuation/pulse";
 import { clubStyle, monogram } from "../club-style";
 import { confidence, type ConfidenceResult, type RumourStatus } from "../rumours/confidence";
+import { dedupeSagas } from "./dedupe";
 
 export interface RumourItem {
   id: string;
@@ -152,9 +153,12 @@ export async function getRumours(limit = 60, opts: { includeDead?: boolean } = {
   const { data, error } = await q.order("last_update", { ascending: false }).limit(limit);
   if (error) return [];
   const now = new Date();
-  return (data ?? [])
+  const items = (data ?? [])
     .map((r) => toItem(r as unknown as RumourRow, now))
     .filter((x): x is RumourItem => x !== null);
+  // The Wire is a feed of STORIES, not articles — one card per saga, however many
+  // rows the ingest paths produced for it.
+  return dedupeSagas(items);
 }
 
 /** Unreviewed ingestion candidates (for the curation queue). */
