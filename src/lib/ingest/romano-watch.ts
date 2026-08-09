@@ -171,7 +171,7 @@ async function watchJournalist(
           { url: post.uri, rumour_id: ins.id, source: j.name, tier },
           { onConflict: "url", ignoreDuplicates: true },
         );
-        await sendBreakAlert({ player: pName, club, rumourId: ins.id });
+        await sendBreakAlert({ player: pName, club, rumourId: ins.id, source: j.name });
         res.published++;
       }
     } else if (decision.kind === "upgrade-break" && pm) {
@@ -192,7 +192,7 @@ async function watchJournalist(
         { onConflict: "url", ignoreDuplicates: true },
       );
       await notifyFollowers(db, decision.targetId, summary, { kind: "here_we_go" });
-      await sendBreakAlert({ player: pName, club, rumourId: decision.targetId });
+      await sendBreakAlert({ player: pName, club, rumourId: decision.targetId, source: j.name });
       res.upgraded++;
     } else if (decision.kind === "hold" && pm) {
       // A real player but an ambiguous/unstrong parse → review candidate + alert.
@@ -210,7 +210,7 @@ async function watchJournalist(
           { url: post.uri, rumour_id: ins.id, source: j.name, tier },
           { onConflict: "url", ignoreDuplicates: true },
         );
-        await sendBreakAlert({ player: pName, club: club === "—" ? "club TBC" : club, rumourId: ins.id });
+        await sendBreakAlert({ player: pName, club: club === "—" ? "club TBC" : club, rumourId: ins.id, source: j.name }, "held");
         res.held++;
       }
     } else {
