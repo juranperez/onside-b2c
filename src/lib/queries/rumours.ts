@@ -2,6 +2,8 @@ import { readDb } from "../db/server";
 import { liveValue } from "../valuation/pulse";
 import { clubStyle, monogram } from "../club-style";
 import { confidence, type ConfidenceResult, type RumourStatus } from "../rumours/confidence";
+import { stageOf, type DealStage } from "../rumours/stage";
+import { feeVerdict } from "../rumours/fee-verdict";
 import { dedupeSagas } from "./dedupe";
 
 export interface RumourItem {
@@ -108,11 +110,32 @@ function toItem(r: RumourRow, now: Date): RumourItem | null {
   };
 }
 
+export type WireSort = "new" | "conf" | "fee" | "value";
+export type FeeVerdictKey = "bargain" | "fair" | "above" | "overpay";
+
 export interface WireFilters {
   status?: "rumour" | "confirmed" | "dead";
+  /** Deal stage, derived from the latest report's wording. */
+  stage?: DealStage;
   league?: string; // league slug
   club?: string; // free text — matches the player's club OR the destination
   credibleOnly?: boolean; // confidence ≥ 70 (confirmed always passes)
+  /** Minimum Onside Confidence % (confirmed deals always pass). */
+  minConfidence?: number;
+  /** Minimum reported fee in €M. Deals with no reported fee are excluded. */
+  minFeeM?: number;
+  /** Our fee-vs-value read — the filter no rival can offer. */
+  verdict?: FeeVerdictKey;
+}
+
+/** Map a fee-vs-value verdict label onto its filter key. */
+export function verdictKey(feeM: number | null, valueM: number): FeeVerdictKey | null {
+  const v = feeVerdict(feeM, valueM);
+  if (!v) return null;
+  if (v.label.startsWith("Free")) return "bargain";
+  if (v.label.startsWith("Fair")) return "fair";
+  if (v.label.startsWith("Above")) return "above";
+  return "overpay";
 }
 
 const foldLite = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -121,15 +144,34 @@ const foldLite = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLow
 export function filterWire(items: RumourItem[], filters: WireFilters): RumourItem[] {
   return items.filter((r) => {
     if (filters.status && r.status !== filters.status) return false;
+    if (filters.stage && stageOf(r.summary, r.status) !== filters.stage) return false;
     if (filters.league && r.leagueSlug !== filters.league) return false;
     if (filters.club) {
       const needle = foldLite(filters.club);
       const hay = `${foldLite(r.player.fromClub)} ${foldLite(r.toClub)}`;
       if (!hay.includes(needle)) return false;
     }
-    if (filters.credibleOnly && r.status === "rumour" && r.confidence.pct < 70) return false;
+    // A confirmed deal is settled fact, so credibility floors never exclude it.
+    const floor = filters.minConfidence ?? (filters.credibleOnly ? 70 : undefined);
+    if (floor != null && r.status === "rumour" && r.confidence.pct < floor) return false;
+    if (filters.minFeeM != null && (r.reportedFeeM ?? -1) < filters.minFeeM) return false;
+    if (filters.verdict && verdictKey(r.reportedFeeM, r.onsideValueM) !== filters.verdict) return false;
     return true;
   });
+}
+
+/**
+ * Pure sort for the Wire. Default is recency — a live feed leads with what just
+ * moved. The other orders exist because "which deal is biggest / most credible /
+ * involves the most valuable player" are the questions our data can answer and a
+ * rumour aggregator cannot.
+ */
+export function sortWire(items: RumourItem[], sort: WireSort = "new"): RumourItem[] {
+  const out = [...items];
+  if (sort === "conf") return out.sort((a, b) => b.confidence.pct - a.confidence.pct);
+  if (sort === "fee") return out.sort((a, b) => (b.reportedFeeM ?? -1) - (a.reportedFeeM ?? -1));
+  if (sort === "value") return out.sort((a, b) => b.onsideValueM - a.onsideValueM);
+  return out.sort((a, b) => new Date(b.lastUpdate).getTime() - new Date(a.lastUpdate).getTime());
 }
 
 /** The Wire: newest-first feed with URL-driven filters. */

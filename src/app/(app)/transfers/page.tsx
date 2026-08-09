@@ -5,7 +5,7 @@ import { Radio, Gauge, Banknote, Flame, MessagesSquare, CalendarClock } from "lu
 import { Card, Button, LiveDot } from "@/components/ui";
 import { WireRow } from "@/components/transfers/wire-row";
 import { FilterRail } from "@/components/transfers/filter-rail";
-import { getRumours, getCommentCounts, filterWire, type RumourItem, type WireFilters } from "@/lib/queries/rumours";
+import { getRumours, getCommentCounts, filterWire, sortWire, type RumourItem, type WireFilters, type WireSort } from "@/lib/queries/rumours";
 import { getFollowedRumourIds } from "@/lib/rumours/follow-actions";
 import { getSessionUser } from "@/lib/db/supabase-server";
 import { getWatchlist } from "@/lib/watchlist/actions";
@@ -56,12 +56,19 @@ export default async function TransfersPage({
 }) {
   const sp = await searchParams;
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
+  const num = (v: string) => (/^\d+$/.test(v) ? Number(v) : undefined);
+  const STAGES = ["Linked", "Talks", "Bid", "Agreed", "Medical", "Done"];
+  const VERDICTS = ["bargain", "fair", "above", "overpay"];
   const filters: WireFilters = {
     status: (["rumour", "confirmed", "dead"].includes(one(sp.status)) ? one(sp.status) : undefined) as WireFilters["status"],
+    stage: (STAGES.includes(one(sp.stage)) ? one(sp.stage) : undefined) as WireFilters["stage"],
     league: one(sp.league) || undefined,
     club: one(sp.club) || undefined,
-    credibleOnly: one(sp.min) === "70",
+    minConfidence: num(one(sp.min)),
+    minFeeM: num(one(sp.fee)),
+    verdict: (VERDICTS.includes(one(sp.verdict)) ? one(sp.verdict) : undefined) as WireFilters["verdict"],
   };
+  const sort = (["conf", "fee", "value"].includes(one(sp.sort)) ? one(sp.sort) : "new") as WireSort;
 
   let all: RumourItem[] = [];
   let comments = new Map<string, number>();
@@ -80,9 +87,7 @@ export default async function TransfersPage({
   if (one(sp.mine) === "1" && user) {
     items = items.filter((r) => followed.has(r.id) || watchedPlayerIds.has(r.player.id));
   }
-  if (one(sp.sort) === "fee") {
-    items = [...items].sort((a, b) => (b.reportedFeeM ?? -1) - (a.reportedFeeM ?? -1));
-  }
+  items = sortWire(items, sort);
 
   // Pulse — computed over the whole feed, not the filtered view.
   const nowTs = new Date().getTime();
@@ -143,7 +148,7 @@ export default async function TransfersPage({
       </Card>
 
       <Suspense>
-        <FilterRail leagues={leagues} mineAvailable={Boolean(user)} />
+        <FilterRail leagues={leagues} mineAvailable={Boolean(user)} resultCount={items.length} />
       </Suspense>
 
       {items.length === 0 ? (
