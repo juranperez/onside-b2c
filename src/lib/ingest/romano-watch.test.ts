@@ -17,4 +17,9 @@ describe("breakSummary", () => {
   it("trims but otherwise leaves the report untouched", () => {
     expect(breakSummary("Chelsea", "  Chelsea agree deal.  ")).toBe("Chelsea agree deal.");
   });
+
+  it("strips the social plumbing that was leaking onto live cards", () => {
+    const out = breakSummary("Fulham", "Shea Charles to undergo medical. @theathleticfc.bsky.social post @fabrizioromano.yopro20.com www.nytim");
+    expect(out).toBe("Shea Charles to undergo medical.");
+  });
 });

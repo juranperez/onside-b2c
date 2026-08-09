@@ -6,6 +6,7 @@ import { decideRomanoBreak, type SagaStatus } from "./romano-break";
 import { matchPlayer, matchDestClub, buildPlayerIndex, buildClubIndex } from "./match";
 import { loadAllPlayers } from "./rumour-ingest";
 import { extractFeeEur, isFreeTransfer } from "./fee";
+import { cleanBreakSummary } from "./clean-summary";
 import { JOURNALISTS, isTransferBreak, tierForBreak, type Journalist } from "./journalists";
 import { notifyFollowers } from "@/lib/rumours/notify";
 import { sendBreakAlert } from "@/lib/rumours/admin-alert";
@@ -28,7 +29,9 @@ export interface RomanoWatchResult {
  * stand on their own. Pure.
  */
 export function breakSummary(_club: string, postText: string): string {
-  return postText.trim();
+  // Strips handles/URLs BEFORE truncating — truncating first is what produced the
+  // half-eaten "www.nytim" tails visible on live cards.
+  return cleanBreakSummary(postText);
 }
 
 /** Entity indexes, built once and shared across every journalist in a pass. */
@@ -148,7 +151,7 @@ async function watchJournalist(
       existingForPlayer: existing,
     });
     const now = new Date().toISOString();
-    const summary = breakSummary(club, post.text).slice(0, 280);
+    const summary = breakSummary(club, post.text);
     const pName = pm ? (ctx.nameById.get(pm.playerId) ?? "player") : "player";
 
     // Breaks routinely carry the fee ("€25m release clause", "£40m club record").
