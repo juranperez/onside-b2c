@@ -710,13 +710,18 @@ export async function claimUsername(
   const username = check.username;
 
   const db = adminDb();
+  // Idempotent: if they already hold the exact handle being claimed, that is a success,
+  // not an error. The outcome must not depend on which of this check and the write's
+  // zero-row branch happens to catch a duplicate submit — they are milliseconds apart.
   const { data: existing } = await db
     .from("profiles")
     .select("username")
     .eq("id", user.id)
     .maybeSingle();
   if (existing?.username) {
-    return { error: "Your handle is set and can't be changed." };
+    return existing.username === username
+      ? { ok: true, username }
+      : { error: `Your handle is already set to @${existing.username} and can't be changed.` };
   }
 
   // .eq, NOT .ilike — `_` is a legal handle character AND an ILIKE single-character
@@ -750,8 +755,28 @@ export async function claimUsername(
     // Never surface a raw Postgres message to a user.
     return { error: "Couldn't claim that handle. Try again." };
   }
-  // No error but no row: this account's handle was set by a concurrent request.
-  if (!written) return { error: "Your handle is set and can't be changed." };
+  // No error but no row means someone else already wrote this account's handle —
+  // a double-click, or a second tab. Report what is now TRUE for the account rather
+  // than what this particular request did: if the row already holds the exact handle
+  // being claimed, the desired end state is true regardless of which request won, so
+  // this is a SUCCESS. Returning an error here is how a double-click ends up telling
+  // a user their permanent claim failed after it succeeded, naming no handle and
+  // linking nowhere.
+  if (!written) {
+    const { data: now } = await db
+      .from("profiles").select("username").eq("id", user.id).maybeSingle();
+    if (now?.username === username) {
+      revalidatePath("/record");
+      revalidatePath(`/u/${username}`);
+      return { ok: true, username };
+    }
+    if (now?.username) {
+      // Name the handle they hold — "you can't change it" without saying what it is
+      // leaves the user at a dead end, and we already have the value.
+      return { error: `Your handle is already set to @${now.username} and can't be changed.` };
+    }
+    return { error: "Couldn't claim that handle. Try again." };
+  }
 
   revalidatePath("/record");
   revalidatePath(`/u/${username}`);
