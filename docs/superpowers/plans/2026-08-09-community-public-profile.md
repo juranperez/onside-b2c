@@ -235,8 +235,11 @@ cd ~/onside-b2c && git add src/lib/profiles/username.ts src/lib/profiles/usernam
 
 Written but **not applied**. Applying is Task 3 and needs Perez's explicit word.
 
+This is also where the app↔DB agreement sweep from Task 1 gets its teeth: the regex stops being hypothetical here, so the two gates genuinely have to agree from this commit onward.
+
 **Files:**
 - Create: `supabase/migrations/0005_public_profiles.sql`
+- Modify: `src/lib/profiles/username.test.ts` (close the sweep's upper-bound blind spot — Step 3)
 
 - [ ] **Step 1: Write the migration**
 
@@ -293,7 +296,26 @@ grant select on public.public_profiles to anon, authenticated;
 
 - [ ] **Step 2: Verify the format regex matches the TypeScript rules**
 
-Reason through it rather than guessing: `^[a-z]` + `[a-z0-9_]{1,18}` + `[a-z0-9]$` gives 1+1+1 = 3 minimum and 1+18+1 = 20 maximum characters, requires a leading letter, and forbids a trailing underscore. That is exactly `validateUsername` minus the reserved list.
+Reason through it rather than guessing: `^[a-z]` + `[a-z0-9_]{1,18}` + `[a-z0-9]$` gives 1+1+1 = 3 minimum and 1+18+1 = 20 maximum characters, requires a leading letter, and forbids a trailing underscore. That is exactly `checkUsername` minus the reserved list.
+
+- [ ] **Step 3: Close the sweep's upper-bound blind spot**
+
+Task 1's "agreement with the database check constraint" test generates candidates only up to 4 characters, so it cannot reach the 20-char ceiling. This was proven, not theorised: setting `USERNAME_MAX = 24` and making the one accompanying edit anybody would naturally make left the suite fully green while the app accepted handles the regex rejects.
+
+In `src/lib/profiles/username.test.ts`, extend the sweep's candidate list so the boundaries are **derived from the constant** rather than hardcoded — a guard that can be edited out of relevance is not a guard:
+
+```ts
+const candidates = [
+  ...combinations(CHARSET, 4),
+  ...[USERNAME_MAX - 1, USERNAME_MAX, USERNAME_MAX + 1].flatMap((n) => [
+    "a".repeat(n),
+    "a".repeat(n - 1) + "_",
+    "a".repeat(n - 1) + "9",
+  ]),
+];
+```
+
+Verify it is now live: temporarily set `USERNAME_MAX = 24`, confirm the sweep **fails**, then restore it and confirm green.
 
 - [ ] **Step 3: Commit**
 
