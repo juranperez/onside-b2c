@@ -78,8 +78,12 @@ export interface ReceiptCall {
   } | null;
 }
 
-/** Every call a user has made, newest first, joined to the saga for display. Powers the receipts hub. */
-export async function getMyCalls(userId: string): Promise<ReceiptCall[]> {
+/**
+ * Every call a user has made, newest first, joined to the saga for display.
+ * Powers both the private `/record` view and the public `/u/[username]` profile —
+ * the calls are identical, only the viewer differs.
+ */
+export async function getCallsFor(userId: string): Promise<ReceiptCall[]> {
   const { data: preds } = await adminDb()
     .from("predictions")
     .select("id, call_type, pick, status, points, house_confidence_pct, house_value_eur, locked_at, resolved_at, subject_id")

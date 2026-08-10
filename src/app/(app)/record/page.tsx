@@ -4,7 +4,7 @@ import { Check, X, Lock, BadgeCheck, ArrowRight, Trophy } from "lucide-react";
 import { Card, Avatar, Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { getSessionUser } from "@/lib/db/supabase-server";
-import { getReputation, getMyCalls, type ReceiptCall } from "@/lib/receipts/queries";
+import { getReputation, getCallsFor, type ReceiptCall } from "@/lib/receipts/queries";
 
 // Personal, signed-in record — never cached.
 export const dynamic = "force-dynamic";
@@ -87,7 +87,7 @@ export default async function RecordPage() {
   const user = await getSessionUser().catch(() => null);
   if (!user) return <SignInPrompt />;
 
-  const [rep, calls] = await Promise.all([getReputation(user.id), getMyCalls(user.id)]);
+  const [rep, calls] = await Promise.all([getReputation(user.id), getCallsFor(user.id)]);
   const open = calls.filter((c) => c.status === "open");
   const resolved = calls.filter((c) => c.status !== "open");
   const scored = rep.wins + rep.losses;
