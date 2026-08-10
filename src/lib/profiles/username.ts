@@ -2,9 +2,10 @@
  * Handle rules.
  *
  * Handles are PERMANENT once claimed (no rename, no redirect table), so this is the
- * only gate a bad handle ever passes through. Mirrored by a check constraint in
- * migration 0005 — the app is the friendly gate, the database is the one that cannot
- * be bypassed. Keep the two in sync.
+ * only gate a bad handle ever passes through. A later migration (0005) is intended to
+ * mirror these rules with a database check constraint — the app is the friendly gate,
+ * the database is the one that cannot be bypassed. Keep the two in sync once that
+ * migration lands.
  */
 
 export const USERNAME_MIN = 3;
@@ -18,7 +19,7 @@ export const USERNAME_MAX = 20;
  *
  * Keep the first block in sync with the directories in `src/app/(app)`.
  */
-export const RESERVED_USERNAMES = new Set([
+export const RESERVED_USERNAMES: ReadonlySet<string> = new Set([
   // top-level app routes
   "ask", "clubs", "coach", "community", "compare", "contracts", "data-sources",
   "discover", "free-agents", "insights", "leagues", "login", "managers", "matches",
@@ -33,6 +34,7 @@ export const RESERVED_USERNAMES = new Set([
 ]);
 
 export type UsernameError =
+  | "invalid_type"
   | "too_short"
   | "too_long"
   | "bad_charset"
@@ -41,6 +43,7 @@ export type UsernameError =
   | "reserved";
 
 export const USERNAME_ERROR_MESSAGE: Record<UsernameError, string> = {
+  invalid_type: "Enter a handle.",
   too_short: `Handles are at least ${USERNAME_MIN} characters.`,
   too_long: `Handles are at most ${USERNAME_MAX} characters.`,
   bad_charset: "Letters, numbers and underscores only.",
@@ -49,19 +52,42 @@ export const USERNAME_ERROR_MESSAGE: Record<UsernameError, string> = {
   reserved: "That handle is reserved.",
 };
 
-/** Canonical storage form. Handles are stored and compared lowercase. */
+export type UsernameCheck =
+  | { ok: true; username: string }
+  | { ok: false; error: UsernameError };
+
+/**
+ * Canonical storage form: trims surrounding whitespace, drops any leading `@`s, and
+ * lowercases. Handles are stored and compared lowercase.
+ */
 export function normalizeUsername(raw: string): string {
   return raw.trim().replace(/^@+/, "").toLowerCase();
 }
 
-/** `null` when the handle is claimable; otherwise the reason. Runs on the normalized form. */
-export function validateUsername(raw: string): UsernameError | null {
-  const u = normalizeUsername(raw);
-  if (u.length < USERNAME_MIN) return "too_short";
-  if (u.length > USERNAME_MAX) return "too_long";
-  if (!/^[a-z0-9_]+$/.test(u)) return "bad_charset";
-  if (!/^[a-z]/.test(u)) return "bad_start";
-  if (u.endsWith("_")) return "bad_end";
-  if (RESERVED_USERNAMES.has(u)) return "reserved";
-  return null;
+/**
+ * `{ ok: true, username }` with the canonical value to persist when the handle is
+ * claimable, otherwise `{ ok: false, error }`. Returns the safe value rather than a
+ * verdict about the unsafe one, so a caller can never persist the raw, un-normalized
+ * input by mistake — handles are permanent, so that mistake would be unfixable.
+ *
+ * Accepts `unknown` because this gates server actions and form submissions, where
+ * "string" is a type assertion, not a guarantee. Never throws.
+ *
+ * Check order is deliberate:
+ *  - too_short comes first so an empty input reports "too short", not a confusing
+ *    charset complaint (charset also fails on "", but that message reads worse).
+ *  - bad_charset comes before too_long so a too-long handle with bad characters is
+ *    diagnosed in one round trip, not two (shorten it, resubmit, only then learn
+ *    about the hyphen) — irreversible claim forms shouldn't cost the user two tries.
+ */
+export function checkUsername(raw: unknown): UsernameCheck {
+  if (typeof raw !== "string") return { ok: false, error: "invalid_type" };
+  const username = normalizeUsername(raw);
+  if (username.length < USERNAME_MIN) return { ok: false, error: "too_short" };
+  if (!/^[a-z0-9_]+$/.test(username)) return { ok: false, error: "bad_charset" };
+  if (username.length > USERNAME_MAX) return { ok: false, error: "too_long" };
+  if (!/^[a-z]/.test(username)) return { ok: false, error: "bad_start" };
+  if (username.endsWith("_")) return { ok: false, error: "bad_end" };
+  if (RESERVED_USERNAMES.has(username)) return { ok: false, error: "reserved" };
+  return { ok: true, username };
 }
