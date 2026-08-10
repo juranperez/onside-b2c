@@ -27,6 +27,30 @@ const IN_CHUNK_SIZE = 100;
  * needs to be able to tell "no call" apart from "the read failed". `label` identifies
  * which read broke, matching the `"<label> read failed: ..."` shape already used in
  * src/lib/ingest/wc-fixtures.ts and src/lib/ingest/sync.ts.
+ *
+ * This function only calls out here — the only caller is `getAuthorReceiptsCached`
+ * below, wrapped in `unstable_cache` — so what actually happens to this throw depends on
+ * Next's cache state, not just on this code:
+ *  - Cold miss (no cache entry yet): `unstable_cache` awaits the callback directly
+ *    (node_modules/next/dist/server/web/spec-extension/unstable-cache.js:206, no catch
+ *    around that await), so the throw propagates straight to `getAuthorReceipts`'s caller.
+ *    The failed attempt is never written to the cache (`cacheNewResult`, the write at line
+ *    214, sits strictly downstream of that same await and is only reached on success), so
+ *    the next request tries again from scratch — no error ever gets cached.
+ *  - Stale entry (past its 60s revalidate window but not evicted): the refresh runs in the
+ *    background; if it throws, `unstable-cache.js`'s own `.catch` (lines 179-184) logs it
+ *    with `console.error` and resolves to the *old* stale value instead of re-throwing —
+ *    and outside static generation (true for this force-dynamic route), the caller doesn't
+ *    even wait on that background attempt: it already got the stale value back at line 201
+ *    before the refresh was even attempted. So on a stale-triggered failure, this throw
+ *    never reaches `getAuthorReceipts` at all — the caller sees old-but-plausible receipts,
+ *    not an error. Someone debugging "why didn't this throw during the outage" is looking
+ *    at this case, not a bug in the throw itself.
+ *  - No request coalescing on the cold-miss path: if many requests race a cold cache during
+ *    an outage, each one independently re-runs all three chunked reads (and each one
+ *    throws) rather than sharing one attempt. That's the right trade-off versus caching an
+ *    error, but it means an outage multiplies read load rather than dampening it — worth
+ *    knowing before treating a spike in Supabase errors here as one failure.
  */
 async function chunkedIn<T>(
   label: string,
@@ -117,19 +141,38 @@ export interface AuthorReceipt {
  * The actual batched-read implementation, cached via `unstable_cache` rather than
  * `readDb()`'s own fetch-level cache.
  *
- * The only page that calls this, `/transfers/[id]`, is `export const dynamic =
- * "force-dynamic"`. Next's docs (node_modules/next/dist/docs/01-app/02-guides/
- * caching-without-cache-components.md) spell out that `force-dynamic` is equivalent to
- * setting every `fetch()` request on the route to `{ cache: 'no-store', next:
- * { revalidate: 0 } }` — the segment config silently overrides the per-call `revalidate`
- * option `readDb()` sets. `unstable_cache` wraps a plain async function instead of
- * intercepting `fetch`, so it is not part of that override (confirmed against
- * node_modules/next/dist/docs/01-app/03-api-reference/04-functions/unstable_cache.md and
- * the `unstable-cache.d.ts` signature — neither ties it to `fetchCache`/`dynamic`).
- * `cacheComponents` is not enabled in next.config.ts, so `"use cache"` is not an option
- * here (it requires that flag) — `unstable_cache` is the supported mechanism for this
- * config. `getPublicProfile` above keeps using `readDb()`'s cache unchanged: `/u/[username]`
- * is not force-dynamic, so that fetch-level cache is genuinely in effect there.
+ * Why `unstable_cache` and not just `readDb({ revalidate: 60 })` on its own: this caches
+ * the *assembled* result — three sources merged into one map — as a single entry,
+ * instead of three separate fetch-cache entries that would each still need re-merging
+ * on every request. It also caches unconditionally regardless of what happens to the
+ * fetch layer: any `fetch()` issued from inside an `unstable_cache` callback is forced to
+ * `force-no-store` by Next itself (node_modules/next/dist/server/lib/patch-fetch.js:303-308,
+ * `workUnitStore.type === 'unstable-cache'` → `pageFetchCacheMode = 'force-no-store'`), so
+ * `readDb()`'s own `revalidate` option is moot for the calls inside this function either way
+ * — `unstable_cache` is the only thing doing any caching here, by construction.
+ *
+ * Earlier revision of this comment claimed `force-dynamic` on `/transfers/[id]` overrides
+ * `readDb()`'s per-call `revalidate` — that was wrong, sourced from the prose guide instead
+ * of the implementation. It doesn't: `create-component-tree.js:170-171` sets
+ * `workStore.fetchCache` only from an explicit `export const fetchCache` on the page or a
+ * layout (the `dynamic` branch a few lines above, ~150-168, never touches it — confirmed
+ * neither `/transfers/[id]/page.tsx` nor either layout in its chain exports `fetchCache`),
+ * and `patch-fetch.js:349`'s force-dynamic-implies-no-store default
+ * (`noFetchConfigAndForceDynamic`) is gated on `!currentFetchRevalidate`, which is false
+ * once a fetch sets its own `next.revalidate` — which `readDb()` always does. So the
+ * original `readDb({ revalidate: 60 })` reads were not actually inert on this route. They
+ * would have kept working — but only via that unlisted interaction between two files, which
+ * is too fragile to knowingly depend on. `unstable_cache` rests on documented, direct
+ * behaviour instead.
+ *
+ * The one real fragility of *this* approach: `unstable-cache.js:146` only attempts the
+ * cache **read** when `workStore.fetchCache !== 'force-no-store'`; when that condition is
+ * false it falls straight through to unconditionally regenerating and rewriting the entry
+ * (line ~205-216, `cacheNewResult`, gated on nothing). Reads and writes are therefore not
+ * symmetric: if `export const fetchCache` is ever added to this page or a parent layout,
+ * this cache stops being read (every call recomputes) while it keeps being written —
+ * silently, no error, just a cache that never hits. It is currently unset on both, so this
+ * doesn't fire today; it's a trap for whoever touches the segment config next.
  *
  * `unstable_cache` persists its return value across requests, so it must be plain and
  * serializable — a `Map` does not survive that. This inner function returns an array of
@@ -144,6 +187,11 @@ export interface AuthorReceipt {
  * folds into the key by default. `getAuthorReceipts` de-dupes AND sorts `ids` before
  * calling in, so the same set of authors in a different comment order still hits the
  * same cache entry instead of minting a new one per ordering.
+ *
+ * `getPublicProfile` above is unaffected by any of this and keeps using `readDb()`'s cache
+ * directly: `/u/[username]` is not `force-dynamic`, and it was never wrapped in
+ * `unstable_cache`, so its fetch never falls inside the `workUnitStore.type ===
+ * 'unstable-cache'` branch above — its own `revalidate: 60` applies exactly as written.
  */
 const getAuthorReceiptsCached = unstable_cache(
   async (rumourId: string, ids: string[]): Promise<Array<[string, AuthorReceipt]>> => {
@@ -208,7 +256,9 @@ const getAuthorReceiptsCached = unstable_cache(
  * Authors with no claimed handle and no call still get an entry, so the thread can
  * render "No call on record" without a second lookup — but a failed read throws instead
  * of quietly producing that same "no call on record" for everyone, since those two
- * situations must not look identical on a product whose premise is receipts.
+ * situations must not look identical on a product whose premise is receipts. That holds
+ * on a cold cache miss; see `chunkedIn`'s doc comment for the narrower stale-refresh case
+ * where `unstable_cache` itself serves the old value instead of letting this throw surface.
  */
 export async function getAuthorReceipts(
   rumourId: string,
