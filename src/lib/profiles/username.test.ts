@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { checkUsername, normalizeUsername, RESERVED_USERNAMES } from "./username";
+import { checkUsername, normalizeUsername, RESERVED_USERNAMES, USERNAME_MAX } from "./username";
 
 describe("normalizeUsername", () => {
   it("trims surrounding whitespace", () => {
@@ -98,7 +98,7 @@ describe("checkUsername", () => {
 });
 
 describe("agreement with the database check constraint", () => {
-  // Migration 0005 (not yet written) is intended to carry this as a CHECK constraint.
+  // Migration 0005 (not yet applied) carries this as a CHECK constraint.
   // The DB has no reserved-word list, so reserved candidates are skipped below.
   const DB_RE = /^[a-z][a-z0-9_]{1,18}[a-z0-9]$/;
   const CHARSET = ["a", "b", "9", "_", "-", "A", ".", "@", " "];
@@ -114,8 +114,21 @@ describe("agreement with the database check constraint", () => {
     return out;
   }
 
-  it("agrees with the DB regex on every generated candidate up to length 4", () => {
-    const candidates = combinations(CHARSET, 4);
+  // The exhaustive part above only reaches length 4, so it can never reach the
+  // USERNAME_MAX ceiling (20 today) — a DB_RE hardcoded to the wrong length would sail
+  // through it clean. These candidates are derived from the constant itself, so if
+  // USERNAME_MAX ever moves without a matching edit to DB_RE (i.e. to the migration's
+  // check constraint), this sweep is what catches the drift instead of shipping it.
+  const candidates = [
+    ...combinations(CHARSET, 4),
+    ...[USERNAME_MAX - 1, USERNAME_MAX, USERNAME_MAX + 1].flatMap((n) => [
+      "a".repeat(n),
+      "a".repeat(n - 1) + "_",
+      "a".repeat(n - 1) + "9",
+    ]),
+  ];
+
+  it("agrees with the DB regex on every generated candidate up to length 4, plus the USERNAME_MAX boundary", () => {
     expect(candidates.length).toBeGreaterThan(1000); // sanity: the sweep actually ran
     for (const candidate of candidates) {
       const normalized = normalizeUsername(candidate);
