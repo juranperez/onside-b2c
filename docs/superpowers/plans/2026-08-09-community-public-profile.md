@@ -1771,7 +1771,11 @@ cd ~/onside-b2c && npm run build && npm run lint
 
 Run the Supabase MCP `get_advisors` tool with `project_id: ygmxxveranmfcobcexon` and `type: security`.
 
-Expected: one `security_definer_view` notice for `public_profiles`. That one is intentional and documented in the migration — the view's column list is the security boundary, and `security_invoker` would make it return nothing to strangers. **Any other new finding is a real problem** and must be fixed before this ships.
+Expected: one `security_definer_view` notice for `public_profiles`. That one is intentional and documented in the migration — the view's column list is the security boundary, and `security_invoker` would make it return nothing to strangers.
+
+Applying 0005 also produced a second, unintended finding: `function_search_path_mutable` on `profiles_block_username_change`. Migration `0006_function_search_path.sql` pins it (and the same pre-existing gap on `predictions_block_field_mutation` from 0003). **Apply 0006 at this gate**, then re-run the advisors and confirm zero `function_search_path_mutable` findings remain.
+
+These are pre-existing and out of scope — do not be alarmed by them, and do not fix them here: `rls_enabled_no_policy` on `board_subscribers` and `pushed_goals`, and `auth_leaked_password_protection`. **Any finding beyond those, and beyond the expected `security_definer_view`, is a real problem** and must be fixed before this ships.
 
 - [ ] **Step 4: Confirm no billing column is publicly reachable**
 
