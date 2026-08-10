@@ -719,20 +719,39 @@ export async function claimUsername(
     return { error: "Your handle is set and can't be changed." };
   }
 
+  // .eq, NOT .ilike — `_` is a legal handle character AND an ILIKE single-character
+  // wildcard, so `.ilike` would match `perez_99` against `perezA99` and falsely tell a
+  // user that a free handle is taken. Plain equality is already case-insensitive in
+  // effect, because checkUsername lowercases and nothing else writes this column.
+  // Excluding the caller's own row keeps a double-submit from reporting "taken" to the
+  // person who just took it.
   const { data: taken } = await db
     .from("profiles")
     .select("id")
-    .ilike("username", username)
+    .eq("username", username)
+    .neq("id", user.id)
     .maybeSingle();
   if (taken) return { error: "That handle is taken." };
 
-  const { error } = await db.from("profiles").update({ username }).eq("id", user.id);
+  // .is("username", null) makes the profiles_username_permanent trigger unreachable by
+  // construction rather than merely unlikely: this statement can only ever touch rows
+  // whose username is already NULL, so OLD.username is never non-null.
+  const { data: written, error } = await db
+    .from("profiles")
+    .update({ username })
+    .eq("id", user.id)
+    .is("username", null)
+    .select("username")
+    .maybeSingle();
   if (error) {
     // 23505 = unique_violation on profiles_username_lower_key: someone claimed it
     // between the check above and this write.
     if (error.code === "23505") return { error: "That handle is taken." };
-    return { error: error.message };
+    // Never surface a raw Postgres message to a user.
+    return { error: "Couldn't claim that handle. Try again." };
   }
+  // No error but no row: this account's handle was set by a concurrent request.
+  if (!written) return { error: "Your handle is set and can't be changed." };
 
   revalidatePath("/record");
   revalidatePath(`/u/${username}`);
