@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { checkUsername, normalizeUsername, RESERVED_USERNAMES, USERNAME_MAX } from "./username";
@@ -98,9 +98,36 @@ describe("checkUsername", () => {
 });
 
 describe("agreement with the database check constraint", () => {
-  // Migration 0005 (not yet applied) carries this as a CHECK constraint.
+  // Migration 0005 carries this as a CHECK constraint. The pattern below is read out of
+  // that file rather than hand-copied, because a transcribed literal agrees with itself,
+  // not with the database — edit the .sql and a hardcoded regex here would stay green.
   // The DB has no reserved-word list, so reserved candidates are skipped below.
-  const DB_RE = /^[a-z][a-z0-9_]{1,18}[a-z0-9]$/;
+  function readDbUsernameRegex(): RegExp {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const migrationPath = join(here, "..", "..", "..", "supabase", "migrations", "0005_public_profiles.sql");
+    const sql = readFileSync(migrationPath, "utf8");
+    // Anchor on the ADD CONSTRAINT statement itself, not just the constraint's name —
+    // the name alone also appears in this file's rollback comments, which don't carry
+    // the pattern and would make the extraction below find nothing from that point on.
+    const anchor = sql.indexOf("add constraint profiles_username_format");
+    if (anchor === -1) {
+      throw new Error(
+        `Could not find "add constraint profiles_username_format" in ${migrationPath} — ` +
+          "the DB-agreement sweep has nothing to compare checkUsername against.",
+      );
+    }
+    const match = sql.slice(anchor).match(/username ~ '([^']+)'/);
+    if (!match) {
+      throw new Error(
+        `Found the profiles_username_format constraint in ${migrationPath} but couldn't ` +
+          "extract its pattern (expected `username ~ '...'`). Refusing to fall back to a " +
+          "hardcoded regex — that would silently recreate the drift this test exists to catch.",
+      );
+    }
+    return new RegExp(match[1]);
+  }
+
+  const DB_RE = readDbUsernameRegex();
   const CHARSET = ["a", "b", "9", "_", "-", "A", ".", "@", " "];
 
   function combinations(charset: string[], maxLen: number): string[] {
@@ -114,13 +141,14 @@ describe("agreement with the database check constraint", () => {
     return out;
   }
 
-  // The exhaustive part above only reaches length 4, so it can never reach the
+  // The exhaustive sweep only reaches length 4, so on its own it can never reach the
   // USERNAME_MAX ceiling (20 today) — a DB_RE hardcoded to the wrong length would sail
-  // through it clean. These candidates are derived from the constant itself, so if
-  // USERNAME_MAX ever moves without a matching edit to DB_RE (i.e. to the migration's
-  // check constraint), this sweep is what catches the drift instead of shipping it.
+  // through it clean. These extra candidates are derived from the constant itself, so if
+  // USERNAME_MAX ever moves without a matching edit to the migration, this sweep is what
+  // catches the drift instead of shipping it.
+  const exhaustive = combinations(CHARSET, 4);
   const candidates = [
-    ...combinations(CHARSET, 4),
+    ...exhaustive,
     ...[USERNAME_MAX - 1, USERNAME_MAX, USERNAME_MAX + 1].flatMap((n) => [
       "a".repeat(n),
       "a".repeat(n - 1) + "_",
@@ -129,7 +157,13 @@ describe("agreement with the database check constraint", () => {
   ];
 
   it("agrees with the DB regex on every generated candidate up to length 4, plus the USERNAME_MAX boundary", () => {
-    expect(candidates.length).toBeGreaterThan(1000); // sanity: the sweep actually ran
+    // Each of these checks the sweep's own coverage, not checkUsername — and each would
+    // stay green even if the property it names were silently deleted. That is exactly
+    // what a bare `candidates.length > 1000` check (satisfied by the length-4
+    // combinatorics alone, ~7,380 of them) failed to catch before.
+    expect(exhaustive.length).toBeGreaterThan(1000); // the exhaustive sweep actually ran
+    expect(candidates.some((c) => c.length === USERNAME_MAX)).toBe(true); // reaches the ceiling
+    expect(candidates.some((c) => c.length > USERNAME_MAX)).toBe(true); // and goes past it
     for (const candidate of candidates) {
       const normalized = normalizeUsername(candidate);
       if (RESERVED_USERNAMES.has(normalized)) continue; // the DB has no reserved list
