@@ -27,6 +27,18 @@ Do not re-derive these; they were checked directly.
 | Data | 31 profiles / **0 usernames** · 11 predictions from **2 distinct callers** (9 open, 2 settled) · 2 comments from **1 commenter** | Every surface here must survive being empty. Treated as a first-class case in Tasks 7, 9 and 11. |
 | `public_profiles` view | does not exist | Task 2. |
 
+### Verification baseline (measured 2026-08-09, before any task ran)
+
+Every task below says "build and lint clean". Read that as **"introduces no new problems"**, not "reports zero" — the repo does not start clean:
+
+| Command | Baseline |
+|---|---|
+| `npx vitest run` | 49 files / 361 tests passing (Task 1 raised this to 373) |
+| `npm run build` | succeeds |
+| `npm run lint` | **74 problems (67 errors, 7 warnings) — all pre-existing** |
+
+If `npm run lint` reports 74 problems and none are in the files you touched, that is a pass. Confirm with `git stash` → re-lint → `git stash pop` if the count looks different. Do not "fix" pre-existing lint errors as a side effect of an unrelated task.
+
 **Existing code to reuse, not rebuild:** `getMyCalls` / `getReputation` (`src/lib/receipts/queries.ts`), the `/record` page UI (`src/app/(app)/record/page.tsx`), `OgFrame` / `OG_SIZE` / `Wordmark` (`src/lib/og.tsx`), `readDb` (`src/lib/db/server.ts`), `adminDb` (`src/lib/db/admin.ts`), `getSessionUser` (`src/lib/db/supabase-server.ts`).
 
 ## Decisions locked before this plan (do not re-litigate)
