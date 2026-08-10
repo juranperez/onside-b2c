@@ -60,8 +60,15 @@ export async function claimUsername(
   // case-insensitive in effect — and unlike ilike, it isn't tripped up by "_" being
   // both a legal handle character and a single-char ILIKE wildcard. A miss here just
   // means a worse error message on the write below, never a bad write: the unique
-  // index is what actually enforces uniqueness.
-  const { data: taken } = await db.from("profiles").select("id").eq("username", username).maybeSingle();
+  // index is what actually enforces uniqueness. Excludes this account's own row so a
+  // concurrent double-submit of the identical handle (the second race above) reads as
+  // "already yours" from the write's `.is("username", null)` check below, not "taken".
+  const { data: taken } = await db
+    .from("profiles")
+    .select("id")
+    .eq("username", username)
+    .neq("id", user.id)
+    .maybeSingle();
   if (taken) return { error: "That handle is taken." };
 
   const { data: claimed, error } = await db
