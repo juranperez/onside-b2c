@@ -249,6 +249,14 @@ Create `supabase/migrations/0005_public_profiles.sql`:
 -- Community v1 — public profiles.
 -- NOT YET APPLIED. Apply to prod (ygmxxveranmfcobcexon) via Supabase MCP on Perez's
 -- per-action authorization. Spec: docs/superpowers/specs/2026-08-08-community-receipts-design.md
+--
+-- rollback: drop trigger if exists profiles_username_permanent on public.profiles;
+-- rollback: drop function if exists public.profiles_block_username_change();
+-- rollback: drop view if exists public.public_profiles;
+-- rollback: alter table public.profiles drop constraint if exists profiles_username_format;
+-- rollback: alter table public.profiles drop constraint if exists profiles_favourite_club_len;
+-- rollback: drop index if exists public.profiles_username_lower_key;
+-- rollback: alter table public.profiles drop column if exists favourite_club;  -- DESTROYS DATA
 
 -- Favourite club is load-bearing, not decoration: it powers the club leaderboard and
 -- "your club's window" in the next plan, and it is the tribal-identity hook that drives
@@ -262,7 +270,7 @@ alter table public.profiles add column if not exists favourite_club text;
 create unique index if not exists profiles_username_lower_key
   on public.profiles (lower(username)) where username is not null;
 
--- Mirror of validateUsername() in src/lib/profiles/username.ts: 3-20 chars, leading
+-- Mirror of checkUsername() in src/lib/profiles/username.ts: 3-20 chars, leading
 -- letter, [a-z0-9_], no trailing underscore. The reserved-word list stays in the app —
 -- it changes with the route table, and a check constraint is the wrong place for it.
 alter table public.profiles drop constraint if exists profiles_username_format;
@@ -286,13 +294,56 @@ alter table public.profiles add constraint profiles_username_format
 -- so this exposes nothing new.
 --
 -- No username, no public page: the WHERE clause is what makes an unclaimed profile invisible.
-create or replace view public.public_profiles as
+--
+-- drop+create rather than `create or replace`: CREATE OR REPLACE VIEW can only APPEND
+-- columns, so the first migration that drops or reorders one fails outright. Replace's
+-- usual advantage (it preserves grants) does not apply, because privileges below are set
+-- explicitly rather than inherited.
+drop view if exists public.public_profiles;
+create view public.public_profiles as
   select id, username, display_name, favourite_club, created_at
   from public.profiles
   where username is not null;
 
+-- ⚠️ The grant does NOT establish this view's privileges — it ADDS to them.
+-- Supabase's default ACL for schema public (pg_default_acl, objtype 'r' — which covers
+-- views) already hands anon and authenticated `arwdDxtm` on every new relation. A view
+-- has no RLS of its own; this one is auto-updatable; and it executes as its owner
+-- (postgres), who bypasses RLS on profiles because relforcerowsecurity is false.
+-- Without the revoke, `delete from public.public_profiles` using the publishable key
+-- that ships in the browser bundle cascades through eight ON DELETE CASCADE foreign
+-- keys and erases predictions, reputation and comments.
+-- The column list bounds SELECT. It does nothing for DELETE. This revoke is the boundary.
+revoke all on public.public_profiles from anon, authenticated;
 grant select on public.public_profiles to anon, authenticated;
+
+-- Handles are permanent, and the claim action runs as service_role — which bypasses RLS,
+-- policies and grants alike. Client UPDATE on profiles is already impossible (authenticated
+-- holds ardDxtm, no `w`), so this exists to stop a future SERVER-side edit from silently
+-- allowing renames and breaking every shared link and OG card. Same pattern as
+-- predictions_block_field_mutation in 0003_receipts.sql.
+create or replace function public.profiles_block_username_change()
+returns trigger language plpgsql as $$
+begin
+  if old.username is not null and new.username is distinct from old.username then
+    raise exception 'profiles: username is permanent once claimed';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists profiles_username_permanent on public.profiles;
+create trigger profiles_username_permanent before update on public.profiles
+  for each row execute function public.profiles_block_username_change();
+
+-- favourite_club is client-settable and rendered publicly next to a handle. 80 matches
+-- the .slice(0, 80) in setFavouriteClub — a mismatch would surface as a raw 23514
+-- instead of a friendly message.
+alter table public.profiles drop constraint if exists profiles_favourite_club_len;
+alter table public.profiles add constraint profiles_favourite_club_len
+  check (favourite_club is null or length(favourite_club) <= 80);
 ```
+
+**No `begin;`/`commit;` wrapper, deliberately.** This is applied through Supabase's `apply_migration`, which may already run the batch in a transaction; a nested `BEGIN` warns and the inner `COMMIT` would end the outer transaction early. On first apply every `drop ... if exists` is a no-op, so the partial-failure window a wrapper would protect does not exist here.
 
 - [ ] **Step 2: Verify the format regex matches the TypeScript rules**
 
@@ -317,10 +368,10 @@ const candidates = [
 
 Verify it is now live: temporarily set `USERNAME_MAX = 24`, confirm the sweep **fails**, then restore it and confirm green.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-cd ~/onside-b2c && git add supabase/migrations/0005_public_profiles.sql && git commit -m "feat(db): migration 0005 — public_profiles view, favourite_club, permanent handles"
+cd ~/onside-b2c && git add supabase/migrations/0005_public_profiles.sql src/lib/profiles/username.test.ts && git commit -m "feat(db): migration 0005 — public_profiles view, favourite_club, permanent handles"
 ```
 
 ---
@@ -369,6 +420,29 @@ where table_schema='public' and table_name='public_profiles' order by ordinal_po
 ```
 
 Expected exactly: `id`, `username`, `display_name`, `favourite_club`, `created_at`. If `stripe_customer_id`, `subscription_status`, `tier` or `current_period_end` appears, stop and fix the view before going further.
+
+- [ ] **Step 4b: Verify the view is read-only to client roles**
+
+The single most important post-apply check. Supabase's default ACL grants `anon`/`authenticated` full `arwdDxtm` on every new relation including views, and a view has no RLS to fall back on:
+
+```sql
+select grantee, string_agg(privilege_type, ', ' order by privilege_type) as privs
+from information_schema.role_table_grants
+where table_schema='public' and table_name='public_profiles'
+  and grantee in ('anon','authenticated')
+group by grantee;
+```
+
+Expected: exactly `SELECT` for each of `anon` and `authenticated`. **If `DELETE`, `UPDATE`, `INSERT` or `TRUNCATE` appears for either role, stop immediately** — writes through this view execute as the view owner and bypass RLS on `profiles`, and `profiles` is the parent of eight `ON DELETE CASCADE` foreign keys. Re-run the `revoke all` and re-check before doing anything else.
+
+Then confirm the permanence trigger actually fires:
+
+```sql
+select tgname from pg_trigger
+where tgrelid = 'public.profiles'::regclass and not tgisinternal;
+```
+
+Expected: `profiles_username_permanent` present.
 
 - [ ] **Step 5: Regenerate the database types**
 
