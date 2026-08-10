@@ -57,6 +57,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "alerts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       board_subscribers: {
@@ -87,6 +94,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_subscribers_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -278,48 +292,6 @@ export type Database = {
         }
         Relationships: []
       }
-      leagues: {
-        Row: {
-          club_count: number | null
-          country: string | null
-          data_source: string | null
-          fetched_at: string | null
-          id: string
-          name: string
-          name_norm: string | null
-          season: number | null
-          slug: string
-          tier: number | null
-          total_value: number | null
-        }
-        Insert: {
-          club_count?: number | null
-          country?: string | null
-          data_source?: string | null
-          fetched_at?: string | null
-          id: string
-          name: string
-          name_norm?: string | null
-          season?: number | null
-          slug: string
-          tier?: number | null
-          total_value?: number | null
-        }
-        Update: {
-          club_count?: number | null
-          country?: string | null
-          data_source?: string | null
-          fetched_at?: string | null
-          id?: string
-          name?: string
-          name_norm?: string | null
-          season?: number | null
-          slug?: string
-          tier?: number | null
-          total_value?: number | null
-        }
-        Relationships: []
-      }
       league_standings: {
         Row: {
           club_id: string | null
@@ -382,6 +354,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      leagues: {
+        Row: {
+          club_count: number | null
+          country: string | null
+          data_source: string | null
+          fetched_at: string | null
+          id: string
+          name: string
+          name_norm: string | null
+          season: number | null
+          slug: string
+          tier: number | null
+          total_value: number | null
+        }
+        Insert: {
+          club_count?: number | null
+          country?: string | null
+          data_source?: string | null
+          fetched_at?: string | null
+          id: string
+          name: string
+          name_norm?: string | null
+          season?: number | null
+          slug: string
+          tier?: number | null
+          total_value?: number | null
+        }
+        Update: {
+          club_count?: number | null
+          country?: string | null
+          data_source?: string | null
+          fetched_at?: string | null
+          id?: string
+          name?: string
+          name_norm?: string | null
+          season?: number | null
+          slug?: string
+          tier?: number | null
+          total_value?: number | null
+        }
+        Relationships: []
       }
       managers: {
         Row: {
@@ -592,6 +606,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notifications_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       player_injuries: {
@@ -601,7 +622,7 @@ export type Database = {
           fetched_at: string
           player_id: string
           source: string
-          start_date: string | null
+          start_date: string
         }
         Insert: {
           category?: string
@@ -609,7 +630,7 @@ export type Database = {
           fetched_at?: string
           player_id: string
           source?: string
-          start_date?: string | null
+          start_date: string
         }
         Update: {
           category?: string
@@ -617,7 +638,7 @@ export type Database = {
           fetched_at?: string
           player_id?: string
           source?: string
-          start_date?: string | null
+          start_date?: string
         }
         Relationships: [
           {
@@ -860,6 +881,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "predictions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -867,6 +895,7 @@ export type Database = {
           created_at: string | null
           current_period_end: string | null
           display_name: string | null
+          favourite_club: string | null
           id: string
           stripe_customer_id: string | null
           subscription_status: string | null
@@ -877,6 +906,7 @@ export type Database = {
           created_at?: string | null
           current_period_end?: string | null
           display_name?: string | null
+          favourite_club?: string | null
           id: string
           stripe_customer_id?: string | null
           subscription_status?: string | null
@@ -887,6 +917,7 @@ export type Database = {
           created_at?: string | null
           current_period_end?: string | null
           display_name?: string | null
+          favourite_club?: string | null
           id?: string
           stripe_customer_id?: string | null
           subscription_status?: string | null
@@ -929,6 +960,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -990,6 +1028,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "reputation_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       rumour_comments: {
@@ -1026,6 +1071,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "rumour_comments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "rumour_comments_rumour_id_fkey"
             columns: ["rumour_id"]
             isOneToOne: false
@@ -1056,6 +1108,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rumour_follows_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
             referencedColumns: ["id"]
           },
           {
@@ -1285,11 +1344,41 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "watchlist_items_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          created_at: string | null
+          display_name: string | null
+          favourite_club: string | null
+          id: string | null
+          username: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: string | null
+          favourite_club?: string | null
+          id?: string | null
+          username?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string | null
+          favourite_club?: string | null
+          id?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       f_unaccent: { Args: { "": string }; Returns: string }
