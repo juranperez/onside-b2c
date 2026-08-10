@@ -63,6 +63,18 @@ Do not re-derive these; they were checked directly.
 
 Pure functions, no DB. Everything downstream depends on these being right, and because handles are permanent this is the only gate a bad handle passes through.
 
+> **AMENDED during code review (2026-08-09).** The interface below returns a verdict (`validateUsername` → error code or `null`) while normalizing internally and discarding the canonical string. That lets a caller validate one value and persist another — on a permanent handle, an unfixable row. The shipped version instead returns the safe value, matching `src/lib/auth/safe-redirect.ts`:
+>
+> ```ts
+> export type UsernameCheck =
+>   | { ok: true; username: string }
+>   | { ok: false; error: UsernameError };
+>
+> export function checkUsername(raw: unknown): UsernameCheck;
+> ```
+>
+> Also changed: `RESERVED_USERNAMES` is a `ReadonlySet<string>`; check order is `too_short → bad_charset → too_long → bad_start → bad_end → reserved` (`too_short` stays first so an empty field does not report a charset error); non-string input returns a validation error rather than throwing; and two tests now enforce the "keep in sync" comments — one sweeping the app rules against the migration's regex, one reading `src/app/(app)` to confirm every route is reserved. **Task 5 below already uses `checkUsername`.**
+
 **Files:**
 - Create: `src/lib/profiles/username.ts`
 - Test: `src/lib/profiles/username.test.ts`
@@ -562,7 +574,7 @@ Create `src/lib/profiles/actions.ts`:
 import { revalidatePath } from "next/cache";
 import { adminDb } from "@/lib/db/admin";
 import { getSessionUser } from "@/lib/db/supabase-server";
-import { normalizeUsername, validateUsername, USERNAME_ERROR_MESSAGE } from "./username";
+import { checkUsername, USERNAME_ERROR_MESSAGE } from "./username";
 
 export type ProfileActionState = { ok?: boolean; error?: string; username?: string };
 
@@ -582,10 +594,12 @@ export async function claimUsername(
   const user = await getSessionUser().catch(() => null);
   if (!user) return { error: "Sign in first." };
 
-  const raw = String(formData.get("username") ?? "");
-  const err = validateUsername(raw);
-  if (err) return { error: USERNAME_ERROR_MESSAGE[err] };
-  const username = normalizeUsername(raw);
+  // checkUsername takes `unknown` and hands back the canonical string, so there is no
+  // way to validate one value and persist another — which on a permanent handle would
+  // produce a row nobody can fix.
+  const check = checkUsername(formData.get("username"));
+  if (!check.ok) return { error: USERNAME_ERROR_MESSAGE[check.error] };
+  const username = check.username;
 
   const db = adminDb();
   const { data: existing } = await db
@@ -1649,7 +1663,7 @@ cd ~/onside-b2c && git add src/components/transfers/discussion-thread.tsx "src/a
 cd ~/onside-b2c && npm test
 ```
 
-Expected: all tests pass — the pre-existing suite (248 at last count) plus the 10 new handle tests.
+Expected: all tests pass. Baseline before this plan was **49 files / 361 tests** (measured 2026-08-09), plus the handle tests added in Task 1.
 
 - [ ] **Step 2: Build and lint clean**
 
