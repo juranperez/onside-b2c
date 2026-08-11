@@ -53,11 +53,12 @@ export default async function LandingPage() {
       <ValueProps />
       <MoversPreview risers={risers} fallers={fallers} />
       <SquadsPreview clubs={clubs} />
-      {/* SocialProof is UNRENDERED on purpose (2026-08-08). Its three quotes were
-          invented — including "Head of Recruitment, Top-five Bundesliga club: we use
-          the engine internally", a false claim of a commercial relationship — under a
-          heading ("Said about ONSIDE") that asserts they were really said, with no
-          disclaimer. Restore only with real, attributable, permissioned quotes. */}
+      {/* SocialProof was DELETED 2026-08-11 (it had been unrendered since 2026-08-08).
+          Its three quotes were invented — including "Head of Recruitment, Top-five
+          Bundesliga club: we use the engine internally", a false claim of a commercial
+          relationship — under a heading asserting they were really said. Kept as dead
+          code it was one JSX line away from republishing, so it is gone. Add testimonials
+          only when they are real, attributable and permissioned. */}
       <PricingTeaser />
     </div>
   );
@@ -148,9 +149,15 @@ function HeroSection({ counts, featured }: { counts: { players: number; clubs: n
               <br />
               <span className="font-serif text-acc italic font-normal">Live.</span>
             </h1>
+            {/* The previous line claimed "the same valuation engine that top-flight clubs pay
+                six figures for". Nothing in this repo substantiates a paying club, and a
+                fabricated club relationship was already removed from this same file once (see
+                the SocialProof note above). Restore a claim like that only against a real,
+                nameable contract. Audit: docs/audits/2026-08-10-homepage-claims-vs-reality.md */}
             <p className="rise mt-7 text-[18px] text-mute max-w-[520px] leading-relaxed text-pretty" style={{ animationDelay: "200ms" }}>
-              The same valuation engine that top-flight clubs pay six figures for — now
-              open to the fans, the analysts, and football twitter who actually saw it first.
+              A scout-grade valuation on 11,000+ players — with the confidence band, the
+              trajectory and the reasoning behind it, open to the fans, the analysts, and
+              football twitter who actually saw it first.
             </p>
 
             <div className="rise mt-9 flex items-center gap-3 flex-wrap" style={{ animationDelay: "280ms" }}>
@@ -269,14 +276,14 @@ function TickerStrip() {
           <span key={rep} className="inline-flex items-center gap-3 text-[12px] text-mute">
             <span className="inline-flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-up pulse-dot" />
-              Live model valuations, updated continuously
+              Live model valuations, moving daily
             </span>
             <span className="opacity-25 mx-4">&middot;</span>
-            <span>Confidence bands on every player</span>
+            <span>A confidence band on every valuation</span>
             <span className="opacity-25 mx-4">&middot;</span>
-            <span>12-month valuation history</span>
+            <span>12-month modelled trajectory</span>
             <span className="opacity-25 mx-4">&middot;</span>
-            <span>Built on the engine clubs already trust</span>
+            <span>18,756 players, 523 clubs, 28 leagues</span>
             <span className="opacity-25 mx-4">&middot;</span>
           </span>
         ))}
@@ -295,9 +302,15 @@ function ValueProps() {
             <h3 className="display text-[26px] leading-[1.1] tracking-tight">
               Stop arguing about static numbers.
             </h3>
+            {/* Do NOT restore "updates every time a player kicks a ball". The displayed value is
+                a deterministic model estimate that moves daily around an anchor (see
+                src/lib/valuation/pulse.ts) — no match event feeds it. pulse.ts ships to the
+                browser, so that claim is disprovable from the client bundle. Audit:
+                docs/audits/2026-08-10-homepage-claims-vs-reality.md */}
             <p className="text-mute text-[13.5px] leading-relaxed">
-              Transfermarkt valuations update when a community admin remembers. Ours update every
-              time a player kicks a ball.
+              Transfermarkt valuations update when a community admin remembers. Ours are a model
+              estimate that moves every day, with a confidence band attached so you know how much
+              to trust it.
             </p>
             <div className="mt-auto pt-2">
               <div className="rounded-xl bg-ink-900 border border-line p-4">
@@ -309,8 +322,8 @@ function ValueProps() {
                   <LiveDot />
                 </div>
                 <p className="text-[12px] text-mute leading-relaxed">
-                  Every valuation carries a confidence band and a 12-month trajectory — derived from
-                  the model, not a crowd-sourced guess.
+                  Every valuation carries a confidence band and a 12-month modelled trajectory —
+                  derived from the model, not a crowd-sourced guess.
                 </p>
               </div>
             </div>
@@ -328,11 +341,11 @@ function ValueProps() {
             <div className="mt-auto pt-2">
               <div className="rounded-xl bg-ink-900 border border-line p-4 space-y-3">
                 <div className="flex items-center gap-2 text-[11.5px] text-mute">
-                  <Shield size={12} className="text-acc" /> Verified scout reputation — launching soon
+                  <Shield size={12} className="text-acc" /> Verified scout reputation
                 </div>
                 <p className="text-[12px] text-mute leading-relaxed">
-                  Threads, reputation and receipts arrive with accounts. Your track record will be
-                  public and permanent.
+                  Make a call on any deal and it locks against the house number. It scores itself
+                  when the saga settles, on a public profile anyone can look up.
                 </p>
               </div>
             </div>
@@ -343,17 +356,22 @@ function ValueProps() {
             <h3 className="display text-[26px] leading-[1.1] tracking-tight">
               &ldquo;Find me an undervalued ST under 21 in Ligue 1.&rdquo;
             </h3>
+            {/* Charts, comparison tables and player "chips" are not rendered — AskChat streams
+                markdown with inline links. Don't re-add them to this copy without building them. */}
             <p className="text-mute text-[13.5px] leading-relaxed">
-              The AI Coach speaks football the way you do. Ask in plain English, get charts,
-              comparison tables and clickable player chips.
+              The AI Coach speaks football the way you do. Ask in plain English, get a straight
+              answer with every player in it linked.
             </p>
             <div className="mt-auto pt-2">
               <div className="rounded-xl bg-ink-900 border border-line p-4 space-y-2">
                 <div className="flex items-center gap-2 text-[11px] text-mute">
                   <Sparkles size={11} className="text-acc" /> AI COACH &middot; PRO
                 </div>
+                {/* /ask is live on every tier — Free and Plus carry a daily limit, Pro is
+                    unlimited (see /pricing). "Launching with Onside Pro" was wrong twice over. */}
                 <p className="text-[12.5px] text-mute leading-relaxed">
-                  Natural-language scouting across the full Onside dataset. Launching with Onside Pro.
+                  Natural-language scouting across the Onside dataset. Free and Plus get a daily
+                  limit; Pro is unlimited.
                 </p>
               </div>
             </div>
@@ -513,77 +531,53 @@ function SquadsPreview({ clubs }: { clubs: ClubSummary[] }) {
   );
 }
 
-function SocialProof() {
-  const quotes = [
-    {
-      text: "I've been waiting ten years for someone to do for player valuations what Bloomberg did for stocks.",
-      author: "@xG_Pedro",
-      sub: "Tactics writer",
-    },
-    {
-      text: "ONSIDE called Endrick at €35M in October. I'm not paying for Pro because I want to -- I'm paying because I have to.",
-      author: "@bet_eng",
-      sub: "Power bettor",
-    },
-    {
-      text: "We use the engine internally. The B2C product makes the same data available to fans without watering it down.",
-      author: "Head of Recruitment",
-      sub: "Top-five Bundesliga club",
-    },
-  ];
 
-  return (
-    <section className="border-b border-line bg-ink-850/30">
-      <div className="max-w-[1440px] mx-auto px-6 py-20">
-        <div className="text-center mb-12">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-mute-soft mb-3 num">
-            Said about ONSIDE
-          </div>
-          <h2 className="display text-[40px] tracking-tight max-w-[640px] mx-auto leading-[1.05]">
-            The kind of product football twitter{" "}
-            <span className="font-serif italic text-acc">actually</span> ships from.
-          </h2>
-        </div>
-        <div className="grid lg:grid-cols-3 gap-4">
-          {quotes.map((q) => (
-            <div key={q.author} className="rounded-2xl bg-ink-850 border border-line p-6">
-              <div className="text-[16px] font-serif leading-[1.45]">&ldquo;{q.text}&rdquo;</div>
-              <div className="mt-5 flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-ink-700" />
-                <div>
-                  <div className="text-[12.5px] font-medium">{q.author}</div>
-                  <div className="text-[11px] text-mute-soft">{q.sub}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
+/**
+ * Homepage pricing teaser.
+ *
+ * Feature status MUST stay in sync with `/pricing`, which marks anything unbuilt
+ * "Coming". This card previously listed six unbuilt features as though they were
+ * included — someone could pay $20 on the strength of this and find them absent, while
+ * our own pricing page already conceded they were not there. If you add a feature here,
+ * add it there, and carry the status across.
+ */
 function PricingTeaser() {
   const tiers = [
     {
       name: "Free",
       price: "$0",
       tag: "Forever free",
-      features: ["Full search and profiles", "Dynamic valuations", "Basic comparisons", "Community forum"],
+      features: [
+        { label: "Full search and profiles" },
+        { label: "Live model valuations" },
+        { label: "Calls and a public record" },
+        { label: "Community forum", coming: true },
+      ],
       kind: "outline" as const,
     },
     {
       name: "Plus",
       price: "$4",
       tag: "/ month",
-      features: ["Everything in Free", "Historical valuation graphs", "Unlimited watchlists", "Ad-free", "Premium forum badges"],
+      features: [
+        { label: "Everything in Free" },
+        { label: "Unlimited watchlists" },
+        { label: "Ad-free" },
+        { label: "Historical valuation graphs", coming: true },
+        { label: "Premium forum badges", coming: true },
+      ],
       kind: "ghost" as const,
     },
     {
       name: "Pro",
       price: "$20",
       tag: "/ month",
-      features: ["AI Coach unlimited", "Scout-grade exports", "Predicted transfers", "Read-only API"],
+      features: [
+        { label: "AI Coach unlimited" },
+        { label: "Scout-grade exports", coming: true },
+        { label: "Predicted transfers", coming: true },
+        { label: "Read-only API", coming: true },
+      ],
       kind: "primary" as const,
       popular: true,
     },
@@ -635,9 +629,12 @@ function PricingTeaser() {
               </div>
               <div className="my-6 space-y-2.5">
                 {t.features.map((f) => (
-                  <div key={f} className="flex items-center gap-2 text-[13px] text-mute">
-                    <Check size={13} className="text-acc" />
-                    <span className="text-fg/90">{f}</span>
+                  <div key={f.label} className="flex items-center gap-2 text-[13px] text-mute">
+                    <Check size={13} className={f.coming ? "text-mute-soft" : "text-acc"} />
+                    <span className={f.coming ? "text-mute" : "text-fg/90"}>{f.label}</span>
+                    {f.coming && (
+                      <span className="text-[10px] uppercase tracking-wide text-mute-soft num">Coming</span>
+                    )}
                   </div>
                 ))}
               </div>
