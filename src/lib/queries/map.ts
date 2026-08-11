@@ -1,0 +1,259 @@
+import { clubStyle, monogram } from "../club-style";
+import { liveValue, valueOnDay, dayIndexFor } from "../valuation/pulse";
+
+const DAY = 86_400_000;
+
+/**
+ * Minimum minutes in a season before its per-90/% advanced data is trustworthy.
+ * Below this, dividing by a tiny sample inflates per-90 rates into nonsense (a
+ * 14-minute sub with one shot reads as 5+ xG/90), so the performance radar is
+ * suppressed. ~5 full matches; ~60% of players with advanced data clear it.
+ */
+export const RADAR_MIN_MINUTES = 450;
+
+// ─────────────────────────── Player listing ───────────────────────────
+
+export interface PlayerListItem {
+  id: string;
+  slug: string;
+  name: string;        // full legal name (for search/SEO)
+  displayName: string; // fan-facing: "Kylian Mbappé" not "Kylian Mbappé Lottin"
+  photoUrl: string | null;
+  pos: string;        // coarse: GK/DEF/MID/FWD (API-Football)
+  detailedPos: string | null; // LW/RW/CB/CDM/... (Sportmonks, null if not yet synced)
+  age: number;
+  club: string;
+  clubSlug: string;
+  clubShort: string;
+  clubBg: string;
+  clubColor: string;
+  league: string;
+  leagueSlug: string;
+  val: number; // millions
+  dWeek: number; // millions
+  spark: number[]; // recent weekly values (millions) for the trend sparkline
+}
+
+export interface PlayerRowDB {
+  id: string;
+  slug: string;
+  name: string;
+  known_as: string | null;
+  photo_url: string | null;
+  position: string | null;
+  detailed_pos: string | null;
+  age: number | null;
+  clubs: {
+    slug: string;
+    name: string;
+    short_name: string | null;
+    leagues: { slug: string; name: string } | null;
+  } | null;
+  player_valuations: { value_eur: number } | null;
+}
+
+export function toPlayerListItem(r: PlayerRowDB, now: Date = new Date()): PlayerListItem {
+  const anchor = r.player_valuations?.value_eur ?? 0;
+  const style = clubStyle(r.clubs?.slug ?? r.id);
+  const valNow = liveValue(anchor, r.id, now);
+  const valWeekAgo = liveValue(anchor, r.id, new Date(now.getTime() - 7 * DAY));
+  const spark: number[] = [];
+  for (let k = 7; k >= 0; k--) {
+    spark.push(Math.round((liveValue(anchor, r.id, new Date(now.getTime() - k * 7 * DAY)) / 1e6) * 10) / 10);
+  }
+  return {
+    id: r.id,
+    slug: r.slug,
+    name: r.name,
+    displayName: r.known_as ?? r.name,
+    photoUrl: r.photo_url ?? null,
+    pos: r.position ?? "—",
+    detailedPos: r.detailed_pos ?? null,
+    age: r.age ?? 0,
+    club: r.clubs?.name ?? "Free agent",
+    clubSlug: r.clubs?.slug ?? "",
+    clubShort: r.clubs?.short_name ?? monogram(r.clubs?.name ?? "FC"),
+    clubBg: style.bg,
+    clubColor: style.color,
+    league: r.clubs?.leagues?.name ?? "—",
+    leagueSlug: r.clubs?.leagues?.slug ?? "",
+    val: Math.round((valNow / 1e6) * 10) / 10,
+    dWeek: Math.round(((valNow - valWeekAgo) / 1e6) * 10) / 10,
+    spark,
+  };
+}
+
+// ─────────────────────────── Player profile ───────────────────────────
+
+export interface PlayerProfile {
+  id: string;
+  slug: string;
+  name: string;        // full legal name (search/SEO/meta)
+  displayName: string; // fan-facing display: "Kylian Mbappé"
+  photoUrl: string | null;
+  firstName: string;
+  lastName: string;
+  position: string;
+  detailedPos: string | null; // LW/RW/CB/... (Sportmonks)
+  age: number | null;
+  nationality: string | null;
+  heightCm: number | null;
+  foot: string | null;
+  shirtNo: number | null;
+  contractUntil: number | null;
+  club: { name: string; slug: string } | null;
+  league: { name: string; slug: string } | null;
+  clubBg: string;
+  clubColor: string;
+  clubShort: string;
+  value: number; // eur, live
+  dWeek: number; // eur
+  dMonth: number; // eur
+  confidence: number;
+  bandLow: number;
+  bandHigh: number;
+  pillars: { label: string; value: number }[];
+  stats: { season: number; apps: number; minutes: number; goals: number; assists: number; rating: number | null; xg: number | null } | null;
+  /** All seasons newest-first (historical backfill + current) — powers the Seasons tab. */
+  seasonHistory: { season: number; apps: number; minutes: number; goals: number; assists: number; rating: number | null; xg: number | null }[];
+  radar: Record<string, number> | null; // Sportmonks advanced per-90/% — newest season clearing the minutes floor (null if none qualify)
+  radarSeason: number | null;            // season the radar is drawn from (may predate current when the current season is low-sample)
+  radarLowSample: boolean;               // advanced data exists but no season clears RADAR_MIN_MINUTES → show an honest "not enough minutes" note
+  series: { label: string; v: number }[]; // millions, ~12 monthly points
+}
+
+export interface PlayerProfileRow {
+  id: string;
+  slug: string;
+  name: string;
+  known_as: string | null;
+  photo_url: string | null;
+  position: string | null;
+  detailed_pos: string | null;
+  age: number | null;
+  dob: string | null;
+  nationality: string | null;
+  height_cm: number | null;
+  foot: string | null;
+  shirt_no: number | null;
+  contract_until: number | null;
+  clubs: { slug: string; name: string; short_name: string | null; leagues: { slug: string; name: string } | null } | null;
+  player_valuations: {
+    value_eur: number;
+    pillar_scores: Record<string, number> | null;
+    confidence_pct: number;
+    band_low: number;
+    band_high: number;
+  } | null;
+  player_stats: { season: number; apps: number | null; minutes: number | null; goals: number | null; assists: number | null; rating: number | null; xg: number | null; advanced: Record<string, number> | null }[];
+}
+
+const PILLAR_LABELS: Record<string, string> = {
+  performance: "On-field",
+  output: "Output",
+  involvement: "Minutes",
+  prestige: "League",
+  age: "Age curve",
+};
+
+export function toPlayerProfile(r: PlayerProfileRow, now: Date = new Date()): PlayerProfile {
+  const anchor = r.player_valuations?.value_eur ?? 0;
+  const value = liveValue(anchor, r.id, now);
+  const dWeek = value - liveValue(anchor, r.id, new Date(now.getTime() - 7 * DAY));
+  const dMonth = value - liveValue(anchor, r.id, new Date(now.getTime() - 30 * DAY));
+  const style = clubStyle(r.clubs?.slug ?? r.id);
+
+  const displayName = r.known_as ?? r.name;
+  const words = displayName.trim().split(/\s+/);
+  const lastName = words.length > 1 ? words[words.length - 1] : displayName;
+  const firstName = words.length > 1 ? words.slice(0, -1).join(" ") : "";
+
+  const scores = r.player_valuations?.pillar_scores ?? {};
+  const pillars = Object.entries(PILLAR_LABELS)
+    .filter(([k]) => typeof scores[k] === "number")
+    .map(([k, label]) => ({ label, value: Math.round(scores[k]) }));
+
+  const statsDesc = (r.player_stats ?? []).slice().sort((a, b) => b.season - a.season);
+  const stat = statsDesc[0] ?? null;
+
+  // Performance radar: per-90/% rates are only meaningful with a real minutes sample.
+  // Use the newest season whose advanced sample clears the floor; if a player has advanced
+  // data but no season qualifies (e.g. a fringe sub), suppress the radar and flag it so the
+  // profile shows an honest "not enough minutes" note instead of an extrapolated-noise chart.
+  const radarRow = statsDesc.find(
+    (s) => s.advanced && typeof s.advanced === "object" && Number(s.advanced.mins ?? 0) >= RADAR_MIN_MINUTES,
+  );
+  const radar = radarRow?.advanced ?? null;
+  const radarSeason = radarRow?.season ?? null;
+  const radarLowSample = !radarRow && statsDesc.some((s) => s.advanced && typeof s.advanced === "object");
+
+  // Confidence band derived from the LIVE value + confidence (the stored band_low/high
+  // are static-to-anchor and degenerate; this tracks the value and widens as confidence drops).
+  const confidence = r.player_valuations?.confidence_pct ?? 0;
+  const bandSpread = (1 - Math.min(Math.max(confidence, 0), 100) / 100) * 0.25 + 0.04;
+
+  // 12 monthly history points from the deterministic Pulse, anchored to the model value.
+  const series: { label: string; v: number }[] = [];
+  for (let k = 11; k >= 0; k--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+    const v = valueOnDay(anchor, r.id, dayIndexFor(d));
+    series.push({ label: d.toLocaleString("en-US", { month: "short" }), v: Math.round((v / 1e6) * 10) / 10 });
+  }
+
+  return {
+    id: r.id,
+    slug: r.slug,
+    name: r.name,
+    displayName,
+    photoUrl: r.photo_url ?? null,
+    firstName,
+    lastName,
+    position: r.position ?? "—",
+    detailedPos: r.detailed_pos ?? null,
+    age: r.age,
+    nationality: r.nationality,
+    heightCm: r.height_cm,
+    foot: r.foot,
+    shirtNo: r.shirt_no,
+    contractUntil: r.contract_until,
+    club: r.clubs ? { name: r.clubs.name, slug: r.clubs.slug } : null,
+    league: r.clubs?.leagues ? { name: r.clubs.leagues.name, slug: r.clubs.leagues.slug } : null,
+    clubBg: style.bg,
+    clubColor: style.color,
+    clubShort: r.clubs?.short_name ?? monogram(r.clubs?.name ?? "FC"),
+    value,
+    dWeek,
+    dMonth,
+    confidence,
+    bandLow: Math.round(value * (1 - bandSpread)),
+    bandHigh: Math.round(value * (1 + bandSpread)),
+    pillars,
+    stats: stat
+      ? {
+          season: stat.season,
+          apps: stat.apps ?? 0,
+          minutes: stat.minutes ?? 0,
+          goals: stat.goals ?? 0,
+          assists: stat.assists ?? 0,
+          rating: stat.rating,
+          xg: stat.xg,
+        }
+      : null,
+    seasonHistory: (r.player_stats ?? [])
+      .slice()
+      .sort((a, b) => b.season - a.season)
+      .map((s) => ({
+        season: s.season,
+        apps: s.apps ?? 0,
+        minutes: s.minutes ?? 0,
+        goals: s.goals ?? 0,
+        assists: s.assists ?? 0,
+        rating: s.rating,
+        xg: s.xg,
+      })),
+    radar,
+    radarSeason,
+    radarLowSample,
+    series,
+  };
+}

@@ -1,0 +1,116 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { Card, Avatar, Delta } from "@/components/ui";
+import { Sparkline } from "@/components/ui/sparkline";
+import type { PlayerListItem } from "@/lib/queries/map";
+import type { MoverReason } from "@/lib/queries";
+
+type Dir = "all" | "up" | "down";
+
+const REASON_STYLE: Record<MoverReason["kind"], string> = {
+  rumour: "bg-acc/10 text-acc border-acc/25",
+  confirmed: "bg-up/10 text-up border-up/25",
+  injury: "bg-down/10 text-down border-down/25",
+  worldcup: "bg-up/10 text-up border-up/25",
+  model: "bg-overlay/5 text-mute-soft border-line",
+};
+
+/**
+ * Client child for the "Biggest movers · last 24h" board.
+ * Receives the already-fetched movers from the Server Component and lets the
+ * reader flip between All / Up / Down without another round-trip.
+ */
+export function MoversBoard({ movers, reasons = {} }: { movers: PlayerListItem[]; reasons?: Record<string, MoverReason> }) {
+  const [dir, setDir] = useState<Dir>("all");
+
+  const shown = useMemo(() => {
+    const sorted = [...movers].sort((a, b) => Math.abs(b.dWeek) - Math.abs(a.dWeek));
+    const filtered =
+      dir === "up"
+        ? sorted.filter((p) => p.dWeek > 0)
+        : dir === "down"
+          ? sorted.filter((p) => p.dWeek < 0)
+          : sorted;
+    return filtered.slice(0, 4);
+  }, [movers, dir]);
+
+  const toggles: { id: Dir; label: string }[] = [
+    { id: "all", label: "All" },
+    { id: "up", label: "Up" },
+    { id: "down", label: "Down" },
+  ];
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-mute-soft num">Today&apos;s board</div>
+          <h2 className="text-[18px] font-semibold mt-0.5">Biggest movers &middot; last 24h</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          {toggles.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setDir(t.id)}
+              className={cn(
+                "px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer",
+                dir === t.id ? "bg-overlay/10 text-fg" : "text-mute hover:text-fg",
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {shown.length === 0 ? (
+        <Card className="p-8 text-center text-mute text-[13px]">
+          No movers in this direction right now.
+        </Card>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {shown.map((p) => (
+            <Link key={p.id} href={`/players/${p.slug}`}>
+              <Card className="p-4 hover:bg-ink-800 transition cursor-pointer h-full">
+                <div className="flex items-center justify-between mb-3">
+                  <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} src={p.photoUrl} size={36} />
+                  <Delta value={p.dWeek} big />
+                </div>
+                <div className="text-[14px] font-semibold leading-snug truncate">{p.displayName}</div>
+                <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-mute min-w-0">
+                  <span
+                    className="w-3 h-3 rounded-sm grid place-items-center text-[6px] font-bold num shrink-0"
+                    style={{ background: p.clubBg, color: p.clubColor }}
+                  >
+                    {p.clubShort.slice(0, 2)}
+                  </span>
+                  <span className="truncate">{p.club}</span>
+                </div>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="num text-[18px] font-bold">€{p.val.toFixed(1)}M</span>
+                  <Sparkline points={p.spark} width={52} />
+                </div>
+                {reasons[p.id] && (
+                  <div className="mt-2.5">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium truncate max-w-full",
+                        REASON_STYLE[reasons[p.id].kind],
+                      )}
+                      title={reasons[p.id].kind === "model" ? "No external catalyst — the model is re-pricing within its confidence band." : undefined}
+                    >
+                      {reasons[p.id].text}
+                    </span>
+                  </div>
+                )}
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

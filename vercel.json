@@ -1,0 +1,48 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sync?league=premier-league",
+      "schedule": "0 5 * * 0"
+    },
+    {
+      "path": "/api/cron/sync-fixtures",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/ingest-rumours",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/sync-transfers",
+      "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/sync-injuries",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/sync-standings",
+      "schedule": "30 7 * * *"
+    },
+    {
+      "path": "/api/cron/sync-club-fixtures",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/digest",
+      "schedule": "0 15 * * 0"
+    },
+    {
+      "path": "/api/cron/romano-watch",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/wc-goals",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/news-generate",
+      "schedule": "*/30 * * * *"
+    }
+  ]
+}

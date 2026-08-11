@@ -1,54 +1,155 @@
-"use client";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Bell, TrendingUp, TrendingDown, Bookmark, BellRing } from "lucide-react";
+import { Card, Avatar, Delta, Button, SectionHead } from "@/components/ui";
+import { cn } from "@/lib/utils";
+import { createSupabaseServer, getSessionUser } from "@/lib/db/supabase-server";
+import { getWatchlist } from "@/lib/watchlist/actions";
+import { getMovers } from "@/lib/queries";
+import type { PlayerListItem } from "@/lib/queries/map";
 
-import { Bell, TrendingUp, AlertCircle, MessageCircle, Newspaper } from "lucide-react";
-import { Card, Button, Chip } from "@/components/ui";
+export const dynamic = "force-dynamic";
 
-const NOTIFICATIONS = [
-  { icon: "up", title: "Wirtz hit €140.5M (+€6.8M this week)", sub: "Your alert threshold: €5M weekly change", time: "2h ago" },
-  { icon: "news", title: "Cole Palmer named in England World Cup squad", sub: "Player on your watchlist", time: "4h ago" },
-  { icon: "up", title: "Yamal reaches all-time high: €215.0M", sub: "New peak valuation", time: "6h ago" },
-  { icon: "alert", title: "Bellingham hamstring concern", sub: "Minor injury reported in training — monitor", time: "8h ago" },
-  { icon: "chat", title: "@ScoutVision replied to your thread", sub: "\"Great analysis on the Wirtz transfer...\"", time: "12h ago" },
-  { icon: "news", title: "World Cup squad announcements begin tomorrow", sub: "48 teams announce final 26-man squads", time: "1d ago" },
-  { icon: "up", title: "Your watchlist gained €32.2M this week", sub: "Weekly portfolio summary", time: "1d ago" },
-  { icon: "chat", title: "Your prediction was correct", sub: "You called Gyökeres €80M+ in March. He's now €82M. +15 rep", time: "2d ago" },
-];
+export const metadata: Metadata = {
+  title: "Notifications — Onside",
+  description: "Value alerts from your watchlist and the week's biggest market movers.",
+};
 
-export default function NotificationsPage() {
+function FeedRow({ p, note }: { p: PlayerListItem; note: string }) {
+  const up = p.dWeek >= 0;
   return (
-    <div className="max-w-[800px] mx-auto px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <div className="text-[11px] uppercase tracking-[0.18em] text-mute-soft mb-2 num">Notifications</div>
-          <h1 className="display text-[28px] tracking-tight">Activity feed</h1>
+    <Link href={`/players/${p.slug}`}>
+      <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-overlay/[0.03] transition border-b border-line last:border-0 cursor-pointer">
+        <div
+          className={cn(
+            "w-8 h-8 rounded-full grid place-items-center shrink-0",
+            up ? "bg-up/12 text-up" : "bg-down/12 text-down",
+          )}
+        >
+          {up ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
         </div>
-        <Button kind="ghost" size="sm">Mark all read</Button>
+        <Avatar name={p.displayName} clubBg={p.clubBg} clubColor={p.clubColor} size={30} />
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-medium truncate">{p.displayName}</div>
+          <div className="text-[11px] text-mute truncate">{note}</div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="num text-[13px] font-semibold">€{p.val.toFixed(1)}M</div>
+          <Delta value={p.dWeek} />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+interface DealAlert {
+  id: string;
+  createdAt: string | null;
+  rumourId: string | null;
+  note: string;
+}
+
+async function getDealAlerts(): Promise<DealAlert[]> {
+  const supabase = await createSupabaseServer();
+  const { data } = await supabase
+    .from("notifications")
+    .select("id,created_at,payload")
+    .eq("type", "rumour")
+    .order("created_at", { ascending: false })
+    .limit(15);
+  return (data ?? []).map((n) => {
+    const p = (n.payload ?? {}) as { rumourId?: string; note?: string };
+    return { id: n.id, createdAt: n.created_at, rumourId: p.rumourId ?? null, note: p.note ?? "Deal update" };
+  });
+}
+
+export default async function NotificationsPage() {
+  const user = await getSessionUser().catch(() => null);
+  const watch = user ? await getWatchlist().catch(() => []) : [];
+  const dealAlerts = user ? await getDealAlerts().catch(() => []) : [];
+  const alerts = watch
+    .filter((p) => Math.abs(p.dWeek) >= 0.5)
+    .sort((a, b) => Math.abs(b.dWeek) - Math.abs(a.dWeek));
+  const movers = await getMovers(8, "all").catch(() => []);
+
+  return (
+    <div className="max-w-[760px] mx-auto px-6 py-8">
+      <div className="flex items-center gap-2.5 mb-6">
+        <Bell size={18} className="text-acc" />
+        <h1 className="display text-[28px]">Notifications</h1>
       </div>
 
-      <div className="space-y-2">
-        {NOTIFICATIONS.map((n, i) => (
-          <Card key={i} className="p-4 hover:bg-ink-800 transition cursor-pointer">
-            <div className="flex items-start gap-3">
-              <div className={`w-8 h-8 rounded-lg grid place-items-center shrink-0 ${
-                n.icon === "up" ? "bg-up/15 text-up" :
-                n.icon === "alert" ? "bg-down/15 text-down" :
-                n.icon === "chat" ? "bg-acc/15 text-acc" :
-                "bg-white/5 text-mute"
-              }`}>
-                {n.icon === "up" && <TrendingUp size={14} />}
-                {n.icon === "alert" && <AlertCircle size={14} />}
-                {n.icon === "chat" && <MessageCircle size={14} />}
-                {n.icon === "news" && <Newspaper size={14} />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium leading-snug">{n.title}</div>
-                <div className="text-[12px] text-mute mt-0.5">{n.sub}</div>
-              </div>
-              <span className="text-[11px] text-mute-soft num shrink-0">{n.time}</span>
-            </div>
+      {/* Tracked-deal developments */}
+      {user && dealAlerts.length > 0 && (
+        <div className="mb-8">
+          <SectionHead eyebrow="Deals you track" title="Saga updates" />
+          <Card className="overflow-hidden">
+            {dealAlerts.map((a) => (
+              <Link key={a.id} href={a.rumourId ? `/transfers/${a.rumourId}` : "/transfers"}>
+                <div className="flex items-center gap-3 px-4 py-3 hover:bg-overlay/[0.03] transition border-b border-line last:border-0 cursor-pointer">
+                  <div className="w-8 h-8 rounded-full grid place-items-center shrink-0 bg-acc/12 text-acc">
+                    <BellRing size={14} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] truncate">{a.note}</div>
+                    {a.createdAt && (
+                      <div className="text-[11px] text-mute-soft num mt-0.5">
+                        {new Date(a.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
           </Card>
+        </div>
+      )}
+
+      {/* Watchlist value alerts */}
+      {user ? (
+        alerts.length > 0 ? (
+          <div className="mb-8">
+            <SectionHead eyebrow="From your watchlist" title="Value alerts" />
+            <Card className="overflow-hidden">
+              {alerts.map((p) => (
+                <FeedRow key={p.id} p={p} note={`Your watched player ${p.dWeek >= 0 ? "rose" : "fell"} this week`} />
+              ))}
+            </Card>
+          </div>
+        ) : (
+          <Card className="p-6 mb-8 text-center text-mute text-[13px]">
+            {watch.length === 0 ? (
+              <>
+                You&apos;re not watching anyone yet.{" "}
+                <Link href="/players" className="text-acc hover:underline">Add players</Link> to get value alerts.
+              </>
+            ) : (
+              <>
+                No big moves across your {watch.length} watched {watch.length === 1 ? "player" : "players"} this week —
+                we&apos;ll flag the next one.
+              </>
+            )}
+          </Card>
+        )
+      ) : (
+        <Card className="p-6 mb-8 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <div className="text-[14px] font-semibold mb-0.5">Get personalized alerts</div>
+            <div className="text-[12px] text-mute">Sign in to track players and get notified when their value moves.</div>
+          </div>
+          <Link href="/login">
+            <Button kind="primary" size="sm" icon={<Bookmark size={13} />}>Sign in</Button>
+          </Link>
+        </Card>
+      )}
+
+      {/* Market-wide movers — useful to everyone */}
+      <SectionHead eyebrow="Across the market" title="Biggest movers this week" />
+      <Card className="overflow-hidden">
+        {movers.map((p) => (
+          <FeedRow key={p.id} p={p} note={`${p.club} · ${p.pos}`} />
         ))}
-      </div>
+      </Card>
     </div>
   );
 }

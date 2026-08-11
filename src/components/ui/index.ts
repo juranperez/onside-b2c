@@ -3,6 +3,8 @@ export { Button } from "./button";
 export { Card } from "./card";
 export { Chip } from "./chip";
 export { ClubBadge } from "./club-badge";
+export { ComingSoon } from "./coming-soon";
+export { CookieConsent } from "./cookie-consent";
 export { Delta } from "./delta";
 export { LiveDot } from "./live-dot";
 export { SectionHead } from "./section-head";

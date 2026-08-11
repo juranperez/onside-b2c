@@ -1,122 +1,186 @@
-"use client";
-
-import { useState } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Clock, DollarSign, TrendingUp } from "lucide-react";
-import { Card, SectionHead, Tabs, Button, Delta, Chip } from "@/components/ui";
-import { fmtVal } from "@/lib/utils";
+import { Suspense } from "react";
+import { Radio, Gauge, Banknote, Flame, MessagesSquare, CalendarClock } from "lucide-react";
+import { Card, Button, LiveDot } from "@/components/ui";
+import { WireRow } from "@/components/transfers/wire-row";
+import { FilterRail } from "@/components/transfers/filter-rail";
+import { getRumours, getCommentCounts, filterWire, sortWire, type RumourItem, type WireFilters, type WireSort } from "@/lib/queries/rumours";
+import { getFollowedRumourIds } from "@/lib/rumours/follow-actions";
+import { getSessionUser } from "@/lib/db/supabase-server";
+import { getWatchlist } from "@/lib/watchlist/actions";
 
-const CONFIRMED = [
-  { player: "Florian Wirtz", from: "Bayer Leverkusen", to: "Real Madrid", fee: 130, date: "Jun 2, 2026" },
-  { player: "Alexander Isak", from: "Newcastle United", to: "Barcelona", fee: 95, date: "May 28, 2026" },
-  { player: "Khvicha Kvaratskhelia", from: "Napoli", to: "PSG", fee: 82, date: "May 25, 2026" },
-  { player: "Nico Williams", from: "Athletic Bilbao", to: "Chelsea", fee: 70, date: "May 22, 2026" },
-  { player: "Amadou Onana", from: "Aston Villa", to: "Bayern Munich", fee: 55, date: "May 20, 2026" },
-];
+// Confidence carries a time-decay factor, so keep the feed fresh on every request.
+export const dynamic = "force-dynamic";
 
-const RUMORS = [
-  { player: "Viktor Gyökeres", from: "Sporting CP", to: "Manchester City", fee: 85, confidence: 72 },
-  { player: "Xavi Simons", from: "PSG", to: "Bayern Munich", fee: 90, confidence: 55 },
-  { player: "Désiré Doué", from: "PSG", to: "Liverpool", fee: 65, confidence: 40 },
-  { player: "Jonathan David", from: "Lille", to: "Arsenal", fee: 45, confidence: 65 },
-  { player: "Randal Kolo Muani", from: "PSG", to: "Juventus", fee: 40, confidence: 80 },
-];
+export const metadata: Metadata = {
+  title: "The Wire — every transfer rumour, live, rated by the Onside Confidence % | Onside",
+  description:
+    "The live transfer wire: every rumour and done deal, stage-tracked and rated by the Onside Confidence % — a market-anchored credibility score priced against each player's live Onside valuation.",
+};
 
-const SPEND_BY_LEAGUE = [
-  { league: "Premier League", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", spend: 890, sales: 420 },
-  { league: "La Liga", flag: "🇪🇸", spend: 520, sales: 380 },
-  { league: "Bundesliga", flag: "🇩🇪", spend: 340, sales: 290 },
-  { league: "Serie A", flag: "🇮🇹", spend: 280, sales: 310 },
-  { league: "Ligue 1", flag: "🇫🇷", spend: 180, sales: 420 },
-];
+// Summer 2026 window (Premier League dates; close enough across the big leagues for v0).
+const WINDOW = { label: "Summer window", opens: Date.UTC(2026, 5, 15), closes: Date.UTC(2026, 8, 1) };
 
-export default function TransfersPage() {
-  const [tab, setTab] = useState("confirmed");
+function windowStatus(now = Date.now()): string {
+  if (now < WINDOW.opens) {
+    const d = Math.ceil((WINDOW.opens - now) / 86_400_000);
+    return d <= 1 ? "opens tomorrow" : `opens in ${d}d`;
+  }
+  if (now <= WINDOW.closes) {
+    const d = Math.ceil((WINDOW.closes - now) / 86_400_000);
+    return `OPEN · ${d}d left`;
+  }
+  return "closed";
+}
+
+function PulseStat({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) {
+  return (
+    <div className="flex items-center gap-2.5 min-w-0">
+      <div className="w-7 h-7 rounded-lg bg-overlay/5 border border-line grid place-items-center text-acc shrink-0">{icon}</div>
+      <div className="min-w-0">
+        <div className="text-[10px] uppercase tracking-wider text-mute-soft leading-none">{label}</div>
+        <div className="text-[13px] font-semibold num truncate mt-1">
+          {value}
+          {sub && <span className="text-mute-soft font-normal ml-1.5 text-[11px]">{sub}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default async function TransfersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
+  const num = (v: string) => (/^\d+$/.test(v) ? Number(v) : undefined);
+  const STAGES = ["Linked", "Talks", "Bid", "Agreed", "Medical", "Done"];
+  const VERDICTS = ["bargain", "fair", "above", "overpay"];
+  const filters: WireFilters = {
+    status: (["rumour", "confirmed", "dead"].includes(one(sp.status)) ? one(sp.status) : undefined) as WireFilters["status"],
+    stage: (STAGES.includes(one(sp.stage)) ? one(sp.stage) : undefined) as WireFilters["stage"],
+    league: one(sp.league) || undefined,
+    club: one(sp.club) || undefined,
+    minConfidence: num(one(sp.min)),
+    minFeeM: num(one(sp.fee)),
+    verdict: (VERDICTS.includes(one(sp.verdict)) ? one(sp.verdict) : undefined) as WireFilters["verdict"],
+  };
+  const sort = (["conf", "fee", "value"].includes(one(sp.sort)) ? one(sp.sort) : "new") as WireSort;
+
+  let all: RumourItem[] = [];
+  let comments = new Map<string, number>();
+  try {
+    [all, comments] = await Promise.all([getRumours(120), getCommentCounts()]);
+  } catch (e) {
+    console.error("[transfers] data unavailable:", e);
+  }
+
+  // Personalization: followed sagas + watchlist players power the My Market view.
+  const user = await getSessionUser().catch(() => null);
+  const followed = new Set(user ? await getFollowedRumourIds().catch(() => []) : []);
+  const watchedPlayerIds = new Set(user ? (await getWatchlist().catch(() => [])).map((p) => p.id) : []);
+
+  let items = filterWire(all, filters);
+  if (one(sp.mine) === "1" && user) {
+    items = items.filter((r) => followed.has(r.id) || watchedPlayerIds.has(r.player.id));
+  }
+  items = sortWire(items, sort);
+
+  // Pulse — computed over the whole feed, not the filtered view.
+  const nowTs = new Date().getTime();
+  const dayStart = new Date().setUTCHours(0, 0, 0, 0);
+  const todaySpendM = all
+    .filter((r) => new Date(r.lastUpdate).getTime() >= dayStart && r.reportedFeeM != null)
+    .reduce((s, r) => s + (r.reportedFeeM ?? 0), 0);
+  const live = all.filter((r) => r.status === "rumour");
+  const biggest = [...live].sort((a, b) => (b.reportedFeeM ?? 0) - (a.reportedFeeM ?? 0))[0];
+  const mostDiscussed = [...all].sort((a, b) => (comments.get(b.id) ?? 0) - (comments.get(a.id) ?? 0))[0];
+
+  // League chips from the live feed itself — self-maintaining.
+  const leagueCount = new Map<string, { slug: string; name: string; n: number }>();
+  for (const r of all) {
+    if (!r.leagueSlug || !r.league) continue;
+    const e = leagueCount.get(r.leagueSlug) ?? { slug: r.leagueSlug, name: r.league, n: 0 };
+    e.n++;
+    leagueCount.set(r.leagueSlug, e);
+  }
+  const leagues = [...leagueCount.values()].sort((a, b) => b.n - a.n).slice(0, 8);
 
   return (
-    <div className="max-w-[1440px] mx-auto px-6 py-8">
-      <div className="flex items-end justify-between mb-7 flex-wrap gap-4">
-        <div>
-          <div className="text-[11px] uppercase tracking-[0.18em] text-mute-soft mb-2 num">Transfer window</div>
-          <h1 className="display text-[clamp(28px,4vw,40px)] leading-[1] tracking-[-0.04em]">
-            Summer <span className="num">2026</span>.{" "}
-            <span className="font-serif italic text-acc">The board.</span>
-          </h1>
+    <div className="max-w-[1100px] mx-auto px-4 md:px-6 py-8">
+      {/* Compact hero */}
+      <div className="mb-5">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Radio size={14} className="text-acc" />
+          <span className="text-[11px] uppercase tracking-[0.18em] text-acc num font-semibold">The Wire</span>
+          <LiveDot />
         </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <div className="num text-[11px] text-mute-soft">Window closes in</div>
-            <div className="display text-[24px] num text-acc">42 days</div>
-          </div>
-          <Link href="/transfers/free-agents">
-            <Button kind="outline" size="sm" icon={<ArrowRight size={12} />}>Free agents</Button>
+        <h1 className="display text-[clamp(24px,3.5vw,34px)] tracking-tight leading-[1.05]">
+          Every rumour, rated. <span className="font-serif italic text-acc">Live.</span>
+        </h1>
+        <p className="text-[12.5px] text-mute mt-2 max-w-[620px] leading-relaxed">
+          Stage-tracked stories scored by the Onside Confidence % — source quality, corroboration, contract leverage,
+          and whether the fee lines up with our live valuation.
+        </p>
+      </div>
+
+      {/* Market pulse */}
+      <Card className="px-4 py-3 mb-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-3">
+          <PulseStat icon={<CalendarClock size={13} />} label={WINDOW.label} value={windowStatus()} />
+          <PulseStat icon={<Banknote size={13} />} label="Reported fees today" value={todaySpendM > 0 ? `€${Math.round(todaySpendM)}M` : "—"} />
+          <PulseStat
+            icon={<Flame size={13} />}
+            label="Biggest live saga"
+            value={biggest ? biggest.player.name : "—"}
+            sub={biggest?.reportedFeeM ? `€${biggest.reportedFeeM}M` : undefined}
+          />
+          <PulseStat
+            icon={<MessagesSquare size={13} />}
+            label="Most discussed"
+            value={mostDiscussed && (comments.get(mostDiscussed.id) ?? 0) > 0 ? mostDiscussed.player.name : "—"}
+            sub={mostDiscussed && (comments.get(mostDiscussed.id) ?? 0) > 0 ? `${comments.get(mostDiscussed.id)} takes` : undefined}
+          />
+        </div>
+      </Card>
+
+      <Suspense>
+        <FilterRail leagues={leagues} mineAvailable={Boolean(user)} resultCount={items.length} />
+      </Suspense>
+
+      {items.length === 0 ? (
+        <Card className="p-12 text-center">
+          <Gauge size={26} className="mx-auto text-mute-soft mb-3" />
+          <h2 className="display text-[22px] mb-1.5">{all.length === 0 ? "The Wire is warming up" : "Nothing matches those filters"}</h2>
+          <p className="text-mute text-[13px] max-w-[440px] mx-auto leading-relaxed">
+            {all.length === 0
+              ? "Stories land here the moment our ingestion engine verifies them — each scored live against the player's Onside valuation."
+              : "Loosen a filter or clear them all to get back to the full feed."}
+          </p>
+          <Link href="/transfers" className="inline-block mt-5">
+            <Button kind="primary">{all.length === 0 ? "Browse players" : "Clear filters"}</Button>
           </Link>
+        </Card>
+      ) : (
+        <div className="space-y-2.5">
+          {items.map((r) => (
+            <WireRow key={r.id} r={r} comments={comments.get(r.id) ?? 0} now={nowTs} following={followed.has(r.id)} />
+          ))}
         </div>
-      </div>
+      )}
 
-      {/* Spend overview */}
-      <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mb-8">
-        {SPEND_BY_LEAGUE.map((l) => (
-          <Card key={l.league} className="p-4 text-center">
-            <span className="text-2xl">{l.flag}</span>
-            <div className="text-[11px] text-mute mt-1 truncate">{l.league}</div>
-            <div className="num text-[16px] font-bold mt-1 text-down">{fmtVal(l.spend)}</div>
-            <div className="text-[10px] text-mute-soft num">spent</div>
-            <div className="num text-[12px] text-up mt-0.5">{fmtVal(l.sales)}</div>
-            <div className="text-[10px] text-mute-soft num">sold</div>
-          </Card>
-        ))}
-      </div>
-
-      <Tabs
-        value={tab}
-        onChange={setTab}
-        tabs={[
-          { id: "confirmed", label: "Confirmed", count: CONFIRMED.length },
-          { id: "rumors", label: "Rumors", count: RUMORS.length },
-        ]}
-      />
-
-      <div className="mt-4">
-        {tab === "confirmed" && (
-          <Card className="overflow-hidden">
-            <div className="grid grid-cols-[1.2fr_1fr_1fr_80px_100px] px-4 py-3 text-[10px] uppercase tracking-wider text-mute-soft num border-b border-line bg-ink-900">
-              <span>Player</span><span>From</span><span>To</span><span className="text-right">Fee</span><span className="text-right">Date</span>
-            </div>
-            {CONFIRMED.map((t) => (
-              <div key={t.player} className="grid grid-cols-[1.2fr_1fr_1fr_80px_100px] px-4 py-3 items-center border-b border-line last:border-0 hover:bg-white/[0.03] transition">
-                <span className="text-[13px] font-semibold">{t.player}</span>
-                <span className="text-[12px] text-mute">{t.from}</span>
-                <span className="text-[12px]">{t.to}</span>
-                <span className="num text-[13px] font-semibold text-right">{fmtVal(t.fee)}</span>
-                <span className="num text-[11px] text-mute text-right">{t.date}</span>
-              </div>
-            ))}
-          </Card>
-        )}
-
-        {tab === "rumors" && (
-          <Card className="overflow-hidden">
-            <div className="grid grid-cols-[1.2fr_1fr_1fr_80px_100px] px-4 py-3 text-[10px] uppercase tracking-wider text-mute-soft num border-b border-line bg-ink-900">
-              <span>Player</span><span>From</span><span>To</span><span className="text-right">Est. Fee</span><span className="text-right">Confidence</span>
-            </div>
-            {RUMORS.map((t) => (
-              <div key={t.player} className="grid grid-cols-[1.2fr_1fr_1fr_80px_100px] px-4 py-3 items-center border-b border-line last:border-0 hover:bg-white/[0.03] transition">
-                <span className="text-[13px] font-semibold">{t.player}</span>
-                <span className="text-[12px] text-mute">{t.from}</span>
-                <span className="text-[12px]">{t.to}</span>
-                <span className="num text-[13px] font-semibold text-right">{fmtVal(t.fee)}</span>
-                <div className="flex items-center justify-end gap-1.5">
-                  <div className="w-12 h-1.5 bg-ink-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-acc rounded-full" style={{ width: `${t.confidence}%` }} />
-                  </div>
-                  <span className="num text-[11px] text-mute">{t.confidence}%</span>
-                </div>
-              </div>
-            ))}
-          </Card>
-        )}
-      </div>
+      <p className="text-[11px] text-mute-soft mt-6 leading-relaxed">
+        Confidence % weights source credibility (45%), corroboration (20%), valuation alignment (20%), contract status
+        (10%) and freshness (5%). Stage is derived from the latest credible report. Rumours come from public reporting;
+        scores are model estimates, not guarantees — see the{" "}
+        <Link href="/insights/accuracy" className="text-mute hover:text-acc transition underline">
+          accuracy report
+        </Link>
+        .
+      </p>
     </div>
   );
 }

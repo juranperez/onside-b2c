@@ -1,0 +1,77 @@
+[
+  {
+    "player": {
+      "id": 247,
+      "name": "C. Gakpo",
+      "firstname": "Cody Mathès",
+      "lastname": "Gakpo",
+      "age": 26,
+      "birth": { "date": "1999-05-07", "place": "Eindhoven", "country": "Netherlands" },
+      "nationality": "Netherlands",
+      "height": "193",
+      "weight": "76",
+      "injured": false,
+      "photo": "https://media.api-sports.io/football/players/247.png"
+    },
+    "statistics": [
+      {
+        "team": { "id": 40, "name": "Liverpool", "logo": "x" },
+        "league": { "id": 39, "name": "Premier League", "country": "England", "season": 2025 },
+        "games": { "appearences": 36, "lineups": 32, "minutes": 2765, "number": 18, "position": "Midfielder", "rating": "6.89", "captain": false },
+        "goals": { "total": 7, "conceded": 0, "assists": 5, "saves": null }
+      }
+    ]
+  },
+  {
+    "player": {
+      "id": 290,
+      "name": "Alisson",
+      "firstname": "Alisson",
+      "lastname": "Becker",
+      "age": 33,
+      "birth": { "date": "1992-10-02" },
+      "nationality": "Brazil",
+      "height": "191",
+      "weight": "91",
+      "injured": false,
+      "photo": "x"
+    },
+    "statistics": [
+      {
+        "team": { "id": 40, "name": "Liverpool", "logo": "x" },
+        "league": { "id": 2, "name": "UEFA Champions League", "country": "World", "season": 2025 },
+        "games": { "appearences": 6, "lineups": 6, "minutes": 540, "number": 1, "position": "Goalkeeper", "rating": "7.10", "captain": false },
+        "goals": { "total": 0, "conceded": 7, "assists": 0, "saves": 21 }
+      },
+      {
+        "team": { "id": 40, "name": "Liverpool", "logo": "x" },
+        "league": { "id": 39, "name": "Premier League", "country": "England", "season": 2025 },
+        "games": { "appearences": 28, "lineups": 28, "minutes": 2520, "number": 1, "position": "Goalkeeper", "rating": "6.95", "captain": false },
+        "goals": { "total": 0, "conceded": 30, "assists": 0, "saves": 78 }
+      }
+    ]
+  },
+  {
+    "player": {
+      "id": 99001,
+      "name": "Test Benchwarmer",
+      "firstname": "Test",
+      "lastname": "Benchwarmer",
+      "age": 19,
+      "birth": { "date": "2006-01-01" },
+      "nationality": "England",
+      "height": null,
+      "weight": null,
+      "injured": false,
+      "photo": "x"
+    },
+    "statistics": [
+      {
+        "team": { "id": 33, "name": "Manchester United", "logo": "x" },
+        "league": { "id": 39, "name": "Premier League", "country": "England", "season": 2025 },
+        "games": { "appearences": 0, "lineups": 0, "minutes": 0, "number": null, "position": "Attacker", "rating": null },
+        "goals": { "total": null, "conceded": null, "assists": null, "saves": null }
+      }
+    ]
+  }
+]

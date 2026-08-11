@@ -10,11 +10,11 @@ interface ChipProps {
 }
 
 const tones: Record<ChipTone, string> = {
-  neutral: "bg-white/5 text-mute border-line/60 border",
+  neutral: "bg-overlay/5 text-mute border-line/60 border",
   up: "bg-up/10 text-up border-up/20 border",
   down: "bg-down/10 text-down border-down/20 border",
   acc: "bg-acc/10 text-acc border-acc/20 border",
-  solid: "bg-ink-700 text-white border-line border",
+  solid: "bg-ink-700 text-fg border-line border",
 };
 
 export function Chip({ children, className, tone = "neutral", icon }: ChipProps) {

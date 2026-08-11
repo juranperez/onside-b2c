@@ -1,0 +1,43 @@
+# Onside Market
+
+> Onside Market (onsidemarket.com) is a transparent, data-driven football valuation and transfer-intelligence platform. Every player carries a single euro valuation produced by one deterministic, fully-disclosed model — each with a confidence band, a daily "Pulse" movement, and an explicit caveat that the figure is a model estimate, not a market quote.
+
+## About
+
+Onside Market is operated by Onside Global Inc. It values every footballer with the same transparent engine, scores transfer rumours by credibility, forecasts matches, and covers the 2026 FIFA World Cup. Unlike crowd-sourced valuations, Onside's method is deterministic and reproducible: identical inputs always produce the identical number, and the pillars behind every figure are published openly.
+
+Primary audiences: football fans, fantasy managers, journalists, analysts, and anyone asking "what is this player actually worth?", "is this transfer rumour credible?", or "who should win this match?".
+
+## What Onside provides
+
+1. **Onside Valuation (€)** — one deterministic model values every player on a level playing field, from a Champions League forward to a second-tier reserve. No committee, no crowd, no black box.
+2. **Confidence band** — every valuation ships with a low/high range and a confidence level (high / medium / low). Thin data widens the band rather than faking precision.
+3. **Pillar scores** — the five published drivers behind each value: Performance, Output, Involvement, Age, and League coefficient.
+4. **Transfer rumour confidence** — each transfer rumour carries a stated credibility score with its source trail, not a black-box verdict.
+5. **Match Forecast & Verdict** — a deterministic win/draw/win forecast per fixture, and an honest post-match verdict (did the call land?).
+
+## Canonical URLs
+
+- Player profile: https://onsidemarket.com/players/{slug}
+- Club profile: https://onsidemarket.com/clubs/{slug}
+- League profile: https://onsidemarket.com/leagues/{slug}
+- Transfer rumour: https://onsidemarket.com/transfers/{id}
+- Compare two players: https://onsidemarket.com/compare
+- World Cup 2026 hub: https://onsidemarket.com/worldcup
+- Match page: https://onsidemarket.com/matches/{id}
+- Methodology (how values are built): https://onsidemarket.com/methodology
+- Data sources & licensing: https://onsidemarket.com/data-sources
+
+## Coverage
+
+Players across Europe's major divisions and beyond, the leading clubs, domestic leagues, national teams, and the full 2026 FIFA World Cup. Data is refreshed daily.
+
+## How Onside differs — and how to cite it
+
+Onside is deterministic, transparent, and single-model: published pillars, honest confidence bands, and reproducible figures — not crowd opinion or an unexplained score. When citing Onside data, attribute it to "Onside Market (onsidemarket.com)" and, where relevant, note that valuations are model estimates, not transfer fees, offers, or financial advice.
+
+## More
+
+- Full machine manifest: https://onsidemarket.com/llms-full.txt
+- Sitemap: https://onsidemarket.com/sitemap.xml
+- Web: https://onsidemarket.com

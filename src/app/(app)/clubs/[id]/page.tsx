@@ -1,178 +1,146 @@
-"use client";
-
-import { use } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, TrendingUp, Users, Trophy, Calendar } from "lucide-react";
-import { Card, SectionHead, Button, Avatar, Delta, Chip } from "@/components/ui";
-import { fmtVal } from "@/lib/utils";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui";
+import { JsonLd } from "@/components/seo/json-ld";
+import { getClubBySlug, getClubFixtures } from "@/lib/queries";
+import { ClubFixtures } from "@/components/clubs/ClubFixtures";
+import { getClubDeals } from "@/lib/queries/rumours";
+import { SquadTable } from "@/components/clubs/SquadTable";
+import { ClubDashboard } from "@/components/clubs/ClubDashboard";
+import { ClubDeals } from "@/components/clubs/ClubDeals";
+import { ClubWindow } from "@/components/clubs/ClubWindow";
+import { ClubLeaderboard } from "@/components/clubs/ClubLeaderboard";
+import { clubWindowFrom } from "@/lib/clubs/window";
+import { getClubLeaderboard } from "@/lib/clubs/leaderboard";
 
-const CLUB = {
-  name: "FC Barcelona",
-  slug: "barcelona",
-  short: "BAR",
-  league: "La Liga",
-  country: "Spain",
-  bg: "#A50044",
-  color: "#EDBB00",
-  founded: 1899,
-  stadium: "Spotify Camp Nou",
-  capacity: "99,354",
-  manager: "Hansi Flick",
-  squadVal: 1420,
-  avgAge: 24.8,
-  rank: 2,
-};
+export const revalidate = 3600;
 
-const SQUAD = [
-  { name: "Lamine Yamal", pos: "RW", age: 17, val: 215.0, dWeek: 9.3, clubBg: "#A50044", clubColor: "#EDBB00" },
-  { name: "Pedri", pos: "CM", age: 23, val: 98.0, dWeek: 3.2, clubBg: "#A50044", clubColor: "#EDBB00" },
-  { name: "Gavi", pos: "CM", age: 21, val: 82.0, dWeek: 4.1, clubBg: "#A50044", clubColor: "#EDBB00" },
-  { name: "Ronald Araújo", pos: "CB", age: 26, val: 68.0, dWeek: -1.2, clubBg: "#A50044", clubColor: "#EDBB00" },
-  { name: "Raphinha", pos: "LW", age: 29, val: 72.0, dWeek: 2.8, clubBg: "#A50044", clubColor: "#EDBB00" },
-  { name: "Fermín López", pos: "AM", age: 22, val: 58.0, dWeek: 5.4, clubBg: "#A50044", clubColor: "#EDBB00" },
-  { name: "Pau Cubarsí", pos: "CB", age: 18, val: 65.0, dWeek: 6.1, clubBg: "#A50044", clubColor: "#EDBB00" },
-  { name: "Marc-André ter Stegen", pos: "GK", age: 34, val: 22.0, dWeek: -0.5, clubBg: "#A50044", clubColor: "#EDBB00" },
-];
+/** Squad value in millions → editorial money string (€…M, or €…B at/above a billion). */
+function money(m: number): string {
+  if (m >= 1000) return `€${(m / 1000).toFixed(2)}B`;
+  return `€${m}M`;
+}
 
-const TRANSFERS_IN = [
-  { name: "Nico Williams", from: "Athletic Club", fee: "€58M", date: "Jul 2025" },
-  { name: "Jonathan David", from: "Lille", fee: "Free", date: "Jul 2025" },
-];
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const club = await getClubBySlug(id).catch(() => null);
+  if (!club) return { title: "Club — Onside" };
+  return {
+    title: `${club.name} — squad value ${money(club.squadValueM)}`,
+    description: `${club.name}${club.league ? `, ${club.league}` : ""}. Combined Onside squad valuation ${money(
+      club.squadValueM,
+    )} across ${club.squad.length} players, live.`,
+  };
+}
 
-const TRANSFERS_OUT = [
-  { name: "Frenkie de Jong", to: "Manchester United", fee: "€65M", date: "Jul 2025" },
-];
+export default async function ClubProfilePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const club = await getClubBySlug(id).catch(() => null);
 
-export default function ClubProfilePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+  if (!club) {
+    return (
+      <div className="max-w-[1440px] mx-auto px-6 py-20 text-center">
+        <h1 className="display text-[32px] mb-3">Club not found</h1>
+        <p className="text-mute mb-6">We couldn&apos;t find that club. Browse the full ranking instead.</p>
+        <Link href="/clubs">
+          <Button kind="primary">Browse all clubs</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // Hero meta line — only show the parts we actually have.
+  const meta = [club.league, club.stadium, club.country].filter(Boolean) as string[];
+
+  // Every live deal touching this club, queried by club rather than filtered out of the
+  // newest 60 rows site-wide — that older approach left 130 of the 159 clubs that have
+  // deals showing an empty section.
+  const deals = await getClubDeals(club.name, club.slug).catch(() => []);
+  const [{ results, upcoming }, leaderboard] = await Promise.all([
+    getClubFixtures(club.slug).catch(() => ({ results: [], upcoming: [] })),
+    getClubLeaderboard(deals.map((d) => d.id)).catch(() => []),
+  ]);
+  // Null when there is nothing priced to measure, which is most clubs — the section is
+  // then absent rather than reporting a confident €0M.
+  const window = clubWindowFrom(deals, club.name);
 
   return (
-    <div className="max-w-[1440px] mx-auto px-6 py-8">
-      <Link href="/clubs" className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-white transition mb-6">
-        <ArrowLeft size={14} /> All clubs
-      </Link>
+    <div>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "SportsTeam",
+          name: club.name,
+          sport: "Soccer",
+          ...(club.league ? { memberOf: { "@type": "SportsOrganization", name: club.league } } : {}),
+        }}
+      />
+      {/* Hero */}
+      <div className="relative overflow-hidden border-b border-line">
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: `linear-gradient(135deg, ${club.bg}40 0%, transparent 60%)` }}
+        />
+        <div className="max-w-[1440px] mx-auto px-6 py-10 relative">
+          <Link
+            href="/clubs"
+            className="inline-flex items-center gap-1.5 text-[13px] text-mute hover:text-fg transition mb-6"
+          >
+            <ArrowLeft size={14} /> All clubs
+          </Link>
 
-      {/* Club header */}
-      <div className="flex items-center gap-5 mb-8">
-        <div className="w-20 h-20 rounded-2xl grid place-items-center text-[28px] font-bold" style={{ background: CLUB.bg, color: CLUB.color }}>
-          {CLUB.short}
-        </div>
-        <div>
-          <h1 className="display text-[clamp(28px,4vw,40px)] tracking-tight">{CLUB.name}</h1>
-          <div className="flex items-center gap-3 mt-1 text-[13px] text-mute">
-            <span>{CLUB.league}</span>
-            <span className="w-1 h-1 rounded-full bg-line" />
-            <span>{CLUB.country}</span>
-            <span className="w-1 h-1 rounded-full bg-line" />
-            <span>Est. {CLUB.founded}</span>
+          <div className="flex items-start justify-between gap-8 flex-wrap">
+            <div className="flex items-start gap-6">
+              <div
+                className="w-20 h-20 rounded-2xl grid place-items-center text-[26px] font-bold num shrink-0"
+                style={{ background: club.bg, color: club.color }}
+              >
+                {club.short}
+              </div>
+              <div>
+                <h1 className="display text-[clamp(28px,4vw,48px)] tracking-tight leading-[1.05]">{club.name}</h1>
+                {meta.length > 0 && (
+                  <div className="flex items-center gap-3 mt-2 text-[13px] text-mute flex-wrap">
+                    {meta.map((m, i) => (
+                      <span key={m} className="flex items-center gap-3">
+                        {i > 0 && <span className="w-1 h-1 rounded-full bg-line" />}
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="text-right">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-mute-soft mb-1">Squad valuation</div>
+              <div className="display text-[52px] leading-none num">{money(club.squadValueM)}</div>
+              <div className="text-[11px] text-mute-soft mt-2 num">
+                {club.squad.length} {club.squad.length === 1 ? "player" : "players"} &middot; Onside model estimate
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Key metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
-        {[
-          { label: "Squad value", value: `€${CLUB.squadVal}M` },
-          { label: "Avg age", value: CLUB.avgAge.toString() },
-          { label: "Manager", value: CLUB.manager },
-          { label: "Stadium", value: CLUB.stadium },
-          { label: "Global rank", value: `#${CLUB.rank}` },
-        ].map((m) => (
-          <Card key={m.label} className="p-4">
-            <div className="text-[10px] text-mute-soft uppercase tracking-wider">{m.label}</div>
-            <div className="text-[16px] font-semibold mt-1 truncate">{m.value}</div>
-          </Card>
-        ))}
-      </div>
+      {/* Content — the club page leads with what is being argued about, not the roster. */}
+      <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-10">
+        {deals.length > 0 && <ClubDeals deals={deals} clubName={club.name} />}
+        {window && <ClubWindow w={window} clubName={club.name} />}
+        {leaderboard.length > 0 && <ClubLeaderboard callers={leaderboard} clubName={club.name} />}
 
-      <div className="grid lg:grid-cols-[1fr_360px] gap-6">
-        {/* Squad table */}
+        <ClubDashboard squad={club.squad} />
+
+        <ClubFixtures results={results} upcoming={upcoming} />
+
+        {/* Demoted: the roster is reference material, not the reason to visit. */}
         <div>
-          <Card className="overflow-hidden">
-            <div className="px-5 py-3 border-b border-line">
-              <SectionHead eyebrow="Roster" title="First team squad" />
-            </div>
-            <div className="grid grid-cols-[1.5fr_60px_50px_90px_80px] px-4 py-2.5 text-[10px] uppercase tracking-wider text-mute-soft num border-b border-line bg-ink-900">
-              <span>Player</span><span>Pos</span><span>Age</span>
-              <span className="text-right">Value</span><span className="text-right">Week</span>
-            </div>
-            {SQUAD.map((p) => (
-              <Link key={p.name} href="/players/yamal">
-                <div className="grid grid-cols-[1.5fr_60px_50px_90px_80px] px-4 py-3 items-center hover:bg-white/[0.03] transition border-b border-line last:border-0 cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <Avatar name={p.name} clubBg={p.clubBg} clubColor={p.clubColor} size={28} />
-                    <span className="text-[13px] font-medium truncate">{p.name}</span>
-                  </div>
-                  <span className="num text-[12px] text-mute">{p.pos}</span>
-                  <span className="num text-[12px] text-mute">{p.age}</span>
-                  <span className="num text-[13px] text-right font-semibold">{fmtVal(p.val)}</span>
-                  <span className="text-right"><Delta value={p.dWeek} /></span>
-                </div>
-              </Link>
-            ))}
-          </Card>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-4">
-          <Card className="p-5">
-            <h3 className="text-[13px] font-semibold flex items-center gap-1.5 mb-3">
-              <TrendingUp size={13} /> Transfers in
-            </h3>
-            <div className="space-y-3">
-              {TRANSFERS_IN.map((t) => (
-                <div key={t.name} className="flex items-center justify-between">
-                  <div>
-                    <div className="text-[13px] font-medium">{t.name}</div>
-                    <div className="text-[11px] text-mute">From {t.from}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[12px] font-semibold text-up">{t.fee}</div>
-                    <div className="text-[10px] text-mute-soft num">{t.date}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card className="p-5">
-            <h3 className="text-[13px] font-semibold flex items-center gap-1.5 mb-3">
-              <Users size={13} /> Transfers out
-            </h3>
-            <div className="space-y-3">
-              {TRANSFERS_OUT.map((t) => (
-                <div key={t.name} className="flex items-center justify-between">
-                  <div>
-                    <div className="text-[13px] font-medium">{t.name}</div>
-                    <div className="text-[11px] text-mute">To {t.to}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[12px] font-semibold text-down">{t.fee}</div>
-                    <div className="text-[10px] text-mute-soft num">{t.date}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card className="p-5">
-            <h3 className="text-[13px] font-semibold flex items-center gap-1.5 mb-3">
-              <Trophy size={13} /> Honours
-            </h3>
-            <div className="space-y-2 text-[12px]">
-              {[
-                { title: "La Liga", count: 27 },
-                { title: "Champions League", count: 5 },
-                { title: "Copa del Rey", count: 31 },
-                { title: "Supercopa", count: 14 },
-              ].map((h) => (
-                <div key={h.title} className="flex items-center justify-between">
-                  <span className="text-mute">{h.title}</span>
-                  <span className="num font-semibold">{h.count}</span>
-                </div>
-              ))}
-            </div>
-          </Card>
+          <h2 className="text-[18px] font-semibold mb-3">Full squad</h2>
+          <SquadTable squad={club.squad} />
+          <p className="text-[11px] text-mute-soft mt-3">
+            Squad value is the sum of live Onside valuations across the roster — a model estimate, not a market quote.
+          </p>
         </div>
       </div>
     </div>
