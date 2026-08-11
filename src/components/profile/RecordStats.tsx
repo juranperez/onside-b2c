@@ -47,7 +47,8 @@ export function RecordStats({ rep, openCount, self }: { rep: ReputationView; ope
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5">
-            <Trophy size={13} className="text-mute" /> Ranked
+            <Trophy size={13} className="text-mute" />{" "}
+            {self ? "Ranked — keep calling against the house to climb." : "Ranked"}
           </span>
         )}
       </div>
