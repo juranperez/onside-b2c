@@ -2,6 +2,8 @@
 
 **Date:** 2026-08-10
 **Scope:** every claim rendered on `/` (the marketing homepage), checked against the code and the production database (`ygmxxveranmfcobcexon`).
+**Status:** All findings FIXED and deployed to production 2026-08-11 (commit `053c998`, merged in PR #4). Verified live on onsidemarket.com — every claim below that was false is gone from the rendered page.
+
 **Method:** claims were read off the *rendered* page, not the JSX, then verified individually. Nothing here is taken from marketing copy or from comments.
 
 ## Verdict
