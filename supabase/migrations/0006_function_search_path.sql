@@ -1,6 +1,7 @@
 -- Pin search_path on the trigger functions.
--- NOT YET APPLIED. Apply to prod (ygmxxveranmfcobcexon) via Supabase MCP on Perez's
--- per-action authorization.
+-- APPLIED to prod (ygmxxveranmfcobcexon) 2026-08-10 as `function_search_path`, on Perez's
+-- authorization. Verified after: pg_proc.proconfig reads search_path="" for both, and both
+-- function_search_path_mutable advisories cleared.
 --
 -- Supabase's linter flags both of these as `function_search_path_mutable`. A function
 -- with an unpinned search_path resolves unqualified names against whatever the CALLER's
