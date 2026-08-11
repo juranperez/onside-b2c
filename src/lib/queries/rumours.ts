@@ -292,3 +292,110 @@ export async function getRumoursForPlayer(playerId: string): Promise<RumourItem[
     .map((r) => toItem(r as unknown as RumourRow, now))
     .filter((x): x is RumourItem => x !== null);
 }
+
+/**
+ * Same columns, but forcing an inner join through players → clubs so the club filter
+ * actually constrains which RUMOURS come back. A plain embedded filter would filter the
+ * embedded rows and still return every parent rumour with a nulled-out player.
+ */
+const RUMOUR_SELECT_BY_CLUB =
+  "id,to_club,reported_fee_eur,status,summary,primary_source,source_tier,corroborations,first_seen,last_update,url, players!inner(id,slug,name,known_as,photo_url,position,contract_until, clubs!inner(name,short_name,slug, leagues(name,slug)), player_valuations(value_eur))";
+
+/** A deal on a club's page, with the engagement behind it and which way it points. */
+export interface ClubDealItem extends RumourItem {
+  /** Incoming = this club is the destination. Outgoing = the player is currently here. */
+  direction: "in" | "out";
+  /** Calls made on this deal. */
+  calls: number;
+  /** Comments posted on this deal. */
+  comments: number;
+  /** calls + comments — the "argument" this page ranks by. */
+  argument: number;
+}
+
+/**
+ * Every live deal touching one club — incoming (this club is the destination) and
+ * outgoing (the player is on this club's books), ranked by how much argument each has
+ * attracted.
+ *
+ * Two targeted reads rather than the whole feed. The club page previously called
+ * `getRumours()`, which caps at the 60 most recent rows across the entire site, and then
+ * filtered by club name in JS. With 487 live rumours that window covered just 29 of the
+ * 159 clubs that actually have deals — so 82% of club pages rendered an empty section
+ * while holding live deals. Filtering has to happen in the query, not after it.
+ */
+export async function getClubDeals(clubName: string, clubSlug: string): Promise<ClubDealItem[]> {
+  const db = readDb();
+  const [incoming, outgoing] = await Promise.all([
+    db.from("rumours").select(RUMOUR_SELECT).eq("to_club", clubName).not("status", "in", '("candidate","dead")'),
+    db.from("rumours").select(RUMOUR_SELECT_BY_CLUB).eq("players.clubs.slug", clubSlug).not("status", "in", '("candidate","dead")'),
+  ]);
+
+  const now = new Date();
+  const seen = new Set<string>();
+  const items: { item: RumourItem; direction: "in" | "out" }[] = [];
+  for (const [rows, direction] of [
+    [incoming.data ?? [], "in" as const],
+    [outgoing.data ?? [], "out" as const],
+  ] as const) {
+    for (const row of rows) {
+      const item = toItem(row as unknown as RumourRow, now);
+      // A player leaving for the club he already plays for is not a deal; and a row can
+      // legitimately appear in both reads, in which case incoming wins (it arrived first).
+      if (!item || seen.has(item.id)) continue;
+      seen.add(item.id);
+      items.push({ item, direction });
+    }
+  }
+
+  const directionById = new Map(items.map((x) => [x.item.id, x.direction] as const));
+  const sagas = dedupeSagas(items.map((x) => x.item));
+  const argument = await getArgumentCounts(sagas.map((s) => s.id));
+
+  return sagas
+    .map((r) => {
+      const a = argument.get(r.id) ?? { calls: 0, comments: 0 };
+      return {
+        ...r,
+        direction: directionById.get(r.id) ?? ("in" as const),
+        calls: a.calls,
+        comments: a.comments,
+        argument: a.calls + a.comments,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.argument - a.argument ||
+        b.confidence.pct - a.confidence.pct ||
+        new Date(b.lastUpdate).getTime() - new Date(a.lastUpdate).getTime(),
+    );
+}
+
+/**
+ * Comments + calls per deal — the "argument" a club page ranks by.
+ *
+ * Scoped to the ids passed in rather than scanning both tables whole, because this runs
+ * on every club page. Degrades to all-zeros on a read failure, which just falls the sort
+ * through to confidence and recency — a club page must not 500 because a count is
+ * unavailable.
+ */
+async function getArgumentCounts(
+  rumourIds: string[],
+): Promise<Map<string, { calls: number; comments: number }>> {
+  const counts = new Map<string, { calls: number; comments: number }>();
+  if (!rumourIds.length) return counts;
+  const at = (id: string) => {
+    const c = counts.get(id) ?? { calls: 0, comments: 0 };
+    counts.set(id, c);
+    return c;
+  };
+
+  const db = readDb();
+  const [comments, calls] = await Promise.all([
+    db.from("rumour_comments").select("rumour_id").in("rumour_id", rumourIds),
+    db.from("predictions").select("subject_id").eq("subject_type", "transfer_saga").in("subject_id", rumourIds),
+  ]);
+  for (const c of comments.data ?? []) at(c.rumour_id).comments += 1;
+  for (const p of calls.data ?? []) at(p.subject_id).calls += 1;
+  return counts;
+}

@@ -5,9 +5,14 @@ import { Button } from "@/components/ui";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getClubBySlug, getClubFixtures } from "@/lib/queries";
 import { ClubFixtures } from "@/components/clubs/ClubFixtures";
-import { getRumours } from "@/lib/queries/rumours";
+import { getClubDeals } from "@/lib/queries/rumours";
 import { SquadTable } from "@/components/clubs/SquadTable";
 import { ClubDashboard } from "@/components/clubs/ClubDashboard";
+import { ClubDeals } from "@/components/clubs/ClubDeals";
+import { ClubWindow } from "@/components/clubs/ClubWindow";
+import { ClubLeaderboard } from "@/components/clubs/ClubLeaderboard";
+import { clubWindowFrom } from "@/lib/clubs/window";
+import { getClubLeaderboard } from "@/lib/clubs/leaderboard";
 
 export const revalidate = 3600;
 
@@ -48,11 +53,17 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
   // Hero meta line — only show the parts we actually have.
   const meta = [club.league, club.stadium, club.country].filter(Boolean) as string[];
 
-  // Club rumours from the curated feed (incoming + outgoing). Empty until curated.
-  const rumours = (await getRumours().catch(() => [])).filter(
-    (r) => r.toClub === club.name || r.player.fromClub === club.name,
-  );
-  const { results, upcoming } = await getClubFixtures(club.slug).catch(() => ({ results: [], upcoming: [] }));
+  // Every live deal touching this club, queried by club rather than filtered out of the
+  // newest 60 rows site-wide — that older approach left 130 of the 159 clubs that have
+  // deals showing an empty section.
+  const deals = await getClubDeals(club.name, club.slug).catch(() => []);
+  const [{ results, upcoming }, leaderboard] = await Promise.all([
+    getClubFixtures(club.slug).catch(() => ({ results: [], upcoming: [] })),
+    getClubLeaderboard(deals.map((d) => d.id)).catch(() => []),
+  ]);
+  // Null when there is nothing priced to measure, which is most clubs — the section is
+  // then absent rather than reporting a confident €0M.
+  const window = clubWindowFrom(deals, club.name);
 
   return (
     <div>
@@ -113,16 +124,24 @@ export default async function ClubProfilePage({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-[1440px] mx-auto px-6 py-8">
-        <ClubDashboard squad={club.squad} rumours={rumours} />
+      {/* Content — the club page leads with what is being argued about, not the roster. */}
+      <div className="max-w-[1440px] mx-auto px-6 py-8 space-y-10">
+        {deals.length > 0 && <ClubDeals deals={deals} clubName={club.name} />}
+        {window && <ClubWindow w={window} clubName={club.name} />}
+        {leaderboard.length > 0 && <ClubLeaderboard callers={leaderboard} clubName={club.name} />}
+
+        <ClubDashboard squad={club.squad} />
 
         <ClubFixtures results={results} upcoming={upcoming} />
-        <h2 className="text-[18px] font-semibold mb-3">Full squad</h2>
-        <SquadTable squad={club.squad} />
-        <p className="text-[11px] text-mute-soft mt-3">
-          Squad value is the sum of live Onside valuations across the roster — a model estimate, not a market quote.
-        </p>
+
+        {/* Demoted: the roster is reference material, not the reason to visit. */}
+        <div>
+          <h2 className="text-[18px] font-semibold mb-3">Full squad</h2>
+          <SquadTable squad={club.squad} />
+          <p className="text-[11px] text-mute-soft mt-3">
+            Squad value is the sum of live Onside valuations across the roster — a model estimate, not a market quote.
+          </p>
+        </div>
       </div>
     </div>
   );

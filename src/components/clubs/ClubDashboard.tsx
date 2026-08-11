@@ -2,9 +2,7 @@ import Link from "next/link";
 import { TrendingUp, TrendingDown, Users, Crown, CalendarClock, Layers } from "lucide-react";
 import { Card, Avatar, Delta, SectionHead } from "@/components/ui";
 import { Sparkline } from "@/components/ui/sparkline";
-import { RumourCard } from "@/components/transfers/rumour-card";
 import type { PlayerListItem } from "@/lib/queries/map";
-import type { RumourItem } from "@/lib/queries/rumours";
 
 const money = (m: number) => (m >= 1000 ? `€${(m / 1000).toFixed(2)}B` : `€${Math.round(m)}M`);
 
@@ -41,7 +39,7 @@ function MoverRow({ p }: { p: PlayerListItem }) {
   );
 }
 
-export function ClubDashboard({ squad, rumours }: { squad: PlayerListItem[]; rumours: RumourItem[] }) {
+export function ClubDashboard({ squad }: { squad: PlayerListItem[] }) {
   const top = squad[0]; // squad is sorted by value desc
   const ages = squad.map((p) => p.age).filter((a) => a > 0);
   const avgAge = ages.length ? Math.round(ages.reduce((s, a) => s + a, 0) / ages.length) : null;
@@ -120,17 +118,6 @@ export function ClubDashboard({ squad, rumours }: { squad: PlayerListItem[]; rum
         </div>
       </div>
 
-      {/* Club rumours (populates from the curated feed) */}
-      {rumours.length > 0 && (
-        <div>
-          <SectionHead eyebrow="Transfer room" title="Club rumours" />
-          <div className="grid md:grid-cols-2 gap-3">
-            {rumours.map((r) => (
-              <RumourCard key={r.id} r={r} />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
