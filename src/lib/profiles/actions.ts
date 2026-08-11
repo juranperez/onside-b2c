@@ -7,8 +7,16 @@ import { checkUsername, USERNAME_ERROR_MESSAGE } from "./username";
 
 export type ProfileActionState = { ok?: boolean; error?: string; username?: string };
 
-/** Returned whenever this account holds a different handle than the one being claimed. */
-const ALREADY_CLAIMED = "Your handle is already set and can't be changed.";
+/**
+ * Returned whenever this account holds a different handle than the one being claimed.
+ *
+ * Names the handle they actually hold. "You can't change it" without saying what it is
+ * leaves someone on a stale tab at a dead end — and since this is an error state the
+ * form gives them no link either. We already have the value; withholding it is just a
+ * worse message.
+ */
+const alreadyClaimed = (held: string) =>
+  `Your handle is already set to @${held} and can't be changed.`;
 
 /** Generic, fixed fallback for claimUsername — never forward a raw Postgres/plpgsql message. */
 const CLAIM_FAILED = "Couldn't claim that handle. Try again.";
@@ -81,7 +89,9 @@ export async function claimUsername(
     return { error: CLAIM_FAILED };
   }
   if (existing?.username) {
-    return existing.username === username ? claimSucceeded(username) : { error: ALREADY_CLAIMED };
+    return existing.username === username
+      ? claimSucceeded(username)
+      : { error: alreadyClaimed(existing.username) };
   }
 
   // Friendly pre-check, not the enforcement. Every stored username got there through
@@ -139,7 +149,7 @@ export async function claimUsername(
       return { error: CLAIM_FAILED };
     }
     if (now?.username === username) return claimSucceeded(username); // this claim already won
-    if (now?.username) return { error: ALREADY_CLAIMED }; // holds a genuinely different handle
+    if (now?.username) return { error: alreadyClaimed(now.username) }; // a genuinely different handle
     // No row at all for this id. profiles rows today come from an `AFTER INSERT ON
     // auth.users` trigger that lives only in the Supabase dashboard, not in
     // supabase/migrations — nothing in the repo actually guarantees it ran for this
