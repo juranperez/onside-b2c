@@ -16,6 +16,7 @@ import { getFollowedRumourIds } from "@/lib/rumours/follow-actions";
 import { getSessionUser } from "@/lib/db/supabase-server";
 import { CallChip } from "@/components/transfers/CallChip";
 import { getMyOutcomeCall } from "@/lib/receipts/queries";
+import { getAuthorReceipts } from "@/lib/profiles/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,13 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
     getRumourSources(id).catch(() => [] as RumourSourceItem[]),
     getFollowedRumourIds().catch(() => [] as string[]),
   ]);
+  // Sequential by necessity: the receipt join is keyed by the comment authors, so it
+  // cannot join the Promise.all above. One extra round trip, three batched reads inside.
+  // The catch matters — a failed join degrades every author to "No call on record",
+  // which reads as a correct empty state rather than taking down the whole deal page.
+  const receipts = Object.fromEntries(
+    await getAuthorReceipts(id, comments.map((c) => c.profileId)).catch(() => new Map()),
+  );
   // Older rumours predate the sources table — fall back to the primary link.
   const sources: RumourSourceItem[] =
     trail.length > 0
@@ -156,7 +164,7 @@ export default async function RumourDetailPage({ params }: { params: Promise<{ i
       {/* Discussion */}
       <div className="mt-8">
         <SectionHead eyebrow="Community" title={`Discussion (${comments.length})`} />
-        <DiscussionThread rumourId={id} comments={comments} signedIn={!!user} />
+        <DiscussionThread rumourId={id} comments={comments} signedIn={!!user} receipts={receipts} />
       </div>
     </div>
   );

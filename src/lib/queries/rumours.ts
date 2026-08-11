@@ -228,7 +228,14 @@ export interface CommentItem {
   id: string;
   body: string;
   createdAt: string;
+  /**
+   * Display name denormalised at post time. Deliberately NOT re-resolved: a user who
+   * claims a handle later will still show whatever name they posted under. The receipt
+   * line links via `profileId`, so the link is always current even when this is stale.
+   */
   author: string;
+  /** Author identity — the key the receipt join hangs off. */
+  profileId: string;
 }
 
 export interface RumourSourceItem {
@@ -256,11 +263,11 @@ export async function getRumourSources(rumourId: string, limit = 6): Promise<Rum
   }));
 }
 
-/** Discussion thread for a rumour. */
+/** Discussion thread for a rumour. `profileId` is the key the receipt line joins on. */
 export async function getRumourComments(rumourId: string): Promise<CommentItem[]> {
   const { data } = await readDb()
     .from("rumour_comments")
-    .select("id,body,created_at,author_name")
+    .select("id,body,created_at,author_name,profile_id")
     .eq("rumour_id", rumourId)
     .order("created_at", { ascending: true });
   return (data ?? []).map((c) => ({
@@ -268,6 +275,7 @@ export async function getRumourComments(rumourId: string): Promise<CommentItem[]
     body: c.body,
     createdAt: c.created_at,
     author: c.author_name || "Member",
+    profileId: c.profile_id,
   }));
 }
 
