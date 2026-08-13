@@ -9,8 +9,12 @@ export interface SubjectLockState {
 
 export type LockReason = "ok" | "not_live" | "here_we_go" | "resolved" | "house_certain";
 
+export type LockEligibility =
+  | { ok: true; reason: "ok" }
+  | { ok: false; reason: Exclude<LockReason, "ok"> };
+
 /** Pure anti-late-call gate for an outcome 'will' call. Keys on persisted fields only. */
-export function lockEligibility(s: SubjectLockState): { ok: boolean; reason: LockReason } {
+export function lockEligibility(s: SubjectLockState): LockEligibility {
   if (s.resolved) return { ok: false, reason: "resolved" };
   if (s.status !== "rumour") return { ok: false, reason: "not_live" };
   if (s.sourceTier === 0) return { ok: false, reason: "here_we_go" };

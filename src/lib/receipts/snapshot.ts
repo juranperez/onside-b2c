@@ -89,10 +89,7 @@ export async function snapshotCall(input: {
     resolved: r.resolved_at != null,
   });
   if (!elig.ok && !(elig.reason === "house_certain" && input.pick !== "will")) {
-    // lockEligibility's return type doesn't encode that ok:false always pairs with a real
-    // (non-"ok") reason, but its implementation does — every ok:false branch returns a
-    // concrete LockReason. Safe to narrow.
-    return { ok: false, reason: elig.reason as Exclude<LockReason, "ok"> };
+    return { ok: false, reason: elig.reason };
   }
 
   return {
