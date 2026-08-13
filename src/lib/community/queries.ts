@@ -36,8 +36,8 @@ const LIVE_DEAL_CEILING = 800;
  * `readDb()`'s fetch-level cache, which Next.js shares by fetch URL+options across every
  * caller — a homepage render and a `/community` render that both end up here converge on
  * the SAME cache entries, so this being called from two routes does not double the read
- * count. What it does change is the homepage's own regeneration cadence: see the
- * `revalidate: 60` note on `memberArgumentCounts` below.
+ * count. Both reads also share the same 1800s default revalidate, deliberately — see the
+ * note on `memberArgumentCounts` below for why it stays there instead of going shorter.
  */
 export async function getBoardDeals(limit = BOARD_SIZE): Promise<BoardDeal[]> {
   const deals = await getRumours(LIVE_DEAL_CEILING).catch(() => [] as RumourItem[]);
@@ -131,27 +131,38 @@ async function chunkedIn<T>(
  * would break that privacy through the back door, since anyone could clear a cookie and
  * push a deal up the board.
  *
- * `revalidate: 60`, not the 1800s default: argument counts are the one thing on the board
- * that should move within the hour, the same freshness call `PROFILE_REVALIDATE` makes in
- * src/lib/profiles/queries.ts for the same reason (a member's own call should not look
- * ignored). The trade-off worth knowing about before this gets wired into a page: Next.js
- * sets a whole route's ISR regeneration cadence to the LOWEST revalidate seen across any
- * fetch in its render (route-segment-config doc, "individual fetch requests can set a
- * lower revalidate... to increase the revalidation frequency of the entire route"; enforced
- * in code at node_modules/next/dist/server/lib/patch-fetch.js, `revalidateStore.revalidate`
- * is only ever lowered, never raised, as each fetch executes). The homepage declares
- * `export const revalidate = 1800`; the moment a route calls `getCallOfTheDay` /
- * `getBoardDeals`, this fetch's `revalidate: 60` becomes the binding constraint for that
- * ENTIRE route, not just this data — a ~30x increase in how often the whole page
- * regenerates, not merely how often this one count refreshes. It does NOT mean every
- * table gets re-read on every request: `getRumours`'s own `readDb()` call keeps its
- * 1800s window and keeps serving from Next's shared Data Cache in between, since only
- * fetches whose OWN window has elapsed actually reach Supabase on any given regeneration.
- * `db/server.ts` set 1800s as the default specifically because an uncached read path once
- * exhausted this project's Supabase egress quota (HTTP 402) — a 30x-shorter cadence on the
- * homepage is exactly the shape of change that guard exists to catch, so it should be a
- * deliberate call by whoever wires this into a page, not an accidental side effect of
- * this function's own freshness need.
+ * Deliberately NO `{ revalidate }` override here — this inherits `readDb()`'s 1800s
+ * default. A shorter window looks appealing (fresher argument counts), but do not add
+ * one; that was tried and reverted. Next.js sets a route's ENTIRE ISR regeneration
+ * cadence to the LOWEST revalidate seen across any fetch in its render, not just the
+ * page's own `export const revalidate` — confirmed against
+ * node_modules/next/dist/server/lib/patch-fetch.js, where the aggregate revalidate value
+ * (`revalidateStore.revalidate`) is only ever lowered, never raised, as each fetch
+ * executes; the docs say the same thing ("individual fetch requests can set a lower
+ * revalidate... to increase the revalidation frequency of the entire route"). The
+ * homepage declares `export const revalidate = 1800`; a `readDb({ revalidate: 60 })`
+ * here would silently become the binding constraint for that ENTIRE route the instant
+ * `getCallOfTheDay` / `getBoardDeals` is wired into it (Task 10) — a ~30x increase in how
+ * often the highest-traffic page on the site regenerates, not merely how often this one
+ * count refreshes. `db/server.ts` set 1800s as the default specifically because an
+ * uncached read path once exhausted this project's Supabase egress quota and took the
+ * REST API offline (HTTP 402); this is exactly the shape of change that guard exists to
+ * catch.
+ *
+ * And the freshness that trade would buy is worth approximately nothing today: 11 calls
+ * and 2 comments across the whole platform. `rankForBoard` sorts by argument first, and
+ * with argument at zero almost everywhere, the board is already sorted by contestedness
+ * and recency regardless — up to 30 minutes of staleness on this count changes no
+ * ordering. `/community` still regenerates on its own one-minute cadence
+ * (`export const revalidate = 60` on that page) — it just does so against a cached count.
+ * That split is deliberate: page freshness where it's cheap, data freshness where it's
+ * expensive.
+ *
+ * If argument counts genuinely need to be fresher than 1800s later — once there's enough
+ * volume that staleness is actually visible — reach for `unstable_cache` the way
+ * src/lib/profiles/queries.ts does for its receipts read (it caches the assembled result
+ * on its own schedule, independent of whatever page calls it), rather than lowering this
+ * `readDb()` call's revalidate.
  */
 async function memberArgumentCounts(
   ids: string[],
@@ -164,7 +175,7 @@ async function memberArgumentCounts(
     return c;
   };
 
-  const db = readDb({ revalidate: 60 });
+  const db = readDb();
   const [comments, calls] = await Promise.all([
     chunkedIn(ids, (chunk) => db.from("rumour_comments").select("rumour_id").in("rumour_id", chunk)),
     chunkedIn(ids, (chunk) =>
