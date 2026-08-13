@@ -2,18 +2,18 @@ import { describe, it, expect } from "vitest";
 import { getNavItems, getBottomNavItems, getSecondaryItems } from "./nav-items";
 
 describe("getNavItems (desktop)", () => {
-  it("leads with World Cup during the window, News next, 8 tabs total", () => {
+  it("leads with World Cup during the window, News next, 9 tabs total", () => {
     const items = getNavItems(true);
     expect(items.map((i) => i.label)).toEqual([
-      "World Cup", "News", "Today", "Players", "Clubs", "Competitions", "Transfers", "Ask",
+      "World Cup", "News", "Today", "Players", "Clubs", "Competitions", "Transfers", "Community", "Ask",
     ]);
     expect(items[0]).toMatchObject({ href: "/worldcup", special: true });
-    expect(items[7]).toMatchObject({ href: "/ask", ai: true });
+    expect(items[8]).toMatchObject({ href: "/ask", ai: true });
   });
   it("drops World Cup post-final, News leads", () => {
     const items = getNavItems(false);
     expect(items.map((i) => i.label)).toEqual([
-      "News", "Today", "Players", "Clubs", "Competitions", "Transfers", "Ask",
+      "News", "Today", "Players", "Clubs", "Competitions", "Transfers", "Community", "Ask",
     ]);
     expect(items[0]).toMatchObject({ href: "/news" });
   });
