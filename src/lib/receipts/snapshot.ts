@@ -2,13 +2,17 @@ import "server-only";
 import { adminDb } from "@/lib/db/admin";
 import { confidence, type RumourStatus } from "@/lib/rumours/confidence";
 import { stageOf } from "@/lib/rumours/stage";
-import { lockEligibility } from "./lock";
+import { lockEligibility, type LockReason } from "./lock";
 import { earlinessOf } from "./earliness";
 import type { CallType, OutcomePick, FeePick } from "./types";
 
+/** Every way a call attempt can fail before it becomes a snapshot. `"ok"` is excluded — a
+ *  passed eligibility check is not itself a failure reason. */
+export type SnapshotReason = "bad_pick" | "subject_not_found" | "snapshot_unavailable" | Exclude<LockReason, "ok">;
+
 export type SnapshotResult =
-  | { ok: true; houseConfidencePct: number; onsideValueEur: number; earliness: number }
-  | { ok: false; reason: string };
+  | { ok: true; houseConfidencePct: number | null; houseValueEur: number | null; earliness: number }
+  | { ok: false; reason: SnapshotReason };
 
 /**
  * The server-authoritative half of making a call.
@@ -19,8 +23,14 @@ export type SnapshotResult =
  *
  * The client sends only subject + pick. Everything here is recomputed server-side and
  * never read from the request.
+ *
+ * Two things a caller must not redo: the `ok: true` values are already projected onto the
+ * two DB columns (`houseConfidencePct` is null for a fee call, `houseValueEur` is null for
+ * an outcome call, per `callType`) — write all three fields unconditionally, never re-test
+ * `callType` at the insert site. And the eligibility gate lives in here too — there is no
+ * valid reason to insert a prediction/anon_call without going through this function first.
  */
-export async function resolveCallSnapshot(input: {
+export async function snapshotCall(input: {
   subjectId: string;
   callType: CallType;
   pick: OutcomePick | FeePick;
@@ -32,21 +42,34 @@ export async function resolveCallSnapshot(input: {
   }
 
   const db = adminDb();
-  const { data: r } = await db
+  const { data: r, error: rumourErr } = await db
     .from("rumours")
     .select("id, status, summary, source_tier, corroborations, reported_fee_eur, first_seen, resolved_at, player_id")
     .eq("id", input.subjectId)
     .maybeSingle();
+  if (rumourErr) return { ok: false, reason: "snapshot_unavailable" };
   if (!r) return { ok: false, reason: "subject_not_found" };
 
-  const [{ data: val }, { data: pl }] = await Promise.all([
+  const [{ data: val, error: valErr }, { data: pl, error: plErr }] = await Promise.all([
     db.from("player_valuations").select("value_eur").eq("player_id", r.player_id).maybeSingle(),
     db.from("players").select("contract_until").eq("id", r.player_id).maybeSingle(),
   ]);
+  // A swallowed error here must not fall through to the `?? 0` default below: for a fee call
+  // that 0 gets frozen into the immutable house_value_eur column (migration 0003's
+  // predictions_immutable trigger), and a wrong reference of 0 makes every future "higher"
+  // settle a free win and every "lower" a free loss — see resolveFee/feePoints.
+  if (valErr || plErr) return { ok: false, reason: "snapshot_unavailable" };
   const onsideValueEur = val?.value_eur ?? 0;
 
+  // r.status's real domain is wider than RumourStatus — a "candidate" row hasn't been
+  // promoted to a live rumour yet. lockEligibility sees that full domain below and rejects
+  // a candidate via "not_live"; confidence()/stageOf() are typed against the narrower
+  // RumourStatus that deliberately excludes it, so the extra cast at those two call sites is
+  // a deliberate narrowing of this one shared value, not an independent guess at r.status.
+  const status = r.status as RumourStatus | "candidate";
+
   const conf = confidence({
-    status: r.status as RumourStatus,
+    status: status as RumourStatus,
     summary: r.summary,
     sourceTier: r.source_tier,
     corroborations: r.corroborations,
@@ -55,19 +78,27 @@ export async function resolveCallSnapshot(input: {
     contractUntil: pl?.contract_until ?? null,
     firstSeen: new Date(r.first_seen),
   });
-  const earliness = earlinessOf(stageOf(r.summary, r.status as RumourStatus));
+  const earliness = earlinessOf(stageOf(r.summary, status as RumourStatus));
 
   // Not-live / here-we-go / resolved block every call; "house already certain" only blocks
   // a 'will' (a near-free win) — a contrarian 'wont' or a fee call may still proceed.
   const elig = lockEligibility({
-    status: r.status as "rumour" | "confirmed" | "dead" | "candidate",
+    status,
     sourceTier: r.source_tier,
     confidencePct: conf.pct,
     resolved: r.resolved_at != null,
   });
   if (!elig.ok && !(elig.reason === "house_certain" && input.pick !== "will")) {
-    return { ok: false, reason: elig.reason };
+    // lockEligibility's return type doesn't encode that ok:false always pairs with a real
+    // (non-"ok") reason, but its implementation does — every ok:false branch returns a
+    // concrete LockReason. Safe to narrow.
+    return { ok: false, reason: elig.reason as Exclude<LockReason, "ok"> };
   }
 
-  return { ok: true, houseConfidencePct: conf.pct, onsideValueEur, earliness };
+  return {
+    ok: true,
+    houseConfidencePct: input.callType === "outcome" ? conf.pct : null,
+    houseValueEur: input.callType === "fee" ? onsideValueEur : null,
+    earliness,
+  };
 }

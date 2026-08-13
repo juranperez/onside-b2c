@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, X, Lock, ArrowRight } from "lucide-react";
-import { lockCall } from "@/lib/receipts/lock-action";
+import { lockCall, type LockFailureReason } from "@/lib/receipts/lock-action";
 
 export interface MyCallView {
   pick: string; // "will" | "wont"
@@ -13,7 +13,9 @@ export interface MyCallView {
 
 const PICK_LABEL: Record<string, string> = { will: "Will happen", wont: "Won't happen" };
 
-const REASON_COPY: Record<string, string> = {
+// Record over LockFailureReason (no index signature): a reason lockCall can return but this
+// map doesn't cover is a compile error here, not a silent fallback at render time.
+const REASON_COPY: Record<LockFailureReason, string> = {
   not_signed_in: "Sign in to make a call.",
   here_we_go: "This one's as good as done — too late to call.",
   not_live: "This saga has already settled.",
@@ -23,6 +25,7 @@ const REASON_COPY: Record<string, string> = {
   bad_pick: "Something went wrong — try again.",
   subject_not_found: "Couldn't find this saga.",
   insert_failed: "Couldn't save your call — try again.",
+  snapshot_unavailable: "Something went wrong reading this saga. Try again.",
 };
 
 /**

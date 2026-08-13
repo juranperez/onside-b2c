@@ -39,7 +39,7 @@
 | File | Responsibility |
 |---|---|
 | `supabase/migrations/0007_anon_calls.sql` | **Create** — the table, private by construction |
-| `src/lib/receipts/lock-action.ts` | **Modify** — extract `resolveCallSnapshot`, keep `lockCall` thin |
+| `src/lib/receipts/lock-action.ts` | **Modify** — extract `snapshotCall`, keep `lockCall` thin |
 | `src/lib/receipts/snapshot.ts` | **Create** — the shared server-authoritative snapshot |
 | `src/lib/receipts/anon-session.ts` | **Create** — cookie mint/read |
 | `src/lib/receipts/anon-lock.ts` | **Create** — `lockAnonCall` |
@@ -240,7 +240,7 @@ cd /Users/perezmoodley/onside-b2c && git add src/lib/db/types.ts && git commit -
 
 `lockCall` currently fetches the rumour, the valuation and the contract, computes confidence, earliness and eligibility, then inserts. The anonymous path needs every one of those steps identical. Duplicating them would let member and anonymous calls drift — and a claimed call would then carry a house number no member would ever have been given.
 
-**Pure refactor: no behaviour change, existing tests stay green.**
+**Refactor + two latent-bug fixes surfaced by review; existing tests stay green.** The extraction itself changes no behaviour. Two things inside it do change behaviour on purpose: a failed read (rumour/valuation/contract) now returns `snapshot_unavailable` instead of silently defaulting `onsideValueEur` to 0 and freezing a wrong, unfixable reference number into a fee call's immutable `house_value_eur`; and the outcome/fee column projection now happens once, inside the shared function, instead of being re-derived at every insert site.
 
 **Files:**
 - Create: `src/lib/receipts/snapshot.ts`
@@ -255,13 +255,17 @@ import "server-only";
 import { adminDb } from "@/lib/db/admin";
 import { confidence, type RumourStatus } from "@/lib/rumours/confidence";
 import { stageOf } from "@/lib/rumours/stage";
-import { lockEligibility } from "./lock";
+import { lockEligibility, type LockReason } from "./lock";
 import { earlinessOf } from "./earliness";
 import type { CallType, OutcomePick, FeePick } from "./types";
 
+/** Every way a call attempt can fail before it becomes a snapshot. `"ok"` is excluded — a
+ *  passed eligibility check is not itself a failure reason. */
+export type SnapshotReason = "bad_pick" | "subject_not_found" | "snapshot_unavailable" | Exclude<LockReason, "ok">;
+
 export type SnapshotResult =
-  | { ok: true; houseConfidencePct: number; onsideValueEur: number; earliness: number }
-  | { ok: false; reason: string };
+  | { ok: true; houseConfidencePct: number | null; houseValueEur: number | null; earliness: number }
+  | { ok: false; reason: SnapshotReason };
 
 /**
  * The server-authoritative half of making a call.
@@ -272,8 +276,14 @@ export type SnapshotResult =
  *
  * The client sends only subject + pick. Everything here is recomputed server-side and
  * never read from the request.
+ *
+ * Two things a caller must not redo: the `ok: true` values are already projected onto the
+ * two DB columns (`houseConfidencePct` is null for a fee call, `houseValueEur` is null for
+ * an outcome call, per `callType`) — write all three fields unconditionally, never re-test
+ * `callType` at the insert site. And the eligibility gate lives in here too — there is no
+ * valid reason to insert a prediction/anon_call without going through this function first.
  */
-export async function resolveCallSnapshot(input: {
+export async function snapshotCall(input: {
   subjectId: string;
   callType: CallType;
   pick: OutcomePick | FeePick;
@@ -285,21 +295,34 @@ export async function resolveCallSnapshot(input: {
   }
 
   const db = adminDb();
-  const { data: r } = await db
+  const { data: r, error: rumourErr } = await db
     .from("rumours")
     .select("id, status, summary, source_tier, corroborations, reported_fee_eur, first_seen, resolved_at, player_id")
     .eq("id", input.subjectId)
     .maybeSingle();
+  if (rumourErr) return { ok: false, reason: "snapshot_unavailable" };
   if (!r) return { ok: false, reason: "subject_not_found" };
 
-  const [{ data: val }, { data: pl }] = await Promise.all([
+  const [{ data: val, error: valErr }, { data: pl, error: plErr }] = await Promise.all([
     db.from("player_valuations").select("value_eur").eq("player_id", r.player_id).maybeSingle(),
     db.from("players").select("contract_until").eq("id", r.player_id).maybeSingle(),
   ]);
+  // A swallowed error here must not fall through to the `?? 0` default below: for a fee call
+  // that 0 gets frozen into the immutable house_value_eur column (migration 0003's
+  // predictions_immutable trigger), and a wrong reference of 0 makes every future "higher"
+  // settle a free win and every "lower" a free loss — see resolveFee/feePoints.
+  if (valErr || plErr) return { ok: false, reason: "snapshot_unavailable" };
   const onsideValueEur = val?.value_eur ?? 0;
 
+  // r.status's real domain is wider than RumourStatus — a "candidate" row hasn't been
+  // promoted to a live rumour yet. lockEligibility sees that full domain below and rejects
+  // a candidate via "not_live"; confidence()/stageOf() are typed against the narrower
+  // RumourStatus that deliberately excludes it, so the extra cast at those two call sites is
+  // a deliberate narrowing of this one shared value, not an independent guess at r.status.
+  const status = r.status as RumourStatus | "candidate";
+
   const conf = confidence({
-    status: r.status as RumourStatus,
+    status: status as RumourStatus,
     summary: r.summary,
     sourceTier: r.source_tier,
     corroborations: r.corroborations,
@@ -308,29 +331,51 @@ export async function resolveCallSnapshot(input: {
     contractUntil: pl?.contract_until ?? null,
     firstSeen: new Date(r.first_seen),
   });
-  const earliness = earlinessOf(stageOf(r.summary, r.status as RumourStatus));
+  const earliness = earlinessOf(stageOf(r.summary, status as RumourStatus));
 
   // Not-live / here-we-go / resolved block every call; "house already certain" only blocks
   // a 'will' (a near-free win) — a contrarian 'wont' or a fee call may still proceed.
   const elig = lockEligibility({
-    status: r.status as "rumour" | "confirmed" | "dead" | "candidate",
+    status,
     sourceTier: r.source_tier,
     confidencePct: conf.pct,
     resolved: r.resolved_at != null,
   });
   if (!elig.ok && !(elig.reason === "house_certain" && input.pick !== "will")) {
-    return { ok: false, reason: elig.reason };
+    // lockEligibility's return type doesn't encode that ok:false always pairs with a real
+    // (non-"ok") reason, but its implementation does — every ok:false branch returns a
+    // concrete LockReason. Safe to narrow.
+    return { ok: false, reason: elig.reason as Exclude<LockReason, "ok"> };
   }
 
-  return { ok: true, houseConfidencePct: conf.pct, onsideValueEur, earliness };
+  return {
+    ok: true,
+    houseConfidencePct: input.callType === "outcome" ? conf.pct : null,
+    houseValueEur: input.callType === "fee" ? onsideValueEur : null,
+    earliness,
+  };
 }
 ```
 
 - [ ] **Step 2: Rewrite `lockCall` to use it**
 
-Replace the entire body of `lockCall` in `src/lib/receipts/lock-action.ts` (keep the `"use server"` directive and the file's existing doc comment) with:
+Replace the entire body of `lockCall` in `src/lib/receipts/lock-action.ts` (keep the `"use server"` directive) with:
 
 ```ts
+/** Every reason `lockCall` can fail: the shared snapshot reasons, plus this path's own. */
+export type LockFailureReason = SnapshotReason | "not_signed_in" | "already_called" | "insert_failed";
+
+export type LockResult = { ok: true; id: string } | { ok: false; reason: LockFailureReason };
+
+/**
+ * Lock a transfer call. SERVER-AUTHORITATIVE: the client sends only the subject + pick; the
+ * house snapshot (confidence / value / earliness) is recomputed in `snapshotCall` (./snapshot.ts)
+ * and never trusted from the client, so the anti-copy-the-house and earliness credit can't be
+ * forged. That snapshot logic — including the eligibility gate and the outcome/fee column
+ * projection — is shared with the anonymous call path so the two can never diverge on the house
+ * number. The insert runs as service-role (predictions has no authenticated write policy); the
+ * unique constraint blocks a second call on the same subject + call_type.
+ */
 export async function lockCall(input: {
   subjectId: string;
   callType: CallType;
@@ -339,7 +384,7 @@ export async function lockCall(input: {
   const user = await getSessionUser();
   if (!user) return { ok: false, reason: "not_signed_in" };
 
-  const snap = await resolveCallSnapshot(input);
+  const snap = await snapshotCall(input);
   if (!snap.ok) return { ok: false, reason: snap.reason };
 
   const { data, error } = await adminDb()
@@ -349,8 +394,8 @@ export async function lockCall(input: {
       subject_id: input.subjectId,
       call_type: input.callType,
       pick: input.pick,
-      house_confidence_pct: input.callType === "outcome" ? snap.houseConfidencePct : null,
-      house_value_eur: input.callType === "fee" ? snap.onsideValueEur : null,
+      house_confidence_pct: snap.houseConfidencePct,
+      house_value_eur: snap.houseValueEur,
       earliness: snap.earliness,
     })
     .select("id")
@@ -361,10 +406,12 @@ export async function lockCall(input: {
 }
 ```
 
+Note the insert now writes `snap.houseConfidencePct` / `snap.houseValueEur` unconditionally — no `input.callType === "outcome" ? … : null` at the insert site. `snapshotCall` already projected them.
+
 Update the imports at the top of the file: remove `confidence`, `RumourStatus`, `stageOf`, `lockEligibility`, `earlinessOf` (now used only inside `snapshot.ts`) and add:
 
 ```ts
-import { resolveCallSnapshot } from "./snapshot";
+import { snapshotCall, type SnapshotReason } from "./snapshot";
 ```
 
 - [ ] **Step 3: Verify nothing changed behaviourally**
@@ -372,7 +419,7 @@ import { resolveCallSnapshot } from "./snapshot";
 ```bash
 cd /Users/perezmoodley/onside-b2c && npx vitest run && npm run build && npm run lint
 ```
-Expected: **381 tests / 50 files**, build clean, lint at the **73-problem** baseline. A refactor that changes a test result is not a refactor — investigate before continuing.
+Expected: **381 tests / 50 files**, build clean, lint at the **73-problem** baseline. A refactor that changes a test result is not a refactor — investigate before continuing. (The `snapshot_unavailable` behaviour change has no test coverage today because nothing in the suite mocks a Supabase read failure — that's a coverage gap, not a contradiction of "381/50 unchanged".)
 
 - [ ] **Step 4: Commit**
 
@@ -446,13 +493,16 @@ Create `src/lib/receipts/anon-lock.ts`:
 import { headers } from "next/headers";
 import { adminDb } from "@/lib/db/admin";
 import { rateLimit } from "@/lib/ratelimit";
-import { resolveCallSnapshot } from "./snapshot";
+import { snapshotCall, type SnapshotReason } from "./snapshot";
 import { ensureAnonSession } from "./anon-session";
 import type { CallType, OutcomePick, FeePick } from "./types";
 
+/** Every reason `lockAnonCall` can fail: the shared snapshot reasons, plus this path's own. */
+export type AnonLockReason = SnapshotReason | "rate_limited" | "already_called" | "insert_failed";
+
 export type AnonLockResult =
   | { ok: true }
-  | { ok: false; reason: string };
+  | { ok: false; reason: AnonLockReason };
 
 /** Burst guard only. See the plan: the real control is that anon calls are private. */
 const MAX_PER_IP = 20;
@@ -476,7 +526,7 @@ export async function lockAnonCall(input: {
     return { ok: false, reason: "rate_limited" };
   }
 
-  const snap = await resolveCallSnapshot(input);
+  const snap = await snapshotCall(input);
   if (!snap.ok) return { ok: false, reason: snap.reason };
 
   // Minting the cookie AFTER the snapshot passes means a rejected call leaves no trace.
@@ -487,8 +537,8 @@ export async function lockAnonCall(input: {
     subject_id: input.subjectId,
     call_type: input.callType,
     pick: input.pick,
-    house_confidence_pct: input.callType === "outcome" ? snap.houseConfidencePct : null,
-    house_value_eur: input.callType === "fee" ? snap.onsideValueEur : null,
+    house_confidence_pct: snap.houseConfidencePct,
+    house_value_eur: snap.houseValueEur,
     earliness: snap.earliness,
   });
 
@@ -496,6 +546,8 @@ export async function lockAnonCall(input: {
   return { ok: true };
 }
 ```
+
+Note the insert writes `snap.houseConfidencePct` / `snap.houseValueEur` unconditionally, same as the member path — `snapshotCall` already projected them, so there is exactly one place (`snapshot.ts`) that knows which column is null for which `callType`.
 
 - [ ] **Step 3: Verify**
 
@@ -1192,10 +1244,29 @@ Read `src/components/transfers/CallChip.tsx` in full first. It is a client compo
 
 - [ ] **Step 2: Route the call by auth state**
 
-Add the import:
+Add the imports (widening `REASON_COPY` to cover both paths' reason types — Task 3 already typed it `Record<LockFailureReason, string>` with no index signature, so a reason either path can return but this map doesn't cover is a compile error, not a silent fallback):
 
 ```tsx
-import { lockAnonCall } from "@/lib/receipts/anon-lock";
+import { lockCall, type LockFailureReason } from "@/lib/receipts/lock-action";
+import { lockAnonCall, type AnonLockReason } from "@/lib/receipts/anon-lock";
+```
+
+Widen the `REASON_COPY` declaration and add the one new key (`rate_limited`) the anonymous path can return that the member path can't:
+
+```tsx
+const REASON_COPY: Record<LockFailureReason | AnonLockReason, string> = {
+  not_signed_in: "Sign in to make a call.",
+  here_we_go: "This one's as good as done — too late to call.",
+  not_live: "This saga has already settled.",
+  resolved: "This saga has already settled.",
+  house_certain: "Onside already rates this near-certain — pick the other side or sit it out.",
+  already_called: "You've already called this one.",
+  bad_pick: "Something went wrong — try again.",
+  subject_not_found: "Couldn't find this saga.",
+  insert_failed: "Couldn't save your call — try again.",
+  snapshot_unavailable: "Something went wrong reading this saga. Try again.",
+  rate_limited: "Too many calls from this connection. Try again shortly.",
+};
 ```
 
 In `makeCall`, send signed-out users down the anonymous path. Replace the existing `lockCall(...)` invocation inside `startTransition` with:
@@ -1206,19 +1277,23 @@ In `makeCall`, send signed-out users down the anonymous path. Replace the existi
         : await lockAnonCall({ subjectId, callType: "outcome", pick });
 
       if (!res.ok) {
-        // Cookies blocked means the call cannot persist. Say so — a receipt that silently
-        // evaporates is worse than one we refuse, on a product that sells receipts.
+        // Every well-understood rejection routes through the shared REASON_COPY — same
+        // wording a signed-in member sees for the same reason. The one carve-out: an
+        // anonymous insert_failed, reached only after snapshotCall already passed eligibility,
+        // has no better explanation left than "the session cookie didn't take" — that's the
+        // one case the cookies-blocked message actually describes. Scope it to !signedIn so a
+        // signed-in member (for whom "sign in" is nonsensical) never sees it.
         setError(
-          res.reason === "rate_limited"
-            ? "Too many calls from this connection. Try again shortly."
-            : res.reason === "already_called"
-              ? "You've already called this one."
-              : "We couldn't save that call. If your browser blocks cookies, sign in and it'll stick.",
+          !signedIn && res.reason === "insert_failed"
+            ? "We couldn't save that call. If your browser blocks cookies, sign in and it'll stick."
+            : REASON_COPY[res.reason],
         );
         return;
       }
       setCall({ pick, status: "open", points: 0 });
 ```
+
+This replaces Task 3's `REASON_COPY[res.reason] ?? "Couldn't save your call — try again."` fallback lookup — with the type now closed over both paths' reasons, `REASON_COPY[res.reason]` is total (always a `string`, never `undefined`), so the `??` fallback is no longer reachable and should be dropped here.
 
 - [ ] **Step 3: Replace the signed-out prompt with a post-call nudge**
 
