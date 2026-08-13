@@ -76,9 +76,11 @@ Read `supabase/migrations/0005_public_profiles.sql` first to match the house sty
 -- NOT YET APPLIED. Apply to prod (ygmxxveranmfcobcexon) via Supabase MCP on Perez's
 -- per-action authorization. Spec: docs/superpowers/specs/2026-08-12-community-front-door-design.md
 --
--- rollback:
---   drop function if exists public.anon_calls_block_field_mutation();
+-- rollback (order matters — the trigger depends on the function, so RESTRICT blocks
+-- dropping the function first; the table drop takes the trigger with it automatically,
+-- which is what frees the function to drop cleanly on the next line):
 --   drop table if exists public.anon_calls;   -- DESTROYS unclaimed visitor calls
+--   drop function if exists public.anon_calls_block_field_mutation();
 
 -- A call made before the caller had an account.
 --
