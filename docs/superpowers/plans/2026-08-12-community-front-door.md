@@ -532,6 +532,9 @@ export async function lockAnonCall(input: {
   // Minting the cookie AFTER the snapshot passes means a rejected call leaves no trace.
   const sessionId = await ensureAnonSession();
 
+  // NOTE for this task: `snapshotCall` must also gain the no-house-value guard below
+  // before fee calls are reachable. See "Additional fix" at the end of this task.
+
   const { error } = await adminDb().from("anon_calls").insert({
     session_id: sessionId,
     subject_id: input.subjectId,
@@ -549,17 +552,43 @@ export async function lockAnonCall(input: {
 
 Note the insert writes `snap.houseConfidencePct` / `snap.houseValueEur` unconditionally, same as the member path — `snapshotCall` already projected them, so there is exactly one place (`snapshot.ts`) that knows which column is null for which `callType`.
 
-- [ ] **Step 3: Verify**
+- [ ] **Step 3: Additional fix — refuse a fee call with no house value**
+
+**Also modify: `src/lib/receipts/snapshot.ts`.**
+
+Task 3 stopped the snapshot swallowing read *errors*, but a successful query returning **no row** still falls through to `onsideValueEur = 0`. That is not hypothetical: `player_valuations` is modelled as optional everywhere (`queries/rumours.ts:62`, `queries/map.ts:52`), and `queries/map.test.ts:33` has a fixture named `orphan` for exactly this case. Freshly-ingested players are simultaneously the least likely to be valued and the most likely to be rumoured.
+
+For a **fee** call that 0 freezes into the immutable `house_value_eur`, and at settlement `resolveFee(pick, 0, confirmedFee, "disclosed")` makes every "higher" a free win and every "lower" a free loss — worth 0 points, because `feePoints`' `onsideValueEur > 0` guard fails, while still moving `wins`, `accuracy_pct`, `streak` and `scout_badge`. Uncorrectable, because `0003`'s trigger blocks any later UPDATE.
+
+No UI sends `callType: "fee"` today (`CallChip.tsx` hardcodes `"outcome"`), but `lockCall` is a server action — its endpoint accepts a crafted `{callType: "fee", pick: "higher"}` regardless.
+
+Guard the **value**, not the mechanism, so the absent-row and failed-read causes both land in one place. Add after `onsideValueEur` is computed and before the eligibility gate:
+
+```ts
+  // A fee call is an argument with Onside's published value. With no value there is
+  // nothing to argue with — and freezing 0 into the immutable house_value_eur would make
+  // every future "higher" a free win (see resolveFee / feePoints). A genuine €0 Onside
+  // value is not a callable fee subject either, so this cannot misfire.
+  if (input.callType === "fee" && !(onsideValueEur > 0)) {
+    return { ok: false, reason: "no_house_value" };
+  }
+```
+
+Add `"no_house_value"` to `SnapshotReason`, and a `REASON_COPY` entry in `CallChip.tsx` — something like "We don't have a value for this player yet, so there's no fee to call." The closed union will refuse to compile until you do.
+
+The **outcome** path keeps tolerating `0`: it only perturbs the weight-0.15 alignment factor inside `confidence()`, which is the same treatment unvalued players have always had.
+
+- [ ] **Step 4: Verify**
 
 ```bash
 cd /Users/perezmoodley/onside-b2c && npm run build && npx vitest run && npm run lint
 ```
-Expected: build clean, 381 tests, lint at 73.
+Expected: build clean, 393 tests / 51 files, lint at 73.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-cd /Users/perezmoodley/onside-b2c && git add src/lib/receipts/anon-session.ts src/lib/receipts/anon-lock.ts && git commit -m "feat(receipts): anonymous call path with an httpOnly session cookie"
+cd /Users/perezmoodley/onside-b2c && git add src/lib/receipts/anon-session.ts src/lib/receipts/anon-lock.ts src/lib/receipts/snapshot.ts src/components/transfers/CallChip.tsx && git commit -m "feat(receipts): anonymous call path, and refuse a fee call with no house value"
 ```
 
 ---
@@ -1301,13 +1330,51 @@ Replace the `) : !signedIn ? (` branch (the block rendering "Sign in to put your
 
 ```tsx
         <p className="text-[12px] text-mute mt-2">
-          Locked against Onside&apos;s {houseConfidencePct}%.{" "}
-          <Link href="/login" className="text-acc hover:underline">Create an account</Link> to keep it
-          on your public record — it keeps the date you called.
+          Held against Onside&apos;s {houseConfidencePct}% on this browser.{" "}
+          <Link href="/login" className="text-acc hover:underline">Create an account</Link> to make it
+          permanent — it keeps the date you called.
         </p>
 ```
 
 The phrase "it keeps the date you called" is load-bearing: it is the promise Task 5's `locked_at` preservation actually delivers. Do not soften it to "save your call".
+
+"**Held … on this browser**" is equally deliberate, and replaces an earlier draft that said "Locked". An anonymous call is only as durable as the cookie, so claiming it is locked is false in the blocked case — see Step 3b.
+
+- [ ] **Step 3b: Confirm the cookie actually stuck**
+
+**There is no in-request signal for "cookies are blocked."** Within the request that serves an anonymous call, a visitor whose cookie will stick and one whose cookie will be dropped are byte-identical: no inbound cookie, mint one, insert, respond. The insert succeeds either way.
+
+If the cookie is dropped, the row is written against a session id no browser will ever present again — orphaned, invisible, unclaimable — while the user was shown a success state. That is precisely the silently-dropped receipt the spec says is worse than a refusal, and it is worse here than elsewhere because `anon_calls` is private by construction, so nobody will ever notice those rows accumulating.
+
+Detection does not have to happen *in* the request. It happens on the **next** one. Add a read-only server action:
+
+```ts
+"use server";
+import { readAnonSession } from "@/lib/receipts/anon-session";
+
+/**
+ * Did THIS request arrive carrying onside_anon?
+ *
+ * Called once after a successful anonymous call. Because it is a separate HTTP request,
+ * it carries the cookie if and only if the browser actually stored it — which is the only
+ * way to distinguish a durable anonymous call from an orphaned one.
+ *
+ * MUST use readAnonSession, never ensureAnonSession: minting here would set a fresh
+ * cookie and make this always report success, which is worse than not checking at all.
+ */
+export async function anonSessionPresent(): Promise<boolean> {
+  return (await readAnonSession()) !== null;
+}
+```
+
+In `CallChip`, after a successful `lockAnonCall`, await it once. On `false`, downgrade the success state to an honest one rather than showing the nudge above:
+
+```tsx
+          Your browser isn&apos;t keeping this call.{" "}
+          <Link href="/login" className="text-acc hover:underline">Sign in</Link> and it&apos;ll stick.
+```
+
+Cost is one extra round-trip on the anonymous path only. Considered and **rejected**: pre-minting the cookie when the chip renders would give a genuine signal at tap time, but it sets a cookie on every visitor who never calls — destroying the essential-cookie position the spec argues ("set only when someone deliberately taps a call, and only to deliver that call") and plausibly pulling the consent banner into scope.
 
 - [ ] **Step 4: Verify**
 
