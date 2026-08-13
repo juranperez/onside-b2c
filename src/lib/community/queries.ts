@@ -137,8 +137,8 @@ async function chunkedIn<T>(
   return pages.flatMap((p) => p.data ?? []);
 }
 
-/** How far back "argument" looks — see the docstring on `memberArgumentCounts` for why this is windowed at all, and why 7 days specifically. */
-const ARGUMENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+/** How far back a COMMENT counts as "argument" — see the docstring on `memberArgumentCounts` for why comments alone get a clock, and why 7 days specifically. Calls don't use this; see below. */
+const COMMENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
  * Calls + comments per deal, MEMBERS ONLY.
@@ -148,19 +148,38 @@ const ARGUMENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
  * would break that privacy through the back door, since anyone could clear a cookie and
  * push a deal up the board.
  *
- * Windowed to the last `ARGUMENT_WINDOW_MS` (7 days) via `created_at` / `locked_at`, NOT a
- * lifetime count. `rankForBoard` (in `./contested`) sorts by this value first, and its own
- * doc comment claims present tense — "what people ARE arguing about" — which a
- * never-decaying total would make false. Worse than false: with `callOfTheDay` drawing its
- * rotation from the board's top ranks, an unwindowed count is a promotion engine with no
- * exit — once a deal earns enough argument to reach the pool, being picked earns it more,
- * which keeps it there. Simulated over 60 days at a realistic promotion rate: 10 deals out
- * of 487 end up holding 100% of the pool, permanently, and a brand-new 50/50 saga can never
- * enter it — it starts at zero argument and the pool has no opening left. (`callOfTheDay`
- * separately no longer trusts `argument` at all for its own pool selection — see its doc
- * comment in `./contested` — so this window is defense in depth for `rankForBoard`'s board
- * ordering specifically; it is not the only fix for the feedback loop.) Seven days is a
- * judgement call, not a measurement — there is no usage data yet to fit a window from.
+ * Comments and calls decay differently, ON PURPOSE — this is not one window applied to
+ * both, and the asymmetry is not a bug for a future pass to "clean up" into consistency:
+ *
+ *   - Comments: `created_at >= commentCutoff` (`COMMENT_WINDOW_MS`, 7 days). A comment is a
+ *     moment-in-time utterance with no event of its own that ends it — age is the only
+ *     staleness signal available, and a week-old thread has genuinely gone quiet.
+ *   - Calls: `resolved_at IS NULL` — no clock at all. A locked call is a standing,
+ *     unresolved position against the house number, live for the ENTIRE saga however long
+ *     it runs (`resolved_at` is nullable — `timestamptz`, no `not null` — and is set by the
+ *     resolver at the same moment as `status`; see `resolve-subject.ts`, which selects
+ *     `.eq("status", "open")` for the still-live set and stamps `resolved_at` when it
+ *     settles one). A caller three weeks into a long saga is MORE committed, not less — a
+ *     recency window would shed exactly the callers still exposed, which is the opposite of
+ *     what "argument" is supposed to measure. Tying it to `resolved_at` instead ties decay
+ *     to the event that actually ends the argument (the saga settling), not an arbitrary
+ *     clock.
+ *
+ * This also composes with the `status !== "confirmed"` filter in `getBoardDeals`: once a
+ * saga settles, its calls stop counting (`resolved_at` gets set) AND the saga itself drops
+ * off the board (`status` flips to `confirmed`) — two columns, but the SAME underlying
+ * event driving both, rather than two independent rules that could drift out of sync.
+ *
+ * Either way, `rankForBoard` (in `./contested`) sorts by this value first, and its own doc
+ * comment claims present tense — "what people ARE arguing about" — which an unwindowed,
+ * never-decaying total would make false. NEITHER half of this is what fixes the pool-
+ * sealing feedback loop, though: `callOfTheDay` no longer trusts `argument` at all for its
+ * own pool selection (see its doc comment in `./contested`), and that decoupling is what
+ * actually breaks the loop. This function's job is narrower — making `rankForBoard`'s
+ * present-tense claim actually true for the board's own ordering. Seven days for comments
+ * is a judgement call, not a measurement — there's no usage data yet to fit a window from.
+ * `resolved_at IS NULL` for calls isn't a judgement call in the same way: it's tied to a
+ * real domain event, not a clock, so there's no number to have gotten wrong.
  *
  * Deliberately NO `{ revalidate }` override here — this inherits `readDb()`'s 1800s
  * default. A shorter window looks appealing (fresher argument counts), but do not add
@@ -206,16 +225,17 @@ async function memberArgumentCounts(
     return c;
   };
 
-  // Computed once, up front — NOT inside chunkedIn's per-chunk callback. Calling
-  // Date.now() there would let concurrent chunks, and comments vs. calls, get scored
-  // against very slightly different instants for no benefit and a harder-to-reason-about
-  // cutoff.
-  const cutoff = new Date(Date.now() - ARGUMENT_WINDOW_MS).toISOString();
+  // Computed once, up front — NOT inside chunkedIn's per-chunk callback, where calling
+  // Date.now() would let concurrent chunks of the SAME comments query get scored against
+  // very slightly different instants for no benefit. Only the comments query below reads
+  // this — calls are windowed by `resolved_at`, not by time — but the "compute once, not
+  // per chunk" reasoning still applies to whichever query does use a clock.
+  const commentCutoff = new Date(Date.now() - COMMENT_WINDOW_MS).toISOString();
 
   const db = readDb();
   const [comments, calls] = await Promise.all([
     chunkedIn(ids, (chunk) =>
-      db.from("rumour_comments").select("rumour_id").in("rumour_id", chunk).gte("created_at", cutoff),
+      db.from("rumour_comments").select("rumour_id").in("rumour_id", chunk).gte("created_at", commentCutoff),
     ),
     chunkedIn(ids, (chunk) =>
       db
@@ -223,7 +243,7 @@ async function memberArgumentCounts(
         .select("subject_id")
         .eq("subject_type", "transfer_saga")
         .in("subject_id", chunk)
-        .gte("locked_at", cutoff),
+        .is("resolved_at", null),
     ),
   ]);
   for (const c of comments) at(c.rumour_id).comments += 1;
