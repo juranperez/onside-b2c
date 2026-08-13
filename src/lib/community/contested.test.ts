@@ -54,13 +54,12 @@ describe("rankForBoard", () => {
 // semantics — that's a separate, not-yet-implemented concern (tracked as its own later
 // task) and inventing tests for it now would be testing behaviour that doesn't exist.
 //
-// utcDate is deliberately exercised here as a plain "YYYY-MM-DD" string, not a full
-// timestamp: the function hashes whatever string it is given with no calendar-day
-// normalization, so it is only "pinned to a UTC date" (per its own doc comment) if the
-// caller always passes a date truncated to day granularity. Confirmed by hand that
-// passing full ISO timestamps a few hours apart on the *same* day changes the pick —
-// that's a caller-discipline footgun worth knowing about, not behaviour to lock in with
-// a test (see report).
+// utcDate is exercised here mostly as a plain "YYYY-MM-DD" string, but the function
+// normalizes its input to the first 10 characters before hashing, so a caller that passes
+// a full ISO timestamp lands on the same pick as one that passes the truncated date — see
+// the "normalizes to calendar day" cases below, which lock that in (this used to be a
+// caller-discipline footgun: same-day timestamps a few hours apart could hash to different
+// picks. Now normalized inside the function so it can't be misused).
 describe("callOfTheDay", () => {
   it("returns null on an empty list", () => {
     expect(callOfTheDay([], "2026-08-12")).toBeNull();
@@ -71,6 +70,20 @@ describe("callOfTheDay", () => {
     const first = callOfTheDay(deals, "2026-08-12");
     const second = callOfTheDay(deals, "2026-08-12");
     expect(second).toBe(first);
+  });
+
+  it("normalizes to calendar day — a full ISO timestamp lands on the same pick as its truncated date", () => {
+    const deals = [d("a", 51), d("b", 78), d("c", 97), d("e", 60)];
+    const truncated = callOfTheDay(deals, "2026-08-12");
+    const fullTimestamp = callOfTheDay(deals, "2026-08-12T00:00:00.000Z");
+    expect(fullTimestamp).toBe(truncated);
+  });
+
+  it("normalizes to calendar day — two different times on the same day agree", () => {
+    const deals = [d("a", 51), d("b", 78), d("c", 97), d("e", 60)];
+    const midnight = callOfTheDay(deals, "2026-08-12T00:00:00.000Z");
+    const midMorning = callOfTheDay(deals, "2026-08-12T09:41:07.123Z");
+    expect(midMorning).toBe(midnight);
   });
 
   it("changes across dates once there is more than one candidate", () => {

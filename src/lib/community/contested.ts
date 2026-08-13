@@ -38,14 +38,22 @@ export function rankForBoard<T extends BoardSortable>(deals: T[]): T[] {
  * The day's shared argument, pinned to a UTC date.
  *
  * Deliberately not "the most contested right now": everyone arriving today must land on
- * the same deal, or there is no shared conversation to join. Returns null on an empty list.
+ * the same deal, or there is no shared conversation to join. `utcDate` is normalized to a
+ * calendar day (its first 10 characters, "YYYY-MM-DD") before hashing, so a caller that
+ * passes a full ISO timestamp — e.g. `new Date().toISOString()` — is handled correctly
+ * rather than silently producing per-second picks; it lands on the same deal as a caller
+ * that already truncated. Returns null on an empty list.
  */
 export function callOfTheDay<T extends BoardSortable>(deals: T[], utcDate: string): T | null {
   if (!deals.length) return null;
   const ranked = rankForBoard(deals);
   // Rotate deterministically by date so the pick changes daily without a stored choice.
   const top = ranked.slice(0, 10);
+  // Normalize to calendar day so every caller — whether it passes "YYYY-MM-DD" or a full
+  // ISO timestamp — hashes the same string. Without this, two visitors seconds apart could
+  // land on different deals with no error and no failing test.
+  const day = utcDate.slice(0, 10);
   let h = 0;
-  for (let i = 0; i < utcDate.length; i++) h = (h * 31 + utcDate.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < day.length; i++) h = (h * 31 + day.charCodeAt(i)) >>> 0;
   return top[h % top.length];
 }
