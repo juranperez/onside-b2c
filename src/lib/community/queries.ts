@@ -40,7 +40,14 @@ const LIVE_DEAL_CEILING = 800;
  * note on `memberArgumentCounts` below for why it stays there instead of going shorter.
  */
 export async function getBoardDeals(limit = BOARD_SIZE): Promise<BoardDeal[]> {
-  const deals = await getRumours(LIVE_DEAL_CEILING).catch(() => [] as RumourItem[]);
+  const allDeals = await getRumours(LIVE_DEAL_CEILING).catch(() => [] as RumourItem[]);
+  // Open calls only. `getRumours` already drops `candidate` and `dead`, but keeps
+  // `confirmed` — a settled saga: pct 100, contestedness 0, yet it can carry real argument
+  // from its run-up, which would otherwise let a closed, announced deal top a board of
+  // "open calls". `RumourItem` carries no separate resolved-at marker, so `status` is the
+  // only signal available here — and it is sufficient, since `RumourStatus` is exactly
+  // "rumour" | "confirmed" | "dead", so "confirmed" is the one status left to exclude.
+  const deals = allDeals.filter((d) => d.status !== "confirmed");
   if (!deals.length) return [];
 
   const counts = await memberArgumentCounts(deals.map((d) => d.id));
@@ -50,6 +57,11 @@ export async function getBoardDeals(limit = BOARD_SIZE): Promise<BoardDeal[]> {
       ...d,
       calls: c.calls,
       comments: c.comments,
+      // Equal weight, deliberately for now: a locked call carries real reputational risk
+      // and a one-word comment doesn't, so 1:1 is arguably the wrong ratio. But at 11
+      // calls and 2 comments platform-wide there is no usage data to fit a coefficient
+      // from, and inventing one now would be a guess wearing a model's clothes. Revisit
+      // once there's enough volume to justify a specific weighting over this default.
       argument: c.calls + c.comments,
       confidencePct: d.confidence.pct,
     };
@@ -65,10 +77,12 @@ export async function getBoardDeals(limit = BOARD_SIZE): Promise<BoardDeal[]> {
 }
 
 /**
- * The day's shared argument. `utcDate` is a date string such as "2026-08-12"; a full ISO
- * timestamp is also safe, since callOfTheDay normalizes to the calendar day.
+ * The day's shared argument. Takes a `Date`, not a date string — see the doc comment on
+ * `callOfTheDay` in `./contested` for why a string signature can't be trusted to stay a
+ * calendar day across every caller (no format for a caller to get subtly wrong). Callers
+ * pass `new Date()`; there is nothing to format or truncate first.
  */
-export async function getCallOfTheDay(utcDate: string): Promise<BoardDeal | null> {
+export async function getCallOfTheDay(date: Date): Promise<BoardDeal | null> {
   const deals = await getBoardDeals(BOARD_SIZE);
   if (!deals.length) return null;
   // Same no-cast reasoning as getBoardDeals: the mapped array is BoardDeal plus
@@ -76,7 +90,7 @@ export async function getCallOfTheDay(utcDate: string): Promise<BoardDeal | null
   // where BoardDeal was expected.
   return callOfTheDay(
     deals.map((d) => ({ ...d, confidencePct: d.confidence.pct })),
-    utcDate,
+    date,
   );
 }
 
@@ -123,6 +137,9 @@ async function chunkedIn<T>(
   return pages.flatMap((p) => p.data ?? []);
 }
 
+/** How far back "argument" looks — see the docstring on `memberArgumentCounts` for why this is windowed at all, and why 7 days specifically. */
+const ARGUMENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
 /**
  * Calls + comments per deal, MEMBERS ONLY.
  *
@@ -130,6 +147,20 @@ async function chunkedIn<T>(
  * calls are private, but this ordering is PUBLIC — feeding an inflatable signal into it
  * would break that privacy through the back door, since anyone could clear a cookie and
  * push a deal up the board.
+ *
+ * Windowed to the last `ARGUMENT_WINDOW_MS` (7 days) via `created_at` / `locked_at`, NOT a
+ * lifetime count. `rankForBoard` (in `./contested`) sorts by this value first, and its own
+ * doc comment claims present tense — "what people ARE arguing about" — which a
+ * never-decaying total would make false. Worse than false: with `callOfTheDay` drawing its
+ * rotation from the board's top ranks, an unwindowed count is a promotion engine with no
+ * exit — once a deal earns enough argument to reach the pool, being picked earns it more,
+ * which keeps it there. Simulated over 60 days at a realistic promotion rate: 10 deals out
+ * of 487 end up holding 100% of the pool, permanently, and a brand-new 50/50 saga can never
+ * enter it — it starts at zero argument and the pool has no opening left. (`callOfTheDay`
+ * separately no longer trusts `argument` at all for its own pool selection — see its doc
+ * comment in `./contested` — so this window is defense in depth for `rankForBoard`'s board
+ * ordering specifically; it is not the only fix for the feedback loop.) Seven days is a
+ * judgement call, not a measurement — there is no usage data yet to fit a window from.
  *
  * Deliberately NO `{ revalidate }` override here — this inherits `readDb()`'s 1800s
  * default. A shorter window looks appealing (fresher argument counts), but do not add
@@ -175,11 +206,24 @@ async function memberArgumentCounts(
     return c;
   };
 
+  // Computed once, up front — NOT inside chunkedIn's per-chunk callback. Calling
+  // Date.now() there would let concurrent chunks, and comments vs. calls, get scored
+  // against very slightly different instants for no benefit and a harder-to-reason-about
+  // cutoff.
+  const cutoff = new Date(Date.now() - ARGUMENT_WINDOW_MS).toISOString();
+
   const db = readDb();
   const [comments, calls] = await Promise.all([
-    chunkedIn(ids, (chunk) => db.from("rumour_comments").select("rumour_id").in("rumour_id", chunk)),
     chunkedIn(ids, (chunk) =>
-      db.from("predictions").select("subject_id").eq("subject_type", "transfer_saga").in("subject_id", chunk),
+      db.from("rumour_comments").select("rumour_id").in("rumour_id", chunk).gte("created_at", cutoff),
+    ),
+    chunkedIn(ids, (chunk) =>
+      db
+        .from("predictions")
+        .select("subject_id")
+        .eq("subject_type", "transfer_saga")
+        .in("subject_id", chunk)
+        .gte("locked_at", cutoff),
     ),
   ]);
   for (const c of comments) at(c.rumour_id).comments += 1;

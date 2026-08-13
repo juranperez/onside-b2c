@@ -1479,9 +1479,8 @@ Inside `LandingPage`, after the `articles` try/catch block, add:
   let todaysCall = null;
   let signedIn = false;
   try {
-    const utcDate = new Date().toISOString().slice(0, 10);
     [todaysCall, signedIn] = await Promise.all([
-      getCallOfTheDay(utcDate),
+      getCallOfTheDay(new Date()),
       getSessionUser().then((u) => !!u).catch(() => false),
     ]);
   } catch (e) {
