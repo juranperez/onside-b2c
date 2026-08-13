@@ -70,8 +70,13 @@ revoke all on public.anon_calls from anon, authenticated;
 -- obvious implementation of a future "change your pick before signing up" feature — an
 -- upsert on the (session_id, subject_type, subject_id, call_type) unique key — would
 -- silently rewrite locked_at and earliness instead of erroring.
+--
+-- search_path pinned to '' at creation, for the same reason 0006_function_search_path.sql
+-- pinned the other two trigger functions after the fact: the body touches only OLD/NEW
+-- fields and raises, no unqualified table/type/operator lookup to shadow, so the empty
+-- path is safe as-is. Pinning it here avoids adding a third function to that lint debt.
 create or replace function public.anon_calls_block_field_mutation()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = '' as $$
 begin
   if (new.session_id is distinct from old.session_id
       or new.subject_type is distinct from old.subject_type
@@ -87,6 +92,7 @@ begin
   return new;
 end;
 $$;
+drop trigger if exists anon_calls_immutable on public.anon_calls;
 create trigger anon_calls_immutable before update on public.anon_calls
   for each row execute function public.anon_calls_block_field_mutation();
 
