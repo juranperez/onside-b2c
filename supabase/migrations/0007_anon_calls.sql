@@ -1,6 +1,13 @@
 -- Community v2 — anonymous calls.
--- NOT YET APPLIED. Apply to prod (ygmxxveranmfcobcexon) via Supabase MCP on Perez's
--- per-action authorization. Spec: docs/superpowers/specs/2026-08-12-community-front-door-design.md
+-- APPLIED to prod (ygmxxveranmfcobcexon) 2026-08-13 as `anon_calls_v1`, on Perez's
+-- authorization. Spec: docs/superpowers/specs/2026-08-12-community-front-door-design.md
+--
+-- Verified after apply: 0 policies, RLS enabled, ZERO grants to anon/authenticated
+-- (relacl is {postgres,service_role} only — so the TRUNCATE path and the PostgREST
+-- schema leak described below are both closed), trigger present, function search_path
+-- pinned to ''. Security advisors show one new INFO notice, rls_enabled_no_policy on
+-- this table — that is this design working as intended, and board_subscribers and
+-- pushed_goals already carry the same notice.
 --
 -- rollback (order matters — the trigger depends on the function, so RESTRICT blocks
 -- dropping the function first; the table drop takes the trigger with it automatically,
