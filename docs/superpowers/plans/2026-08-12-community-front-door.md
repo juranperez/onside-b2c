@@ -434,6 +434,7 @@ cd /Users/perezmoodley/onside-b2c && git add src/lib/receipts/snapshot.ts src/li
 **Files:**
 - Create: `src/lib/receipts/anon-session.ts`
 - Create: `src/lib/receipts/anon-lock.ts`
+- Modify: `src/app/(app)/privacy/page.tsx`
 
 - [ ] **Step 1: The cookie**
 
@@ -578,17 +579,35 @@ Add `"no_house_value"` to `SnapshotReason`, and a `REASON_COPY` entry in `CallCh
 
 The **outcome** path keeps tolerating `0`: it only perturbs the weight-0.15 alignment factor inside `confidence()`, which is the same treatment unvalued players have always had.
 
-- [ ] **Step 4: Verify**
+- [ ] **Step 4: Name the cookie in the privacy policy**
+
+Moved here from Task 10, where it originally lived as that task's Step 3. A privacy policy
+describing a cookie the code does not set yet is inaccurate, so the policy change belongs
+with the code that makes it true — this task, which is where `onside_anon` is actually
+introduced (Step 1 above), not the unrelated homepage placement in Task 10.
+
+In `src/app/(app)/privacy/page.tsx`, find the sentence "Essential cookies keep you signed in and the service functioning — these are required and can't be switched off." Extend it:
+
+```
+Essential cookies keep you signed in and the service functioning — these are required and
+can't be switched off. One of them, onside_anon, is set only if you make a call before
+creating an account: it exists solely so that call can be saved and attached to your
+record when you sign up, and it is deleted once that happens.
+```
+
+Match the file's existing JSX and escaping conventions — read the surrounding markup first.
+
+- [ ] **Step 5: Verify**
 
 ```bash
 cd /Users/perezmoodley/onside-b2c && npm run build && npx vitest run && npm run lint
 ```
 Expected: build clean, 393 tests / 51 files, lint at 73.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-cd /Users/perezmoodley/onside-b2c && git add src/lib/receipts/anon-session.ts src/lib/receipts/anon-lock.ts src/lib/receipts/snapshot.ts src/components/transfers/CallChip.tsx && git commit -m "feat(receipts): anonymous call path, and refuse a fee call with no house value"
+cd /Users/perezmoodley/onside-b2c && git add src/lib/receipts/anon-session.ts src/lib/receipts/anon-lock.ts src/lib/receipts/snapshot.ts src/components/transfers/CallChip.tsx "src/app/(app)/privacy/page.tsx" && git commit -m "feat(receipts): anonymous call path, refuse a fee call with no house value, and name the cookie in /privacy"
 ```
 
 ---
@@ -1401,12 +1420,16 @@ cd /Users/perezmoodley/onside-b2c && git add src/components/transfers/CallChip.t
 
 ---
 
-## Task 10: Call of the Day on the homepage, and the privacy note
+## Task 10: Call of the Day on the homepage
 
 **Files:**
 - Create: `src/components/community/CallOfTheDay.tsx`
 - Modify: `src/app/(marketing)/page.tsx`
-- Modify: `src/app/(app)/privacy/page.tsx`
+
+**Note:** this task originally also carried a Step 3 naming `onside_anon` in the privacy
+policy. That step moved to Task 4 — a privacy policy describing a cookie the code does not
+set yet is inaccurate, so the policy change belongs with the code that makes it true, not
+with the homepage placement of an unrelated component.
 
 - [ ] **Step 1: The component**
 
@@ -1498,36 +1521,22 @@ Then render it between `<TickerStrip />` and `<ValueProps />`:
 
 **Note:** the page currently has `export const revalidate = 1800`. Leave it — the pick is pinned per UTC day, so a 30-minute cache serves the same deal all day. Do not lower it — and do not lower it indirectly either, which is the non-obvious half. `src/lib/community/queries.ts` calls `readDb()` with no `revalidate` override anywhere in the board path (`getBoardDeals`, `getCallOfTheDay`, `memberArgumentCounts`) for exactly this reason — see the comment on `memberArgumentCounts`. Next.js sets a route's ENTIRE regeneration cadence to the LOWEST revalidate seen across any fetch in its render, not just the page's own `export const revalidate` (confirmed against `node_modules/next/dist/server/lib/patch-fetch.js`: the aggregate value is only ever lowered, never raised, as each fetch executes). A `readDb({ revalidate: 60 })` reintroduced anywhere in that call path — most temptingly on `memberArgumentCounts`, to make argument counts feel fresher — would silently drop the homepage, the highest-traffic page on the site, from a 30-minute cadence to a 1-minute one. `db/server.ts`'s 1800s default exists because an uncached read path once exhausted this project's Supabase egress quota and took the REST API offline (HTTP 402) — this is exactly the shape of change that guard exists to catch. If argument counts ever genuinely need to be fresher, reach for `unstable_cache` the way `src/lib/profiles/queries.ts` does for its receipts read — it caches the assembled result on its own schedule, independent of the page's fetch cadence — rather than lowering a `readDb()` call's `revalidate`.
 
-- [ ] **Step 3: Name the cookie in the privacy policy**
-
-In `src/app/(app)/privacy/page.tsx`, find the sentence "Essential cookies keep you signed in and the service functioning — these are required and can't be switched off." Extend it:
-
-```
-Essential cookies keep you signed in and the service functioning — these are required and
-can't be switched off. One of them, onside_anon, is set only if you make a call before
-creating an account: it exists solely so that call can be saved and attached to your
-record when you sign up, and it is deleted once that happens.
-```
-
-Match the file's existing JSX and escaping conventions — read the surrounding markup first.
-
-- [ ] **Step 4: Verify**
+- [ ] **Step 3: Verify**
 
 ```bash
 cd /Users/perezmoodley/onside-b2c && npm run build && npx vitest run && npm run lint
 ```
 
-- [ ] **Step 5: Verify in the browser**
+- [ ] **Step 4: Verify in the browser**
 
 1. Homepage shows "Today's call" between the ticker and the value props, with a percentage and two buttons.
 2. Signed out, tapping a button locks the call without a sign-in wall.
 3. Reload — the same deal is shown (pinned per UTC day, not re-rolled per request).
-4. `/privacy` mentions `onside_anon`.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-cd /Users/perezmoodley/onside-b2c && git add src/components/community/CallOfTheDay.tsx "src/app/(marketing)/page.tsx" "src/app/(app)/privacy/page.tsx" && git commit -m "feat(community): Call of the Day on the homepage, and name the anon cookie in /privacy"
+cd /Users/perezmoodley/onside-b2c && git add src/components/community/CallOfTheDay.tsx "src/app/(marketing)/page.tsx" && git commit -m "feat(community): Call of the Day on the homepage"
 ```
 
 ---
