@@ -8,7 +8,12 @@ import type { CallType, OutcomePick, FeePick } from "./types";
 
 /** Every way a call attempt can fail before it becomes a snapshot. `"ok"` is excluded — a
  *  passed eligibility check is not itself a failure reason. */
-export type SnapshotReason = "bad_pick" | "subject_not_found" | "snapshot_unavailable" | Exclude<LockReason, "ok">;
+export type SnapshotReason =
+  | "bad_pick"
+  | "subject_not_found"
+  | "snapshot_unavailable"
+  | "no_house_value"
+  | Exclude<LockReason, "ok">;
 
 export type SnapshotResult =
   | { ok: true; houseConfidencePct: number | null; houseValueEur: number | null; earliness: number }
@@ -90,6 +95,21 @@ export async function snapshotCall(input: {
   });
   if (!elig.ok && !(elig.reason === "house_certain" && input.pick !== "will")) {
     return { ok: false, reason: elig.reason };
+  }
+
+  // A fee call is an argument with Onside's published value. With no value there is
+  // nothing to argue with — and freezing 0 into the immutable house_value_eur would make
+  // every future "higher" a free win: resolveFee(pick, 0, confirmedFee, ...) sets
+  // marketHigher for any positive fee, while feePoints' `onsideValueEur > 0` guard zeroes
+  // the magnitude. The row lands as a win worth nothing that still moves wins,
+  // accuracy_pct, streak and scout_badge, and 0003's trigger blocks ever correcting it.
+  //
+  // Guards the VALUE, not the mechanism, so both causes land here: a failed read (caught
+  // above) and a player with no valuation row at all — which is a tested reality in this
+  // codebase, not a hypothesis (see the `orphan` fixture in queries/map.test.ts).
+  // A genuine €0 Onside value is not a callable fee subject either, so this cannot misfire.
+  if (input.callType === "fee" && !(onsideValueEur > 0)) {
+    return { ok: false, reason: "no_house_value" };
   }
 
   return {

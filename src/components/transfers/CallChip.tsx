@@ -26,6 +26,7 @@ const REASON_COPY: Record<LockFailureReason, string> = {
   subject_not_found: "Couldn't find this saga.",
   insert_failed: "Couldn't save your call — try again.",
   snapshot_unavailable: "Something went wrong reading this saga. Try again.",
+  no_house_value: "We don't have a value for this player yet, so there's no fee to call.",
 };
 
 /**
