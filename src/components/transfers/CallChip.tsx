@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, X, Lock, ArrowRight } from "lucide-react";
 import { lockCall, type LockFailureReason } from "@/lib/receipts/lock-action";
+import { lockAnonCall, anonSessionPresent, type AnonLockReason } from "@/lib/receipts/anon-lock";
 
 export interface MyCallView {
   pick: string; // "will" | "wont"
@@ -13,9 +14,11 @@ export interface MyCallView {
 
 const PICK_LABEL: Record<string, string> = { will: "Will happen", wont: "Won't happen" };
 
-// Record over LockFailureReason (no index signature): a reason lockCall can return but this
-// map doesn't cover is a compile error here, not a silent fallback at render time.
-const REASON_COPY: Record<LockFailureReason, string> = {
+// Record over BOTH reason unions, with no index signature: a reason either lockCall or
+// lockAnonCall can return but this map doesn't cover is a compile error here, not a wrong
+// message at render time. It has already earned that once — adding the anonymous path
+// surfaced `rate_limited` as a missing key at compile time rather than in production.
+const REASON_COPY: Record<LockFailureReason | AnonLockReason, string> = {
   not_signed_in: "Sign in to make a call.",
   here_we_go: "This one's as good as done — too late to call.",
   not_live: "This saga has already settled.",
@@ -27,6 +30,7 @@ const REASON_COPY: Record<LockFailureReason, string> = {
   insert_failed: "Couldn't save your call — try again.",
   snapshot_unavailable: "Something went wrong reading this saga. Try again.",
   no_house_value: "We don't have a value for this player yet, so there's no fee to call.",
+  rate_limited: "That's a lot of calls from one connection. Try again shortly.",
 };
 
 /**
@@ -47,13 +51,34 @@ export function CallChip({
   const [call, setCall] = useState<MyCallView | null>(myCall);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  /** Set when a signed-out call locked but the browser did not keep the cookie. */
+  const [orphaned, setOrphaned] = useState(false);
+  /** Whether the call currently shown was made without an account. */
+  const [anonCall, setAnonCall] = useState(false);
 
   function makeCall(pick: "will" | "wont") {
     setError(null);
     startTransition(async () => {
-      const res = await lockCall({ subjectId, callType: "outcome", pick });
-      if (res.ok) setCall({ pick, status: "open", points: 0 });
-      else setError(REASON_COPY[res.reason] ?? "Couldn't save your call — try again.");
+      const res = signedIn
+        ? await lockCall({ subjectId, callType: "outcome", pick })
+        : await lockAnonCall({ subjectId, callType: "outcome", pick });
+
+      if (!res.ok) {
+        setError(REASON_COPY[res.reason]);
+        return;
+      }
+
+      setCall({ pick, status: "open", points: 0 });
+      if (signedIn) return;
+
+      setAnonCall(true);
+      // A second request is the only way to tell whether the cookie stuck — within the
+      // request that served the call, a browser that keeps it and one that drops it are
+      // byte-identical. If it did not stick, the row is written against a session id this
+      // browser will never present again: orphaned, invisible and unclaimable. Say so
+      // rather than showing a success state over a receipt that no longer exists.
+      const kept = await anonSessionPresent().catch(() => true);
+      setOrphaned(!kept);
     });
   }
 
@@ -63,16 +88,24 @@ export function CallChip({
 
       {call ? (
         <>
-          <Locked call={call} />
-          <Link href="/record" className="mt-3 inline-flex items-center gap-1 text-[11.5px] text-mute-soft hover:text-acc transition">
-            View your record <ArrowRight size={11} />
-          </Link>
+          <Locked call={call} anon={anonCall} />
+          {!anonCall ? (
+            <Link href="/record" className="mt-3 inline-flex items-center gap-1 text-[11.5px] text-mute-soft hover:text-acc transition">
+              View your record <ArrowRight size={11} />
+            </Link>
+          ) : orphaned ? (
+            <p className="text-[12px] text-down mt-2">
+              Your browser isn&apos;t keeping this call.{" "}
+              <Link href="/login" className="text-acc hover:underline">Sign in</Link> and it&apos;ll stick.
+            </p>
+          ) : (
+            <p className="text-[12px] text-mute mt-2">
+              Held against Onside&apos;s <span className="num">{houseConfidencePct}%</span> on this browser.{" "}
+              <Link href="/login" className="text-acc hover:underline">Create an account</Link> to make it
+              permanent — it keeps the date you called.
+            </p>
+          )}
         </>
-      ) : !signedIn ? (
-        <p className="text-[13px] text-mute">
-          <Link href="/login" className="text-acc hover:underline">Sign in</Link> to put your call on the record —
-          your track record is public and permanent.
-        </p>
       ) : (
         <>
           <p className="text-[13px] text-mute mb-3">
@@ -102,8 +135,17 @@ export function CallChip({
   );
 }
 
-function Locked({ call }: { call: MyCallView }) {
+function Locked({ call, anon = false }: { call: MyCallView; anon?: boolean }) {
   const label = PICK_LABEL[call.pick] ?? call.pick;
+  // An anonymous call is only as durable as the cookie, so "locked" would overclaim it.
+  // The nudge underneath carries the rest of the story.
+  if (anon && call.status === "open") {
+    return (
+      <p className="text-[13px] text-mute flex items-center gap-2">
+        <Lock size={14} /> You called it: <b className="text-fg">{label}</b>.
+      </p>
+    );
+  }
   if (call.status === "won") {
     return (
       <p className="text-[13px] flex items-center gap-2 text-up">
