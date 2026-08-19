@@ -42,11 +42,14 @@ export function CallChip({
   houseConfidencePct,
   signedIn,
   myCall,
+  initialAnon = false,
 }: {
   subjectId: string;
   houseConfidencePct: number;
   signedIn: boolean;
   myCall: MyCallView | null;
+  /** True when `myCall` is an unclaimed anonymous call — it gets the claim nudge, not the record link. */
+  initialAnon?: boolean;
 }) {
   const [call, setCall] = useState<MyCallView | null>(myCall);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +57,7 @@ export function CallChip({
   /** Set when a signed-out call locked but the browser did not keep the cookie. */
   const [orphaned, setOrphaned] = useState(false);
   /** Whether the call currently shown was made without an account. */
-  const [anonCall, setAnonCall] = useState(false);
+  const [anonCall, setAnonCall] = useState(initialAnon);
 
   function makeCall(pick: "will" | "wont") {
     setError(null);

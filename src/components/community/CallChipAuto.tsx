@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/db/supabase-browser";
-import { CallChip } from "@/components/transfers/CallChip";
+import { CallChip, type MyCallView } from "@/components/transfers/CallChip";
+import { myExistingCall } from "@/lib/receipts/anon-lock";
 
 /**
  * `CallChip` with the signed-in check resolved in the browser instead of on the server.
@@ -33,6 +34,8 @@ export function CallChipAuto({
   houseConfidencePct: number;
 }) {
   const [signedIn, setSignedIn] = useState(false);
+  const [myCall, setMyCall] = useState<MyCallView | null>(null);
+  const [wasAnon, setWasAnon] = useState(false);
 
   useEffect(() => {
     const sb = createClient();
@@ -41,12 +44,33 @@ export function CallChipAuto({
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // Hydrate any call this visitor has already made on this deal. Without it a caller who
+  // reloads is shown a fresh chip as though they never called, clicks again, and is told
+  // "You've already called this one" — the data stays correct while the page contradicts
+  // itself. Runs client-side for the same reason auth does: reading the cookie during
+  // render would force the homepage out of static rendering.
+  useEffect(() => {
+    let alive = true;
+    myExistingCall(subjectId)
+      .then((c) => {
+        if (!alive || !c) return;
+        setMyCall({ pick: c.pick, status: c.status, points: c.points });
+        setWasAnon(c.anon);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [subjectId]);
+
   return (
     <CallChip
+      key={myCall ? `called-${myCall.pick}` : "open"}
       subjectId={subjectId}
       houseConfidencePct={houseConfidencePct}
       signedIn={signedIn}
-      myCall={null}
+      myCall={myCall}
+      initialAnon={wasAnon}
     />
   );
 }

@@ -1,14 +1,19 @@
 import Link from "next/link";
 import { MessageSquare, Lock } from "lucide-react";
 import { Card, Avatar } from "@/components/ui";
-import { CallChip } from "@/components/transfers/CallChip";
+import { CallChipAuto } from "@/components/community/CallChipAuto";
 import type { BoardDeal } from "@/lib/community/queries";
 
 /**
  * One row per live deal: who is moving where, what Onside thinks, and a one-tap
  * disagreement. The chip is the point — a board you can only read is a list.
  */
-export function CallBoard({ deals, signedIn }: { deals: BoardDeal[]; signedIn: boolean }) {
+/**
+ * Takes no `signedIn` prop: CallChipAuto resolves both the session and any existing call
+ * in the browser, so every surface that renders a chip behaves identically whether or not
+ * its page can read cookies during render.
+ */
+export function CallBoard({ deals }: { deals: BoardDeal[] }) {
   return (
     <div className="space-y-2.5">
       {deals.map((d) => (
@@ -38,7 +43,7 @@ export function CallBoard({ deals, signedIn }: { deals: BoardDeal[]; signedIn: b
             </div>
           </div>
           <div className="mt-3">
-            <CallChip subjectId={d.id} houseConfidencePct={d.confidence.pct} signedIn={signedIn} myCall={null} />
+            <CallChipAuto subjectId={d.id} houseConfidencePct={d.confidence.pct} />
           </div>
         </Card>
       ))}

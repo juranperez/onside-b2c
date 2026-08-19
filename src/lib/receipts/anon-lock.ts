@@ -90,3 +90,49 @@ export async function anonSessionPresent(): Promise<boolean> {
   const { readAnonSession } = await import("./anon-session");
   return (await readAnonSession()) !== null;
 }
+
+/**
+ * The caller's existing call on one deal, whoever they are.
+ *
+ * Exists because the surfaces that render a chip cannot all look this up server-side.
+ * The homepage must stay statically rendered, so it cannot read the session or the
+ * anonymous cookie during render — see CallChipAuto. Without this, a visitor who calls
+ * and then reloads is shown a fresh chip as though they never called, clicks again, and
+ * gets "You've already called this one." The data stays correct; the page just contradicts
+ * itself, which on a product about receipts is the worst kind of small bug.
+ *
+ * Checks the member path first: a claimed call outranks an anonymous one, and after a
+ * claim the anon row is deleted anyway.
+ */
+export async function myExistingCall(
+  subjectId: string,
+): Promise<{ pick: string; status: string; points: number; anon: boolean } | null> {
+  const db = adminDb();
+
+  const { getSessionUser } = await import("@/lib/db/supabase-server");
+  const user = await getSessionUser().catch(() => null);
+  if (user) {
+    const { data } = await db
+      .from("predictions")
+      .select("pick, status, points")
+      .eq("user_id", user.id)
+      .eq("subject_id", subjectId)
+      .eq("call_type", "outcome")
+      .maybeSingle();
+    if (data) return { pick: data.pick, status: data.status, points: data.points, anon: false };
+  }
+
+  const { readAnonSession } = await import("./anon-session");
+  const sessionId = await readAnonSession();
+  if (!sessionId) return null;
+
+  const { data } = await db
+    .from("anon_calls")
+    .select("pick")
+    .eq("session_id", sessionId)
+    .eq("subject_id", subjectId)
+    .eq("call_type", "outcome")
+    .maybeSingle();
+  // An anonymous call is always open: it cannot score until it is claimed.
+  return data ? { pick: data.pick, status: "open", points: 0, anon: true } : null;
+}

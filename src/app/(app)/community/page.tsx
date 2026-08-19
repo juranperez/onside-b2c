@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { getSessionUser } from "@/lib/db/supabase-server";
 import { getBoardDeals } from "@/lib/community/queries";
 import { CallBoard } from "@/components/community/CallBoard";
 
@@ -12,10 +11,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CommunityPage() {
-  const [user, deals] = await Promise.all([
-    getSessionUser().catch(() => null),
-    getBoardDeals(),
-  ]);
+  const deals = await getBoardDeals();
 
   return (
     <div className="max-w-[860px] mx-auto px-6 py-8">
@@ -30,7 +26,7 @@ export default async function CommunityPage() {
         </p>
       </div>
 
-      <CallBoard deals={deals} signedIn={!!user} />
+      <CallBoard deals={deals} />
     </div>
   );
 }
