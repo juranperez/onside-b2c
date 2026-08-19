@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/db/supabase-server";
+import { claimAnonCalls } from "@/lib/receipts/claim-anon";
 
 /**
  * Magic-link / OAuth callback: exchanges the code for a session cookie.
@@ -23,6 +24,12 @@ export async function GET(request: Request) {
   const supabase = await createSupabaseServer();
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
   if (error || !data?.user) return fail();
+
+  // Calls made before signing up become real receipts now, keeping the date they were
+  // originally locked — that date is the entire value of the receipt. claimAnonCalls
+  // never throws and never blocks: a failed merge leaves the rows in place for the next
+  // visit rather than costing someone their signup.
+  await claimAnonCalls(data.user.id);
 
   // First session ever → greet them on landing (created ≈ first sign-in).
   const u = data.user;

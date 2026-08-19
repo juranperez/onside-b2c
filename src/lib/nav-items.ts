@@ -22,6 +22,7 @@ export function getNavItems(wcActive: boolean): NavItem[] {
     { href: "/clubs", label: "Clubs" },
     { href: "/leagues", label: "Competitions" },
     { href: "/transfers", label: "Transfers" },
+    { href: "/community", label: "Community" },
   ];
   return wcActive ? [WORLD_CUP, ...core, ASK] : [...core, ASK];
 }

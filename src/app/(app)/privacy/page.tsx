@@ -158,6 +158,13 @@ export default function PrivacyPage() {
             aggregate and run only with your consent.
           </p>
           <p>
+            One essential cookie is worth naming. <strong className="text-fg">onside_anon</strong> is set only
+            if you make a call on a transfer before creating an account. It exists solely so that call can be
+            saved and attached to your record when you sign up — keeping the date you originally called it —
+            and it is deleted the moment that happens. It holds nothing but a random identifier, is never used
+            to track you across sites, and is never set for visitors who only read.
+          </p>
+          <p>
             When you first visit, we ask for your choice via a cookie banner, and we remember it. You can
             change your mind at any time by clearing the consent stored in your browser, and your browser's
             settings let you block or delete cookies entirely.

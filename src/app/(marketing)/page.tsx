@@ -7,6 +7,8 @@ import type { ClubSummary } from "@/lib/queries";
 import { isWcWindow } from "@/lib/wc-window";
 import { WorldCupHero } from "@/components/worldcup/WorldCupHero";
 import { listArticles, type ArticleListItem } from "@/lib/news/queries";
+import { getCallOfTheDay } from "@/lib/community/queries";
+import { CallOfTheDay } from "@/components/community/CallOfTheDay";
 
 export const revalidate = 1800;
 
@@ -41,6 +43,20 @@ export default async function LandingPage() {
     console.error("[landing] news unavailable:", e);
   }
 
+  // The homepage's only interactive element. Degrades to absent, never to a broken card.
+  //
+  // Note there is no session read here, deliberately. `getSessionUser()` calls `cookies()`,
+  // which opts this route out of static rendering entirely — measured: adding it flipped `/`
+  // from `○` to `ƒ` in the build output, which would put every request to the site's
+  // highest-traffic page straight onto the database. The chip resolves auth in the browser
+  // instead (see CallChipAuto).
+  let todaysCall = null;
+  try {
+    todaysCall = await getCallOfTheDay(new Date());
+  } catch (e) {
+    console.error("[landing] call of the day unavailable:", e);
+  }
+
   const risers = movers.filter((m) => m.dWeek > 0).sort((a, b) => b.dWeek - a.dWeek);
   const fallers = movers.filter((m) => m.dWeek < 0).sort((a, b) => a.dWeek - b.dWeek);
   const wcActive = isWcWindow(new Date());
@@ -50,6 +66,7 @@ export default async function LandingPage() {
       {articles.length > 0 && <NewsLead articles={articles} />}
       {wcActive ? <WorldCupHero /> : <HeroSection counts={counts} featured={risers[0] ?? movers[0]} />}
       <TickerStrip />
+      {todaysCall && <CallOfTheDay deal={todaysCall} />}
       <ValueProps />
       <MoversPreview risers={risers} fallers={fallers} />
       <SquadsPreview clubs={clubs} />

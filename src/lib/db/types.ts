@@ -66,6 +66,45 @@ export type Database = {
           },
         ]
       }
+      anon_calls: {
+        Row: {
+          call_type: string
+          earliness: number
+          house_confidence_pct: number | null
+          house_value_eur: number | null
+          id: string
+          locked_at: string
+          pick: string
+          session_id: string
+          subject_id: string
+          subject_type: string
+        }
+        Insert: {
+          call_type: string
+          earliness?: number
+          house_confidence_pct?: number | null
+          house_value_eur?: number | null
+          id?: string
+          locked_at?: string
+          pick: string
+          session_id: string
+          subject_id: string
+          subject_type?: string
+        }
+        Update: {
+          call_type?: string
+          earliness?: number
+          house_confidence_pct?: number | null
+          house_value_eur?: number | null
+          id?: string
+          locked_at?: string
+          pick?: string
+          session_id?: string
+          subject_id?: string
+          subject_type?: string
+        }
+        Relationships: []
+      }
       board_subscribers: {
         Row: {
           created_at: string
