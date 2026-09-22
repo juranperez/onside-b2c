@@ -8,7 +8,9 @@ const LINKS = {
     { href: "/players", label: "Players" },
     { href: "/clubs", label: "Clubs" },
     { href: "/leagues", label: "Leagues" },
-    { href: "/compare", label: "Compare" },
+    // /compare removed from the site-wide footer (Sep 2026): it is a dynamic,
+    // uncached, combinatorial page that crawlers hit ~100k times/day from this link.
+    // It stays reachable from player pages, where the intent is real.
     { href: "/worldcup", label: "World Cup 2026" },
   ],
   Company: [

@@ -3,13 +3,15 @@ import { adminDb } from "@/lib/db/admin";
 import { watchBreaks } from "@/lib/ingest/romano-watch";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// Cost control (Sep 2026): at 1-minute cadence with a 60s ceiling this timed out
+// ~340x/day and was billed the full 60s each time. Now every 15 min, 25s ceiling.
+export const maxDuration = 25;
 
 /**
  * Polls Fabrizio Romano's feed (via the X-mirror) once and acts on any new
- * "Here We Go". Guarded by CRON_SECRET. Armed at 1-minute cadence in vercel.json
- * (the ≤60s latency ceiling — Vercel cron floors at 1/min). RUMOUR_WATCH_ENABLED
- * gates it so it ships dark and is turned on by env without a redeploy.
+ * "Here We Go". Guarded by CRON_SECRET. Cadence is set in vercel.json (15 min —
+ * reduced from 1 min for cost; restore only with a hard duration budget).
+ * RUMOUR_WATCH_ENABLED gates it so it ships dark and is turned on by env without a redeploy.
  */
 export async function GET(req: Request) {
   const auth = req.headers.get("authorization");

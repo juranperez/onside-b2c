@@ -27,6 +27,23 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
+// Cost control (Sep 2026): this middleware only refreshes the Supabase session cookie,
+// yet the previous catch-all matcher ran it on ~690k requests/day — almost all of them
+// crawlers hitting public, session-free pages — and billed edge CPU on every one.
+// Run it only where a user session actually matters. Public pages skip it entirely.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|flags/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: [
+    "/login",
+    "/auth/:path*",
+    "/watchlist/:path*",
+    "/u/:path*",
+    "/notifications/:path*",
+    "/community/:path*",
+    "/the-board/:path*",
+    "/record/:path*",
+    "/ask/:path*",
+    "/api/push/:path*",
+    "/api/stripe/checkout",
+    "/api/stripe/portal",
+  ],
 };

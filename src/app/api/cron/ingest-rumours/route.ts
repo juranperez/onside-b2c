@@ -3,7 +3,8 @@ import { adminDb } from "@/lib/db/admin";
 import { ingestRumours, ingestFromX, DEFAULT_FEEDS } from "@/lib/ingest/rumour-ingest";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+// Cost control (Sep 2026): cadence reduced from 5 min to 30 min in vercel.json; ceiling halved.
+export const maxDuration = 60;
 
 /**
  * Automated rumour ingestion → review queue. CRON_SECRET-guarded. DORMANT by default:

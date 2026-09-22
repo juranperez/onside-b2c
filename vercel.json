@@ -5,12 +5,8 @@
       "schedule": "0 5 * * 0"
     },
     {
-      "path": "/api/cron/sync-fixtures",
-      "schedule": "*/5 * * * *"
-    },
-    {
       "path": "/api/cron/ingest-rumours",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/30 * * * *"
     },
     {
       "path": "/api/cron/sync-transfers",
@@ -34,15 +30,11 @@
     },
     {
       "path": "/api/cron/romano-watch",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/wc-goals",
-      "schedule": "* * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/news-generate",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }
